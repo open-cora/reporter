@@ -1,0 +1,105 @@
+"""What translating one document produces, before anything is sent.
+
+Four outcomes, in two pairs. `ReportRun` and `Transition` each name a
+command AROC publishes and carry everything that command needs except the
+ids, which only something that can talk to AROC can supply. `Ignored` and
+`Unmappable` both mean nothing will be sent, and they are separate because
+the reasons are opposite: one is the design working and the other is the
+design out of date.
+
+Keeping these as values rather than calls is what makes the translation
+testable against a captured file. Every finding the spike printed is a
+statement about which of these four a document produces, and a value can
+be asserted where a POST cannot.
+"""
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Literal
+
+Verb = Literal["complete", "abort", "fail", "pause", "resume"]
+"""The five run transitions, spelled as the path segment each one posts to.
+
+A `Literal` rather than an enum because these are wire strings and the
+only thing worth checking is that a typo cannot reach a URL. AROC's own
+error classes are per-verb (naming rule R6), and the verb is on the
+intent, so nothing here collapses a diagnostic.
+"""
+
+
+@dataclass(frozen=True)
+class ReportRun:
+    """A run happened, and AROC does not know about it yet.
+
+    `plan_name` is the engine's handle rather than an AROC plan id, which
+    is the whole of why the reporter needs a plan map: the id is not
+    derivable from anything on the document, and two AROC plans may
+    legitimately answer to one name.
+
+    `dropped` names the `plan_args` keys that were left out. Every list
+    the spike observed there held device reprs rather than device names,
+    verbose and carrying configuration that changes between runs, and the
+    clean names are on a different key. Dropping them is right and doing
+    it silently is not, so the keys travel with the intent and whatever
+    sends it can say what it left behind.
+    """
+
+    plan_name: str
+    parameters: dict[str, Any]
+    external_ref_value: str
+    occurred_at: datetime | None
+    dropped: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Transition:
+    """A run this system already knows about moved.
+
+    `run_uid` is the engine's id for the run, not AROC's. Resolving it is
+    a lookup the sender does, from memory or from `GET /runs` after a
+    restart.
+    """
+
+    run_uid: str
+    verb: Verb
+    occurred_at: datetime | None
+
+
+@dataclass(frozen=True)
+class Ignored:
+    """A document with nothing in it for AROC, which is expected.
+
+    Most of a document stream is this: descriptors, data events, and the
+    several document types that exist to carry readings rather than to
+    say anything about a run's life. `reason` is filled in so a caller
+    can count what it is skipping without the skip being an event.
+    """
+
+    reason: str
+
+
+@dataclass(frozen=True)
+class Unmappable:
+    """A document this translator handles, carrying something it cannot map.
+
+    Distinct from `Ignored`, and the distinction is the point. An
+    unrecognised `exit_status` is either a bug here or an engine that has
+    grown a fourth ending, and both are worth somebody's attention. A
+    descriptor producing nothing is neither. The spike put both in one
+    list, so the second kind was invisible among the first.
+    """
+
+    reason: str
+    document_name: str
+
+
+Intent = ReportRun | Transition | Ignored | Unmappable
+
+__all__ = [
+    "Ignored",
+    "Intent",
+    "ReportRun",
+    "Transition",
+    "Unmappable",
+    "Verb",
+]

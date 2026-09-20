@@ -6,11 +6,25 @@ outside the way this reporter has to. The spike that captured it printed a
 table and read it. Here the same facts are assertions, so a store release
 that changes one fails a run instead of changing a report nobody re-reads.
 
-Two of those facts are load-bearing and are checked directly rather than
-taken on trust. One node reports two spellings of its address, which is
-why `node_path` exists. And the address read off the raw HTTP surface is
-the same one the store's own client reports, which is why this package
-takes no store dependency.
+## Two kinds of test, and the second kind runs nothing
+
+Most of this file drives `HttpStoreLookup` over a transport shaped like
+the captured response. The block at the foot drives nothing at all: it
+reads the capture and asserts claims about the store that something here
+was built on, so that re-running the collector against a newer store
+turns a changed claim into a red test naming it rather than into a diff
+nobody reads.
+
+That second kind is the whole reason the collector is not deleted. A
+capture nobody asserts against is a file; a capture with these on it is
+the closest this suite gets to testing the real thing, at the cost of
+somebody remembering to refresh it.
+
+Four of the claims below back a decision that shipped: the writer is
+subscribed first because ordering is deterministic, `[store] root` is
+required because a search does not descend, an empty node is registered
+anyway because every ending produces one, and the asset URI was dropped
+as a key because the writer's readings have no file.
 """
 
 import json
@@ -218,3 +232,99 @@ def test_store_instant_reads_a_unix_time_as_an_aware_moment() -> None:
 @pytest.mark.parametrize("unusable", [None, "1789915675", True, {}, []])
 def test_store_instant_declines_anything_that_is_not_a_number(unusable: Any) -> None:
     assert store_instant(unusable) is None
+
+
+# Findings that back a shipped decision, read straight out of the capture.
+#
+# Nothing below exercises this package. Each one asserts a claim about the
+# store that something here was built on, so that re-running the collector
+# against a newer store turns a changed claim into a red test naming it
+# rather than into a diff nobody reads. `spikes/tiled_adapter/FINDINGS.md`
+# is where each came from; the section is on the test.
+
+
+def test_a_reporter_subscribed_after_the_writer_sees_a_finished_node() -> None:
+    """Section 2, and the reason the README says to order them that way.
+
+    If callback ordering ever stops being deterministic, a reporter goes
+    back to needing a retry loop and every dataset lands with no
+    timestamp, which nothing downstream would report as wrong.
+    """
+    observed = captured()["subscription_order"]["writer first"]
+    at_stop = next(s for s in observed["sightings"] if s["at"] == "stop")
+
+    assert at_stop["present"] is True
+    assert at_stop["has_stop"] is True, (
+        "A reporter subscribed after the writer no longer sees a finished node at stop, "
+        "so the README's ordering instruction is wrong and the leg needs a retry."
+    )
+
+
+def test_a_reporter_subscribed_before_the_writer_sees_an_unfinished_one() -> None:
+    """The other half of section 2, which is what makes it an ordering fact
+    rather than a race: both directions are deterministic."""
+    observed = captured()["subscription_order"]["reporter first"]
+    at_start, at_stop = observed["sightings"]
+
+    assert at_start["present"] is False
+    assert at_stop["present"] is True
+    assert at_stop["has_stop"] is False
+
+
+def test_a_search_does_not_reach_a_run_from_the_top_of_the_store() -> None:
+    """Section 5, and the reason `[store] root` is required configuration.
+
+    A store that started descending would make that field optional, which
+    is a simplification worth knowing about.
+    """
+    for label, scenario in scenarios().items():
+        found = scenario["search"]
+        assert found["from_the_store_root"] == [], (
+            f"{label}: a search from the store root now finds runs, so `root` may no "
+            "longer need to be configured."
+        )
+        assert found["from_the_writer_root"] == [scenario["run_uid"]], label
+
+
+def test_every_ending_produced_a_node_and_most_of_them_hold_nothing() -> None:
+    """Section 6, and the reason the reporter registers an empty node.
+
+    Three of four captured runs ended before a reading was taken. If a
+    failed run stopped producing a node at all, "register it anyway"
+    becomes a rule about something that is not there.
+    """
+    empty = 0
+    for label, scenario in scenarios().items():
+        assert scenario["keys_under_the_writer_root"] == [scenario["run_uid"]], label
+        if not [row for row in scenario["tree"] if row["depth"] == 1]:
+            empty += 1
+
+    assert empty, "No captured run ended empty, so the case the rule exists for is gone."
+
+
+def test_the_writers_readings_have_no_file_a_record_could_point_at() -> None:
+    """Section 4, and the reason the third candidate key was dropped.
+
+    A run's readings are rows in a table. An array written directly is a
+    file and says so, which is what makes this a fact about the writer
+    rather than about the store.
+    """
+    bytes_are = captured()["where_the_bytes_are"]
+
+    assert all(row["data_sources"] is None for row in bytes_are["by_the_writer"]), (
+        "The writer's nodes now carry data_sources, so there is a file to point at and "
+        "the asset URI is a candidate key again."
+    )
+    assert bytes_are["by_the_client"]["assets"], (
+        "A directly written array no longer reports a file, so the contrast this rests on "
+        "is gone and the finding says less than it claims."
+    )
+
+
+def test_the_store_keeps_the_engines_start_and_exit_status_as_well_as_its_stop() -> None:
+    """The rest of section 3. The stop time is checked above, through the
+    adapter; these two are the other fields a store-only reporter would
+    have to trust, and nothing else reads them."""
+    for label, scenario in scenarios().items():
+        assert scenario["store_start_time"] == scenario["engine_start_time"], label
+        assert scenario["store_exit_status"] == scenario["engine_exit_status"], label

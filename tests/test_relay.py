@@ -11,6 +11,7 @@ from uuid import UUID
 
 import pytest
 
+from reporter.__main__ import documents_into
 from reporter.client import ArocClient
 from reporter.config import from_mapping
 from reporter.outcomes import Held, Outcome, Recorded, Skipped
@@ -40,10 +41,10 @@ def relay_over(
 ) -> tuple[Relay, list[Outcome], Routed]:
     """A relay whose retries take no time, so the tests do not either."""
     routed = Routed(report=list(answers) or [Answer(201, {"run_id": str(A_RUN)})], move=[])
-    session = Session(ArocClient(routed, CONFIG), CONFIG)
+    handle = documents_into(Session(ArocClient(routed, CONFIG), CONFIG))
     seen: list[Outcome] = []
     return (
-        Relay(session, seen.append, capacity=capacity, retry_delays=retry_delays),
+        Relay(handle, seen.append, capacity=capacity, retry_delays=retry_delays),
         seen,
         routed,
     )
@@ -75,7 +76,8 @@ def test_submitting_does_not_wait_for_the_previous_document() -> None:
         release.wait(5)
 
     routed = Routed(report=[Answer(201, {"run_id": str(A_RUN)})], move=[])
-    relay = Relay(Session(ArocClient(routed, CONFIG), CONFIG), block, retry_delays=())
+    handle = documents_into(Session(ArocClient(routed, CONFIG), CONFIG))
+    relay = Relay(handle, block, retry_delays=())
     relay.start()
     relay.submit("start", A_START)
     assert started.wait(5), "The worker never picked the first document up."
@@ -122,7 +124,7 @@ def test_a_dropped_document_is_reported_rather_than_lost_quietly() -> None:
     relay.submit("start", A_START)
     relay.submit("descriptor", {"uid": "d1", "run_start": "r1"})
 
-    assert [o.document_name for o in seen if isinstance(o, Held)] == ["descriptor"]
+    assert [o.origin for o in seen if isinstance(o, Held)] == ["descriptor"]
 
 
 def test_a_refusal_worth_waiting_on_is_retried() -> None:
@@ -171,7 +173,7 @@ def test_a_request_that_never_arrived_is_retried_like_a_refusal() -> None:
 
     session = Session(ArocClient(Failing(), CONFIG), CONFIG)
     seen: list[Outcome] = []
-    relay = Relay(session, seen.append, retry_delays=(0.0,))
+    relay = Relay(documents_into(session), seen.append, retry_delays=(0.0,))
     relay.start()
     relay.submit("start", A_START)
     relay.stop(timeout=5)

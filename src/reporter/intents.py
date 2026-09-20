@@ -7,6 +7,12 @@ ids, which only something that can talk to AROC can supply. `Ignored` and
 the reasons are opposite: one is the design working and the other is the
 design out of date.
 
+Each of the three that can produce an alert carries an `origin`: a short
+label naming whatever in the engine's stream this came from. It is there
+so a `Held` can say what to go and look at, and it is a plain string
+rather than anything document-shaped because a second engine's stream is
+not made of documents. For this translator it is a document name.
+
 Keeping these as values rather than calls is what makes the translation
 testable against a captured file. Every finding the spike printed is a
 statement about which of these four a document produces, and a value can
@@ -48,6 +54,7 @@ class ReportRun:
     parameters: dict[str, Any]
     external_ref_value: str
     occurred_at: datetime | None
+    origin: str
     dropped: tuple[str, ...] = ()
 
 
@@ -63,6 +70,7 @@ class Transition:
     run_uid: str
     verb: Verb
     occurred_at: datetime | None
+    origin: str
 
 
 @dataclass(frozen=True)
@@ -90,7 +98,7 @@ class Unmappable:
     """
 
     reason: str
-    document_name: str
+    origin: str
 
 
 Intent = ReportRun | Transition | Ignored | Unmappable

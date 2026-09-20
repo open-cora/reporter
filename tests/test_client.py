@@ -23,7 +23,7 @@ import pytest
 
 from reporter.client import ArocClient, RequestRefusedError
 from reporter.config import from_mapping
-from reporter.intents import ReportRun, Transition
+from reporter.intents import ReportRun, Transition, Verb
 from tests._fakes import Answer, Recorder
 
 A_PLAN = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
@@ -54,8 +54,13 @@ def a_run(**overrides: Any) -> ReportRun:
         "parameters": {"num": 2, "detectors": ["det"]},
         "external_ref_value": A_UID,
         "occurred_at": AN_INSTANT,
+        "origin": "start",
     }
     return ReportRun(**{**fields, **overrides})
+
+
+def a_move(verb: Verb, origin: str, at: datetime | None = None) -> Transition:
+    return Transition(run_uid=A_UID, verb=verb, occurred_at=at, origin=origin)
 
 
 def test_reporting_a_run_posts_it_and_returns_the_id_aroc_minted() -> None:
@@ -112,7 +117,7 @@ def test_a_refused_report_raises_with_the_status_the_caller_needs() -> None:
 def test_moving_a_run_posts_to_the_verbs_own_path() -> None:
     client, recorder = client_answering(Answer(204))
 
-    client.move_run(A_RUN, Transition(run_uid=A_UID, verb="complete", occurred_at=AN_INSTANT))
+    client.move_run(A_RUN, a_move("complete", "stop", AN_INSTANT))
 
     assert recorder.sent[0].url == f"https://aroc.example/runs/{A_RUN}/complete"
     assert (recorder.sent[0].json or {})["occurred_at"] == "2026-09-19T10:02:11+00:00"
@@ -125,7 +130,7 @@ def test_moving_a_run_that_already_moved_raises_a_409_rather_than_passing() -> N
     client, _ = client_answering(Answer(409, text="already Completed"))
 
     with pytest.raises(RequestRefusedError) as refusal:
-        client.move_run(A_RUN, Transition(run_uid=A_UID, verb="complete", occurred_at=None))
+        client.move_run(A_RUN, a_move("complete", "stop"))
 
     assert refusal.value.status == 409
 
@@ -135,7 +140,7 @@ def test_moving_a_run_sends_no_idempotency_key() -> None:
     a 409 naming the state it is in, which distinguishes a redelivery from
     a reporter that has lost track of a run. A cached success would not."""
     client, recorder = client_answering(Answer(204))
-    client.move_run(A_RUN, Transition(run_uid=A_UID, verb="pause", occurred_at=None))
+    client.move_run(A_RUN, a_move("pause", "event"))
 
     assert "Idempotency-Key" not in (recorder.sent[0].headers or {})
 
@@ -202,7 +207,7 @@ def _report(client: ArocClient) -> None:
 
 
 def _move(client: ArocClient) -> None:
-    client.move_run(A_RUN, Transition(run_uid=A_UID, verb="fail", occurred_at=None))
+    client.move_run(A_RUN, a_move("fail", "stop"))
 
 
 @pytest.mark.parametrize(

@@ -16,6 +16,7 @@ import pytest
 
 from reporter.__main__ import (
     Tally,
+    documents_into,
     drive,
     main,
     plans_aroc_does_not_hold,
@@ -196,7 +197,8 @@ def an_idle_relay() -> Relay:
     than about what happens to the documents in it.
     """
     config = a_config()
-    return Relay(Session(ArocClient(Routed(report=[], move=[]), config), config), lambda _: None)
+    handle = documents_into(Session(ArocClient(Routed(report=[], move=[]), config), config))
+    return Relay(handle, lambda _: None)
 
 
 def unreadable() -> Iterator[Delivery]:

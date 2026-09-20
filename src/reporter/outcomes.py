@@ -103,10 +103,13 @@ class Held:
 
     Retrying produces this again, which is why it is an outcome and not
     an exception.
+
+    `origin` names whatever in the engine's stream this came from, so an
+    alert says where to look. It is carried through from the intent.
     """
 
     reason: str
-    document_name: str
+    origin: str
 
 
 Outcome = Recorded | Moved | Unchanged | Skipped | Held

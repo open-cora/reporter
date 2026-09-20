@@ -9,6 +9,11 @@ So `submit` puts the document on a queue and returns in microseconds, and
 a worker thread does the talking. The engine's thread never waits on AROC,
 never waits on a retry, and never waits on a timeout.
 
+What is on the other side of the queue is a function, not a `Session`.
+The queue and the retries are the same whatever is behind them, and a
+caller composes its own engine's translator with a session rather than
+this module knowing about either.
+
 ## What this is not
 
 It is not durable. Documents sit in memory, and a process that dies loses
@@ -38,7 +43,6 @@ from typing import Any, Final
 
 from reporter.client import RequestRefusedError
 from reporter.outcomes import Held, Outcome
-from reporter.session import Session
 
 DEFAULT_CAPACITY: Final = 1000
 """How many documents may wait before `submit` starts refusing.
@@ -66,18 +70,27 @@ transport above is for.
 _STOP: Final = object()
 
 
+Handle = Callable[[str, Mapping[str, Any]], Outcome]
+"""What the worker calls, once per document.
+
+An outcome means the document is finished with. Raising means the
+opposite, and only `RequestRefusedError` and `OSError` are retried, which
+is the contract `Session.act` is written to.
+"""
+
+
 class Relay:
     """A queue and one worker, between an engine's thread and AROC."""
 
     def __init__(
         self,
-        session: Session,
+        handle: Handle,
         on_outcome: Callable[[Outcome], None],
         *,
         capacity: int = DEFAULT_CAPACITY,
         retry_delays: Sequence[float] = DEFAULT_RETRY_DELAYS,
     ) -> None:
-        self._session = session
+        self._handle = handle
         self._on_outcome = on_outcome
         self._retry_delays = tuple(retry_delays)
         self._queue: queue.Queue[Any] = queue.Queue(maxsize=capacity)
@@ -132,20 +145,20 @@ class Relay:
             if item is _STOP:
                 return
             name, document = item
-            self._on_outcome(self._handle(name, document))
+            self._on_outcome(self._attempt(name, document))
 
-    def _handle(self, name: str, document: Mapping[str, Any]) -> Outcome:
+    def _attempt(self, name: str, document: Mapping[str, Any]) -> Outcome:
         """One document, retried while retrying could still help.
 
-        `Session.handle` draws the line: it returns an outcome when the
-        document is finished with, and raises when asking again might get
-        a different answer. This loop is the only place that distinction
-        is acted on.
+        Whatever is behind `handle` draws the line: it returns an outcome
+        when the document is finished with, and raises when asking again
+        might get a different answer. This loop is the only place that
+        distinction is acted on.
         """
         last = ""
         for delay in (*self._retry_delays, None):
             try:
-                return self._session.handle(name, document)
+                return self._handle(name, document)
             except RequestRefusedError as refusal:
                 last = str(refusal)
             except OSError as failure:
@@ -160,4 +173,4 @@ class Relay:
         )
 
 
-__all__ = ["DEFAULT_CAPACITY", "DEFAULT_RETRY_DELAYS", "Relay"]
+__all__ = ["DEFAULT_CAPACITY", "DEFAULT_RETRY_DELAYS", "Handle", "Relay"]

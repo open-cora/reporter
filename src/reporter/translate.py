@@ -164,6 +164,7 @@ class Translator:
             parameters=parameters,
             external_ref_value=uid,
             occurred_at=engine_instant(document),
+            origin="start",
             dropped=dropped,
         )
 
@@ -193,7 +194,9 @@ class Translator:
                 "stream has introduced, so it cannot be attributed",
                 "event",
             )
-        return Transition(run_uid=run_uid, verb=verb, occurred_at=engine_instant(document))
+        return Transition(
+            run_uid=run_uid, verb=verb, occurred_at=engine_instant(document), origin="event"
+        )
 
     def _stop(self, document: Mapping[str, Any]) -> Intent:
         run_uid = document.get("run_start")
@@ -207,7 +210,9 @@ class Translator:
             )
 
         self._forget(run_uid)
-        return Transition(run_uid=run_uid, verb=verb, occurred_at=engine_instant(document))
+        return Transition(
+            run_uid=run_uid, verb=verb, occurred_at=engine_instant(document), origin="stop"
+        )
 
     def _forget(self, run_uid: str) -> None:
         """Drop a finished run's descriptors, so the map tracks live runs.

@@ -129,15 +129,20 @@ past the file below:
 from pathlib import Path
 import httpx
 from reporter import ArocClient, Relay, Session, load
+from reporter.__main__ import documents_into
 
 config = load(Path("reporter.toml"))
-relay = Relay(Session(ArocClient(httpx.Client(timeout=10), config), config), print)
+session = Session(ArocClient(httpx.Client(timeout=10), config), config)
+relay = Relay(documents_into(session), print)
 relay.start()
 
 RE.subscribe(relay.submit)
 ```
 
-That is the whole integration. `submit` queues and returns in microseconds
+That is the whole integration. `documents_into` is the only line that
+names an engine: it puts this engine's translator in front of a `Session`
+that knows nothing but AROC. A different engine composes its own
+translator the same way and reuses everything under it. `submit` queues and returns in microseconds
 and a worker thread does the talking, so a scan never waits on AROC even
 though this is running inside it.
 

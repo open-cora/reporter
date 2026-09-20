@@ -14,8 +14,7 @@ it has to look for callers. Closing that properly needs one end-to-end
 run, which needs a session to run it, which is the landing after this one.
 """
 
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -25,6 +24,7 @@ import pytest
 from reporter.client import ArocClient, RequestRefusedError
 from reporter.config import from_mapping
 from reporter.intents import ReportRun, Transition
+from tests._fakes import Answer, Recorder
 
 A_PLAN = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
 A_RUN = UUID("01a0ba65-df83-7501-aa5d-3e2318ef956c")
@@ -41,51 +41,6 @@ CONFIG = from_mapping(
         "plans": {"count": str(A_PLAN)},
     }
 )
-
-
-@dataclass(frozen=True)
-class Sent:
-    """One request, as the client built it."""
-
-    method: str
-    url: str
-    params: Mapping[str, str] | None = None
-    json: Mapping[str, Any] | None = None
-    headers: Mapping[str, str] | None = None
-
-
-@dataclass(frozen=True)
-class Answer:
-    """One canned response."""
-
-    status_code: int
-    payload: Any = None
-    text: str = ""
-
-    def json(self) -> Any:
-        return self.payload
-
-
-@dataclass
-class Recorder:
-    """An HTTP client that answers from a list and remembers what it was asked."""
-
-    answers: list[Answer]
-    sent: list[Sent] = field(default_factory=list["Sent"])
-
-    def get(self, url: str, *, params: Mapping[str, str] | None = None) -> Answer:
-        self.sent.append(Sent("GET", url, params=params))
-        return self.answers.pop(0)
-
-    def post(
-        self,
-        url: str,
-        *,
-        json: Mapping[str, Any] | None = None,
-        headers: Mapping[str, str] | None = None,
-    ) -> Answer:
-        self.sent.append(Sent("POST", url, json=json, headers=headers))
-        return self.answers.pop(0)
 
 
 def client_answering(*answers: Answer) -> tuple[ArocClient, Recorder]:

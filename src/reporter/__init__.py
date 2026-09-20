@@ -6,27 +6,37 @@ the dependency arrow points into AROC, and a thing that calls an HTTP API
 needs a URL and a token rather than a port declared for it. Nothing in
 `apps/api` imports this package and nothing here imports `aroc`.
 
-Half built. What exists is the core that turns documents into intents and
-the client that sends them. What subscribes to an engine and what
-remembers how far it has read are still to come, and they are one
-decision rather than two; see the README for what it is waiting on.
+Hand a `Session` one document at a time and it does the rest: translate,
+resolve, send, and report what came of it. What is still missing is only
+the mouth of the pipe. Nothing here subscribes to an engine and nothing
+remembers how far it has read, because those are one decision rather than
+two and it is not made yet; see the README.
 """
 
 from reporter.client import ArocClient, HttpClient, RequestRefusedError, Response
 from reporter.config import ConfigError, ReporterConfig, from_mapping, load
 from reporter.intents import Ignored, Intent, ReportRun, Transition, Unmappable, Verb
+from reporter.outcomes import AlreadyMoved, Held, Moved, Outcome, Recorded, Skipped
+from reporter.session import Session, is_worth_retrying
 from reporter.translate import Translator, engine_instant, idempotency_key_for
 
 __all__ = [
+    "AlreadyMoved",
     "ArocClient",
     "ConfigError",
+    "Held",
     "HttpClient",
     "Ignored",
     "Intent",
+    "Moved",
+    "Outcome",
+    "Recorded",
     "ReportRun",
     "ReporterConfig",
     "RequestRefusedError",
     "Response",
+    "Session",
+    "Skipped",
     "Transition",
     "Translator",
     "Unmappable",
@@ -34,5 +44,6 @@ __all__ = [
     "engine_instant",
     "from_mapping",
     "idempotency_key_for",
+    "is_worth_retrying",
     "load",
 ]

@@ -2,9 +2,10 @@
 
 Turns one engine's document stream into AROC's run commands.
 
-**Half built.** What exists is the core that turns documents into intents,
-and the client that sends them. What subscribes to an engine does not
-exist yet. See [What is missing](#what-is-missing).
+**Nearly whole.** Hand a `Session` one document and it translates it,
+resolves what it needs, sends it, and tells you what came of it. What is
+missing is the mouth of the pipe: nothing subscribes to an engine yet. See
+[What is missing](#what-is-missing).
 
 ## What it is, and what it is not
 
@@ -41,10 +42,29 @@ one. Being out here is how that stays true without an exception.
                            pure, tested          every request asserted
                            against a real        through a recording
                            capture               transport
+
+                              session.py joins them, and decides
+                              what to do with a no
 ```
 
-Nothing wires the left column to the right one yet. That is `session.py`,
-and it waits on the subscription decision below.
+`Session.handle(name, document)` returns one of five outcomes, and the
+split is by what a caller should do rather than by what happened:
+
+```
+   Recorded       a run is in AROC that was not
+   Moved          a run changed state
+   AlreadyMoved   it had changed already. a redelivery, almost always
+   Skipped        the document said nothing about a run's life
+   Held           it said something and could not be acted on
+```
+
+Advance past all five: every one is settled, so sending the document again
+gets the same answer. Only `Held` is worth waking somebody. A refusal that
+*could* pass later, a 429 or a 5xx, raises instead of returning, so a
+caller that ignores outcomes cannot accidentally skip past one.
+
+That is also why the checkpoint is the caller's. An outcome means the
+document is finished with; an exception means ask again.
 
 `Ignored` and `Unmappable` are separate because the reasons are opposite.
 A descriptor producing nothing is the design working. An `exit_status`
@@ -126,8 +146,9 @@ Or from the repository root, where `make lint`, `make typecheck` and
 
 | Piece | Waiting on |
 | --- | --- |
-| `session.py`, `__main__.py` | How this subscribes to an engine. |
-| The checkpoint | The same decision. A direct subscription means a file here; a broker in between means a consumer-group offset and no file. |
+| The subscription itself | Whether anything other than AROC wants these documents. If yes, a broker is already justified and this is one of its consumers. If no, a callback next to the engine is enough. |
+| The checkpoint | The same decision. A direct subscription means a file here; a broker in between means a consumer-group offset and no file at all. |
+| `__main__.py` | Both of the above, since its whole job is wiring them to a `Session`. |
 | An identity to run as | A deployment. It is an actor in Access, and the grant list is recorded in the spike's `FINDINGS.md` section 5. It must **not** be granted `DefinePlan`: an adapter cannot honestly author a plan, and withholding the grant makes that a refusal at the boundary rather than a sentence in a document. |
 
 Delivery is at-least-once in every design above, and safe because

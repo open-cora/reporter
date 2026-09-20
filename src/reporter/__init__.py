@@ -15,6 +15,11 @@ joined. `Relay` puts a queue and a thread in front of both, so an engine
 handing a document over waits on nothing, and `sources` is where documents
 come from: a live engine publishing over 0MQ, or a capture on disk.
 
+`stores` is the second thing this reads and the reason it reports into two
+bounded contexts rather than one. An engine says a run happened; a store
+says where the data it produced is being kept. A deployment with no store
+configured leaves the whole of that leg switched off.
+
 What is still missing is durability. Nothing remembers how far it has
 read, and nothing it is subscribed to remembers either, so a document
 published while this is down is a document lost. See the README.
@@ -25,14 +30,22 @@ from reporter.client import (
     HttpClient,
     RequestRefusedError,
     Response,
+    dataset_key_for,
     idempotency_key_for,
 )
-from reporter.config import ConfigError, ReporterConfig, from_mapping, load
+from reporter.config import ConfigError, ReporterConfig, StoreConfig, from_mapping, load
 from reporter.intents import Ignored, Intent, ReportRun, Transition, Unmappable, Verb
-from reporter.outcomes import Held, Moved, Outcome, Recorded, Skipped, Unchanged
+from reporter.outcomes import Held, Kept, Moved, Outcome, Recorded, Skipped, Unchanged
 from reporter.relay import Handle, Relay
 from reporter.session import Session, is_worth_retrying
 from reporter.sources import DecodeError, Delivery, from_capture, from_subscription
+from reporter.stores import (
+    HttpStoreLookup,
+    Location,
+    StoreLookup,
+    StoreRefusedError,
+    node_path,
+)
 from reporter.translate import Translator, engine_instant
 from reporter.wire import documents_into
 
@@ -44,8 +57,11 @@ __all__ = [
     "Handle",
     "Held",
     "HttpClient",
+    "HttpStoreLookup",
     "Ignored",
     "Intent",
+    "Kept",
+    "Location",
     "Moved",
     "Outcome",
     "Recorded",
@@ -56,11 +72,15 @@ __all__ = [
     "Response",
     "Session",
     "Skipped",
+    "StoreConfig",
+    "StoreLookup",
+    "StoreRefusedError",
     "Transition",
     "Translator",
     "Unchanged",
     "Unmappable",
     "Verb",
+    "dataset_key_for",
     "documents_into",
     "engine_instant",
     "from_capture",
@@ -69,4 +89,5 @@ __all__ = [
     "idempotency_key_for",
     "is_worth_retrying",
     "load",
+    "node_path",
 ]

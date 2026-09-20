@@ -12,6 +12,7 @@ from signal import SIGTERM, getsignal, signal
 from uuid import UUID, uuid4
 from weakref import ref
 
+import httpx
 import pytest
 
 from reporter.__main__ import (
@@ -20,6 +21,8 @@ from reporter.__main__ import (
     main,
     plans_aroc_does_not_hold,
     stop_on_termination,
+    store_lookup,
+    store_that_does_not_answer,
 )
 from reporter.client import ArocClient
 from reporter.config import ReporterConfig, from_mapping
@@ -27,8 +30,9 @@ from reporter.outcomes import Held, Moved, Outcome, Recorded, Skipped, Unchanged
 from reporter.relay import Relay
 from reporter.session import Session
 from reporter.sources import DecodeError, Delivery
+from reporter.stores import HttpStoreLookup
 from reporter.wire import documents_into
-from tests._fakes import Answer, Routed
+from tests._fakes import Answer, Recorder, Routed
 
 A_PLAN = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
 A_RUN = UUID("01a0ba65-df83-7501-aa5d-3e2318ef956c")
@@ -215,3 +219,75 @@ def test_a_stream_this_cannot_read_ends_the_run_and_says_why() -> None:
 
 def test_a_stream_that_simply_ends_is_not_a_problem() -> None:
     assert drive(iter([]), an_idle_relay()) is None
+
+
+# The store's own startup check, which is the second thing that can be over
+# before a run begins.
+
+
+def a_store_config(**overrides: str) -> ReporterConfig:
+    return from_mapping(
+        {
+            "aroc": {
+                "base_url": "https://aroc.example",
+                "token": "a-token",
+                "external_ref_scheme": "engine-run-uid",
+            },
+            "plans": {"count": str(A_PLAN)},
+            "store": {
+                "base_url": "https://store.example",
+                "root": "raw",
+                "external_ref_scheme": "tiled-node-path",
+                **overrides,
+            },
+        }
+    )
+
+
+def test_no_store_table_means_no_lookup_and_nothing_to_check() -> None:
+    config = a_config(count=str(A_PLAN))
+
+    assert store_lookup(Recorder([]), config) is None
+    assert store_that_does_not_answer(None, config) is None
+
+
+def test_a_configured_store_produces_a_lookup_over_the_shared_client() -> None:
+    lookup = store_lookup(Recorder([]), a_store_config())
+
+    assert isinstance(lookup, HttpStoreLookup)
+
+
+def test_a_store_that_answers_leaves_nothing_to_report() -> None:
+    """It is asked for a run that cannot exist, so an empty store passes."""
+    config = a_store_config()
+    lookup = store_lookup(Recorder([Answer(404, text="not found")]), config)
+
+    assert store_that_does_not_answer(lookup, config) is None
+
+
+def test_a_store_that_refuses_stops_the_run_and_names_the_store() -> None:
+    config = a_store_config()
+    lookup = store_lookup(Recorder([Answer(403, text="not permitted")]), config)
+
+    unreachable = store_that_does_not_answer(lookup, config)
+
+    assert unreachable is not None
+    assert "https://store.example" in unreachable
+    assert "403" in unreachable
+
+
+def test_a_store_that_cannot_be_reached_at_all_stops_the_run() -> None:
+    """Worth refusing to start over, because the alternative is a reporter
+    that records every run and quietly files no data."""
+
+    class Unreachable:
+        def get(self, url: str) -> Answer:
+            raise httpx.ConnectError(f"nothing is listening on {url}")
+
+    config = a_store_config()
+    lookup = store_lookup(Unreachable(), config)
+
+    unreachable = store_that_does_not_answer(lookup, config)
+
+    assert unreachable is not None
+    assert "did not answer" in unreachable

@@ -43,6 +43,7 @@ from typing import Any, Final
 
 from reporter.client import RequestRefusedError
 from reporter.outcomes import Held, Outcome
+from reporter.stores import StoreRefusedError
 
 DEFAULT_CAPACITY: Final = 1000
 """How many documents may wait before `submit` starts refusing.
@@ -56,9 +57,9 @@ whatever a real stream's burst rate says.
 DEFAULT_RETRY_DELAYS: Final[tuple[float, ...]] = (0.5, 2.0, 5.0, 15.0)
 """How long to wait between attempts, and how many attempts there are.
 
-Only failures worth retrying get here: a 429, a 5xx, or a request that
-never arrived. Everything else is already an outcome by the time the
-worker sees it.
+Only failures worth retrying get here: a 429 or a 5xx from AROC or from a
+store, or a request that never arrived. Everything else is already an
+outcome by the time the worker sees it.
 
 Bounded rather than forever, because a worker retrying one document
 forever is a worker not draining the queue behind it, and an outage then
@@ -74,8 +75,9 @@ Handle = Callable[[str, Mapping[str, Any]], Outcome]
 """What the worker calls, once per document.
 
 An outcome means the document is finished with. Raising means the
-opposite, and only `RequestRefusedError` and `OSError` are retried, which
-is the contract `Session.act` is written to.
+opposite, and only a refusal from AROC, a refusal from a store, or a
+request that did not arrive are retried, which is the contract
+`Session.act` is written to.
 """
 
 
@@ -159,7 +161,7 @@ class Relay:
         for delay in (*self._retry_delays, None):
             try:
                 return self._handle(name, document)
-            except RequestRefusedError as refusal:
+            except (RequestRefusedError, StoreRefusedError) as refusal:
                 last = str(refusal)
             except OSError as failure:
                 last = f"the request did not arrive: {failure}"

@@ -13,6 +13,7 @@ difference is that a change breaking one of these fails a run.
 """
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, get_args
 from uuid import UUID
@@ -22,11 +23,12 @@ import pytest
 from reporter.client import ArocClient, RequestRefusedError
 from reporter.config import from_mapping
 from reporter.intents import Verb
-from reporter.outcomes import Held, Moved, Outcome, Recorded, Skipped, Unchanged
+from reporter.outcomes import Held, Kept, Moved, Outcome, Recorded, Skipped, Unchanged
 from reporter.relay import Handle
 from reporter.session import ENDINGS, Session, is_worth_retrying
+from reporter.stores import Location, StoreRefusedError
 from reporter.wire import documents_into
-from tests._fakes import Answer, Routed
+from tests._fakes import Answer, Routed, Store
 
 CAPTURED = Path(__file__).parent / "documents.json"
 
@@ -270,3 +272,219 @@ def test_a_run_is_forgotten_after_every_ending_and_no_other_verb() -> None:
     three verbs and continues on the two that cycle."""
     assert {"complete", "abort", "fail"} == ENDINGS
     assert set(get_args(Verb)) - ENDINGS == {"pause", "resume"}
+
+
+# The dataset leg. Everything above runs with no store configured, which is
+# also a deployment, so these add a store rather than changing the default.
+
+A_DATASET = UUID("01a0ba66-1c41-7f02-9e48-5b7a0c6d2e19")
+
+STORE_CONFIG = from_mapping(
+    {
+        "aroc": {
+            "base_url": "https://aroc.example",
+            "token": "a-token",
+            "external_ref_scheme": "engine-run-uid",
+        },
+        "plans": dict.fromkeys(PLAN_NAMES, str(A_PLAN)),
+        "store": {
+            "base_url": "https://store.example",
+            "root": "raw",
+            "external_ref_scheme": "tiled-node-path",
+        },
+    }
+)
+
+AN_ENDING = datetime(2026, 9, 20, 11, 30, tzinfo=UTC)
+
+
+def uid_of(scenario: str) -> str:
+    start = next(doc for name, doc in deliveries(scenario) if name == "start")
+    return str(start["uid"])
+
+
+def session_with_store(store: Store, **answers: list[Answer]) -> tuple[Handle, Routed]:
+    """The same wiring as `session_over`, with the dataset leg switched on."""
+    routed = Routed(
+        report=answers.get("report") or [Answer(201, {"run_id": str(A_RUN)})],
+        move=answers.get("move") or [Answer(204)],
+        find=answers.get("find") or [Answer(200, {"items": []})],
+        register=answers.get("register") or [Answer(201, {"dataset_id": str(A_DATASET)})],
+    )
+    session = Session(ArocClient(routed, STORE_CONFIG), STORE_CONFIG, store)
+    return documents_into(session), routed
+
+
+def store_holding(scenario: str, *, occurred_at: datetime | None = AN_ENDING) -> Store:
+    uid = uid_of(scenario)
+    return Store({uid: Location(path=f"raw/{uid}", occurred_at=occurred_at)})
+
+
+def test_a_session_with_no_store_never_asks_one_and_reports_the_move() -> None:
+    """The default deployment, unchanged by the leg existing."""
+    handle, routed = session_over()
+    outcomes = drive("completes", handle)
+
+    assert isinstance(outcomes[-1], Moved)
+    assert not routed.calls("POST", containing="/datasets")
+
+
+def test_an_ending_registers_what_the_store_holds_and_reports_it_kept() -> None:
+    store = store_holding("completes")
+    handle, routed = session_with_store(store)
+
+    outcomes = drive("completes", handle)
+
+    ending = outcomes[-1]
+    assert isinstance(ending, Kept)
+    assert ending.dataset_id == A_DATASET
+    assert ending.external_ref_value == f"raw/{uid_of('completes')}"
+    assert ending.verb == "complete"
+    assert store.asked == [uid_of("completes")]
+    assert len(routed.calls("POST", containing="/datasets")) == 1
+
+
+@pytest.mark.parametrize("scenario", scenarios())
+def test_every_ending_registers_exactly_one_dataset(scenario: str) -> None:
+    """Including the three that produced no data. A node holding nothing is
+    a fact, and it is the one somebody looking for missing data needs."""
+    handle, routed = session_with_store(store_holding(scenario))
+
+    outcomes = drive(scenario, handle)
+
+    assert len([o for o in outcomes if isinstance(o, Kept)]) == 1
+    assert len(routed.calls("POST", containing="/datasets")) == 1
+    assert not [o for o in outcomes if isinstance(o, Held)]
+
+
+def test_a_pause_is_not_an_ending_so_nothing_is_registered_for_it() -> None:
+    store = store_holding("pause_resume_complete")
+    handle, routed = session_with_store(store)
+
+    outcomes = drive("pause_resume_complete", handle)
+
+    assert [type(o).__name__ for o in outcomes if isinstance(o, (Moved, Kept))] == [
+        "Moved",
+        "Moved",
+        "Kept",
+    ]
+    assert len(routed.calls("POST", containing="/datasets")) == 1
+
+
+def test_the_registration_carries_the_stores_scheme_and_the_endings_moment() -> None:
+    handle, routed = session_with_store(store_holding("completes"))
+
+    drive("completes", handle)
+
+    sent = routed.calls("POST", containing="/datasets")[0]
+    assert sent.json == {
+        "run_id": str(A_RUN),
+        "external_ref": {
+            "scheme": "tiled-node-path",
+            "value": f"raw/{uid_of('completes')}",
+        },
+        "occurred_at": AN_ENDING.isoformat(),
+    }
+
+
+def test_the_registration_is_keyed_on_the_address_rather_than_the_run() -> None:
+    """Two datasets from one run would otherwise share a key, and the second
+    would come back holding the first one's id."""
+    handle, routed = session_with_store(store_holding("completes"))
+
+    drive("completes", handle)
+
+    sent = routed.calls("POST", containing="/datasets")[0]
+    assert sent.headers is not None
+    key = sent.headers["Idempotency-Key"]
+    assert key == f"register-dataset:raw/{uid_of('completes')}"
+    assert uid_of("completes") in key
+
+
+def test_a_store_holding_no_ending_still_registers_and_lets_aroc_stamp_it() -> None:
+    """A node without its stop is a reporter that subscribed before the
+    writer. Less true than it could be, and better than nothing."""
+    handle, routed = session_with_store(store_holding("completes", occurred_at=None))
+
+    outcomes = drive("completes", handle)
+
+    assert isinstance(outcomes[-1], Kept)
+    sent = routed.calls("POST", containing="/datasets")[0]
+    assert sent.json is not None
+    assert sent.json["occurred_at"] is None
+
+
+def test_a_run_the_store_holds_nothing_for_is_held_and_names_the_run() -> None:
+    handle, routed = session_with_store(Store())
+
+    outcomes = drive("completes", handle)
+
+    ending = outcomes[-1]
+    assert isinstance(ending, Held)
+    assert uid_of("completes") in ending.reason
+    assert not routed.calls("POST", containing="/datasets")
+
+
+def test_a_store_refusing_for_good_is_held_rather_than_raised() -> None:
+    store = Store(refusal=StoreRefusedError(403, "not permitted", url="https://store.example/x"))
+    handle, _ = session_with_store(store)
+
+    outcomes = drive("completes", handle)
+
+    ending = outcomes[-1]
+    assert isinstance(ending, Held)
+    assert "403" in ending.reason
+
+
+def test_a_store_having_a_bad_moment_raises_so_the_caller_waits() -> None:
+    """The relay retries this. An outcome would advance past it instead."""
+    store = Store(refusal=StoreRefusedError(503, "later", url="https://store.example/x"))
+    handle, _ = session_with_store(store)
+
+    with pytest.raises(StoreRefusedError):
+        drive("completes", handle)
+
+
+def test_aroc_refusing_the_registration_is_held_after_the_run_has_moved() -> None:
+    """The cost of one outcome per intent, pinned rather than left to be
+    discovered: the move happened and the summary will not say so."""
+    handle, routed = session_with_store(
+        store_holding("completes"), register=[Answer(403, text="not permitted")]
+    )
+
+    outcomes = drive("completes", handle)
+
+    ending = outcomes[-1]
+    assert isinstance(ending, Held)
+    assert not [o for o in outcomes if isinstance(o, Moved)]
+    assert len(routed.calls("POST", containing="/runs/")) == 1
+
+
+def test_a_redelivered_ending_still_registers_the_dataset() -> None:
+    """The first delivery may have recorded the ending and died before the
+    data. The retry key makes asking again free."""
+    handle, routed = session_with_store(
+        store_holding("completes"),
+        move=[Answer(409, text="Run cannot be completed: it is already Completed")],
+    )
+
+    outcomes = drive("completes", handle)
+
+    assert isinstance(outcomes[-1], Kept)
+    assert len(routed.calls("POST", containing="/datasets")) == 1
+
+
+def test_a_redelivered_ending_the_store_lost_reports_the_decline_it_got() -> None:
+    """With nothing to register, the 409 is still the answer worth giving."""
+    handle, _ = session_with_store(Store(), move=[Answer(409, text="already Completed")])
+
+    outcomes = drive("completes", handle)
+
+    assert isinstance(outcomes[-1], Held)
+
+
+def test_a_store_lookup_without_a_store_table_is_refused_at_construction() -> None:
+    """The two halves of the configuration cannot disagree, because one of
+    them carries the scheme the other's addresses belong to."""
+    with pytest.raises(ValueError, match="store"):
+        Session(ArocClient(Routed(report=[], move=[]), CONFIG), CONFIG, Store())

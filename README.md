@@ -1,6 +1,7 @@
 # Reporter
 
-Turns one engine's document stream into AROC's run commands.
+Turns one engine's document stream into AROC's run commands, and says
+where the data those runs produced is being kept.
 
 **Runs, against a live engine.** `python -m reporter --subscribe` reads
 documents off a real engine's 0MQ stream and reports the runs to AROC, and
@@ -50,13 +51,25 @@ rather than one this paragraph makes.
      descriptor   ---->         Ignored                (nothing is sent)
      exit_status? ---->         Unmappable             (nothing is sent, loudly)
                                                           |
+                                             stores.py <--+  on an ending
+                                               locate(uid)
+                                                  |
+                                                  +---->    POST /datasets
+                                                          |
                                outcomes.py  <-------------+
-                                 Recorded Moved Unchanged
-                                 Skipped  Held
+                                 Recorded Moved Kept
+                                 Unchanged Skipped Held
 
                     wire.py   documents_into(session)
                               the only module that names both halves
 ```
+
+`stores.py` is the third outside system and sits on neither side. The two
+outward halves differ in direction: an engine pushes, so its translator is
+called from `wire`, above the session; a store is asked, so its lookup is
+called from inside the session, below it. What the session names is a
+Protocol, so a different store is an implementation swapped at the
+entrypoint.
 
 `relay.py` sits in front of all of it with a queue and a worker thread, so
 the engine's own thread never waits on a network. It takes a function
@@ -67,6 +80,42 @@ The split was not designed. It was found by driving a second engine in
 `spikes/tomoscan_adapter/`, whose stream has no documents in it at all,
 and discovering that the only thing coupling the right column to the left
 was a function signature.
+
+## Two bounded contexts, one process
+
+A stop means two things now: the run finished, and the data it produced
+exists somewhere. So an ending asks the store where, and reports both.
+
+```
+   engine  --+
+             +-->  [ this reporter ]  -->  Execution   POST /runs/{id}/complete
+   store   --+                        -->  Custody     POST /datasets
+```
+
+One process rather than two, because the two are joined by an id. A
+dataset cites a run by AROC's id for it, and resolving the engine's uid to
+that id is what this reporter already does for a transition. Split them
+and the second process is racing the first for the record it needs.
+
+**The dataset leg is optional.** No `[store]` table means no lookup, no
+`POST /datasets`, and everything else exactly as before. That is a
+deployment rather than a degraded one: a facility whose engine writes
+somewhere this cannot see should record runs and say nothing about data.
+
+**`Kept` replaces `Moved` for an ending** rather than arriving beside it,
+because one intent gets one outcome. The cost is worth knowing before
+reading a tally: when the run moves and the dataset cannot be registered,
+the single outcome has to be `Held`, so a session run against a store that
+is down reports no `Moved` at all even though every run moved. The moves
+are in AROC either way and `Held` names the store as it happens. It is the
+summary that misleads, not the record.
+
+**Subscribe the writer first.** Both callbacks run on the engine's thread
+in the order they were subscribed, so a reporter subscribed after the
+writer sees a finished node every time, with no retry and no sleep.
+Subscribed before it, the node exists without its ending, the registration
+still happens, and AROC stamps the arrival instead. That guarantee is
+in-process only: over a message bus this really is a race.
 
 ## Why the translator holds state
 
@@ -178,6 +227,11 @@ external_ref_scheme = "engine-run-uid"
 
 [plans]
 count = "01a0ba64-8f95-7ad1-a7a7-44124ff3afd5"
+
+[store]
+base_url = "https://store.example"
+root = "raw"
+external_ref_scheme = "tiled-node-path"
 ```
 
 The plan map is the interesting part, and it is here rather than in AROC
@@ -191,9 +245,30 @@ and until they do, runs of it are refused. That is loud, which is the
 trade against AROC guessing by recency and recording runs against whatever
 it picked.
 
+`[store]` is the optional table and leaving it out switches the dataset
+leg off. Three things about it are worth knowing.
+
+`root` is where the writer points, and it is configuration because it
+cannot be discovered: a search does not descend, so a reporter cannot find
+a run by uid without already knowing where to look. A misconfigured root
+finds nothing rather than finding the wrong thing, which is the better
+failure.
+
+`external_ref_scheme` is a second one and not the same as the one above.
+That one names the vocabulary an engine's run ids belong to; this one
+names the vocabulary a store's addresses belong to. Setting them to one
+string would be claiming two kinds of reference are interchangeable.
+
+There is no token for the store. Nothing has needed one, and adding the
+field before something asks would be inventing an auth scheme on a store's
+behalf.
+
 Everything is checked at load. A malformed plan id, a base URL that is not
-one, a blank token: all refuse to start rather than failing on the first
-run of that plan at whatever hour that is.
+one, a blank token, a `[store]` table that is present and wrong: all
+refuse to start rather than failing on the first run of that plan at
+whatever hour that is. A configured store is also reached for once before
+the first document moves, because a reporter that records every run and
+quietly files no data is worse than one that will not start.
 
 ## Running it
 
@@ -214,26 +289,49 @@ Or from the repository root, where `make lint`, `make typecheck` and
 | Durability | A transport that keeps a log. Documents live in the relay's queue and nowhere else, and 0MQ publish and subscribe has nothing behind it to ask again, so a document published while this is down was never published as far as this is concerned. At-most-once, known rather than accidental. |
 | The checkpoint | The same thing. There is nothing to check point against: an offset is only meaningful over a transport that can be rewound to one. A broker in between gives both at once, and this becomes one of its consumers. |
 | Anything other than AROC wanting these documents | Which is the question that decides the two rows above. If something else wants them, a broker is already justified and durability arrives with it. If not, this is the deployment and the gap is a cost somebody has to accept out loud. |
-| An identity to run as | A deployment. It is an actor in Access, and the grant list is recorded in the spike's `FINDINGS.md` section 5. It must **not** be granted `DefinePlan`: an adapter cannot honestly author a plan, and withholding the grant makes that a refusal at the boundary rather than a sentence in a document. |
+| An identity to run as | A deployment. It is an actor in Access, and the two spikes each record the grants their half needs: `spikes/bluesky_adapter/FINDINGS.md` section 5 for the runs, `spikes/tiled_adapter/FINDINGS.md` section 7 for the datasets. A process carrying both legs runs as one actor holding the union. It must **not** be granted `DefinePlan`: an adapter cannot honestly author a plan, and withholding the grant makes that a refusal at the boundary rather than a sentence in a document. |
+| A token for the store | Something asking for one. The lookup sends no credential, so this works against a store that does not want one and nothing else. |
 
-Redelivery is safe, whatever the transport turns out to be, because
-`report_run` sends an idempotency key that `idempotency_key_for` derives
-from the engine's own run id. A restarted reporter recomputes it having
-persisted nothing, so a redelivered start returns the first run's id
-instead of recording a second one.
+Redelivery is safe, whatever the transport turns out to be, because both
+writes send an idempotency key derived from something this can recompute
+after a restart having persisted nothing. A redelivered start returns the
+first run's id rather than recording a second run.
+
+The two keys name different things, deliberately. `idempotency_key_for`
+names the run, because a start is identified by the run it began.
+`dataset_key_for` names the store's address, because a dataset is
+identified by where the data is. They are the same string today and they
+part company the day a run produces two datasets: keyed on the run, both
+registrations would carry one note and the second would come back holding
+the first one's id, silently. AROC refused to derive a dataset's identity
+from its run for exactly that reason, and a key naming the run would put
+the constraint back somewhere no migration announces.
 
 One gap is open and worth naming, because the tests do not close it. They
 assert the requests the client builds, not that AROC's routes accept them:
 reading AROC's OpenAPI document would mean importing `aroc` here, which
 would put the model in this project's environment and end the separation
 above. So a route rename fails in `apps/api`'s own path pin, and whoever
-does it has to look for callers. Closing it properly needs one end-to-end
-run, which needs `session.py`.
+does it has to look for callers. What closes it is the run below, which
+needs no test double at any point.
+
+The store half has the same gap and one fewer worry. `tests/nodes.json` is
+real output from a real store rather than a shape imagined here, written
+by `spikes/tiled_adapter/collect.py`. Re-running that overwrites it, which
+is deliberate: a capture from a newer store that changes an assertion is
+the signal worth having, and the diff is the finding.
 
 ## Proving it, end to end
 
 Two demonstrations, and neither is a test double. The first has a real
 engine in it.
+
+**Both are runs of the engine leg only.** Neither has had a store in it,
+so the numbers below carry no `Kept`. The dataset leg is covered by tests
+against real captured store output and has not been through this section,
+which is the difference between checked and demonstrated, and the reason
+this paragraph is here rather than a third heading with plausible figures
+under it.
 
 ### An engine nobody captured
 

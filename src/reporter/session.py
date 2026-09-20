@@ -4,6 +4,19 @@ Where the two halves meet: something upstream says what happened, in the
 vocabulary of `intents`, and this resolves the ids, sends it, and decides
 what to do with a no.
 
+## Two bounded contexts, one session
+
+It reports into Execution, that a run happened and moved, and into
+Custody, where the data that run produced is being kept. The second is
+optional: no store lookup means no dataset leg and everything else
+unchanged.
+
+The two are in one session rather than two because they are joined by an
+id. A dataset cites a run by AROC's id for it, and resolving an engine's
+uid to that id is exactly what this module already does for a transition.
+Splitting them would mean two processes racing over one lookup, one of
+them writing the record the other needs.
+
 ## It does not know which engine it serves
 
 `act` takes an `Intent`, not a document. That boundary was found rather
@@ -36,6 +49,8 @@ One map, a cache of something AROC already knows:
     run uid -> AROC run id    re-read from GET /runs
 
 Kill this process and it comes back, from the external-reference lookup.
+Nothing about the dataset leg is remembered either: the address comes from
+the store every time, and the retry key is derived from that address.
 That is what the read slice bought, and it is the difference between a
 reporter you can redeploy and one you nurse. Whatever the translator
 remembers is the translator's problem and recovers the same way, from the
@@ -51,7 +66,8 @@ from uuid import UUID
 from reporter.client import ArocClient, RequestRefusedError
 from reporter.config import ReporterConfig
 from reporter.intents import Ignored, Intent, ReportRun, Transition, Unmappable, Verb
-from reporter.outcomes import Held, Moved, Outcome, Recorded, Skipped, Unchanged
+from reporter.outcomes import Held, Kept, Moved, Outcome, Recorded, Skipped, Unchanged
+from reporter.stores import StoreLookup, StoreRefusedError
 
 ENDINGS: Final[frozenset[Verb]] = frozenset({"complete", "abort", "fail"})
 """The verbs after which a run has no more transitions to come.
@@ -84,11 +100,22 @@ def is_worth_retrying(status: int) -> bool:
 
 
 class Session:
-    """Holds one stream's translator and its resolved run ids."""
+    """Holds one stream's resolved run ids, and the store if there is one."""
 
-    def __init__(self, client: ArocClient, config: ReporterConfig) -> None:
+    def __init__(
+        self,
+        client: ArocClient,
+        config: ReporterConfig,
+        store: StoreLookup | None = None,
+    ) -> None:
+        if store is not None and config.store is None:
+            raise ValueError(
+                "A store lookup needs a [store] table in the configuration, which is "
+                "where the scheme its addresses belong to is written down."
+            )
         self._client = client
         self._config = config
+        self._store = store
         self._run_ids: dict[str, UUID] = {}
 
     def act(self, intent: Intent) -> Outcome:
@@ -142,16 +169,61 @@ class Session:
                 intent.origin,
             )
 
+        declined: str | None = None
         try:
             self._client.move_run(run_id, intent)
         except RequestRefusedError as refusal:
-            if refusal.status == _CONFLICT:
-                self._forget(intent)
-                return Unchanged(run_id, intent.verb, refusal.detail)
-            return self._held_or_raise(refusal, intent.origin)
+            if refusal.status != _CONFLICT:
+                return self._held_or_raise(refusal, intent.origin)
+            declined = refusal.detail
 
         self._forget(intent)
+        kept = self._keep(run_id, intent)
+        if kept is not None:
+            return kept
+        if declined is not None:
+            return Unchanged(run_id, intent.verb, declined)
         return Moved(run_id, intent.verb)
+
+    def _keep(self, run_id: UUID, intent: Transition) -> Outcome | None:
+        """Register what an ended run produced, if a store says where it is.
+
+        `None` means there was nothing to do and the caller should report
+        the transition on its own: either this deployment has no store, or
+        the run has not ended and so has produced nothing to speak of yet.
+
+        It runs after a declined transition as well as an accepted one,
+        and that is not an oversight. A 409 is what a redelivery looks
+        like, and the delivery it repeats may have recorded the ending and
+        died before recording the data. Re-registering an address AROC
+        already holds costs one request and returns the same id, because
+        the retry key is derived from that address.
+        """
+        if self._store is None or self._config.store is None or intent.verb not in ENDINGS:
+            return None
+
+        try:
+            location = self._store.locate(intent.run_uid)
+        except StoreRefusedError as refusal:
+            if is_worth_retrying(refusal.status):
+                raise
+            return Held(f"the store refused: {refusal}", intent.origin)
+
+        if location is None:
+            return Held(
+                f"the store holds nothing for run {intent.run_uid}, so its {intent.verb} "
+                "is recorded and what it produced is not",
+                intent.origin,
+            )
+
+        try:
+            dataset_id = self._client.register_dataset(
+                run_id, location, scheme=self._config.store.external_ref_scheme
+            )
+        except RequestRefusedError as refusal:
+            return self._held_or_raise(refusal, intent.origin)
+
+        return Kept(run_id, intent.verb, dataset_id, location.path)
 
     def _run_id_for(self, run_uid: str) -> UUID | None:
         """AROC's id for an engine run: from memory, then from AROC.

@@ -1,0 +1,679 @@
+{
+  "subscription_order": {
+    "writer first": {
+      "sightings": [
+        {
+          "at": "start",
+          "present": true,
+          "has_start": true,
+          "has_stop": false,
+          "children": []
+        },
+        {
+          "at": "stop",
+          "present": true,
+          "has_start": true,
+          "has_stop": true,
+          "children": [
+            "primary"
+          ]
+        }
+      ],
+      "after_the_plan_returns": {
+        "present": true,
+        "has_start": true,
+        "has_stop": true,
+        "children": [
+          "primary"
+        ]
+      }
+    },
+    "reporter first": {
+      "sightings": [
+        {
+          "at": "start",
+          "present": false,
+          "refusal": "KeyError"
+        },
+        {
+          "at": "stop",
+          "present": true,
+          "has_start": true,
+          "has_stop": false,
+          "children": [
+            "primary"
+          ]
+        }
+      ],
+      "after_the_plan_returns": {
+        "present": true,
+        "has_start": true,
+        "has_stop": true,
+        "children": [
+          "primary"
+        ]
+      }
+    }
+  },
+  "root_addressing": {
+    "root": {
+      "created": {
+        "key": "at_the_root",
+        "ancestors": [
+          ""
+        ],
+        "path": "/at_the_root",
+        "normalised_path": "at_the_root",
+        "uri": "http://local-tiled-app/api/v1/metadata//at_the_root",
+        "link_self": "http://local-tiled-app/api/v1/metadata//at_the_root",
+        "asset_data_uris": [],
+        "specs": [],
+        "structure_family": "container"
+      },
+      "searched": {
+        "key": "at_the_root",
+        "ancestors": [],
+        "path": "at_the_root",
+        "normalised_path": "at_the_root",
+        "uri": "http://local-tiled-app/api/v1/metadata/at_the_root",
+        "link_self": "http://local-tiled-app/api/v1/metadata/at_the_root",
+        "asset_data_uris": [],
+        "specs": [],
+        "structure_family": "container"
+      },
+      "spellings": 2
+    },
+    "nested": {
+      "created": {
+        "key": "child",
+        "ancestors": [
+          "",
+          "nested"
+        ],
+        "path": "/nested/child",
+        "normalised_path": "nested/child",
+        "uri": "http://local-tiled-app/api/v1/metadata//nested/child",
+        "link_self": "http://local-tiled-app/api/v1/metadata//nested/child",
+        "asset_data_uris": [],
+        "specs": [],
+        "structure_family": "container"
+      },
+      "searched": {
+        "key": "child",
+        "ancestors": [
+          "nested"
+        ],
+        "path": "nested/child",
+        "normalised_path": "nested/child",
+        "uri": "http://local-tiled-app/api/v1/metadata/nested/child",
+        "link_self": "http://local-tiled-app/api/v1/metadata/nested/child",
+        "asset_data_uris": [],
+        "specs": [],
+        "structure_family": "container"
+      },
+      "spellings": 2
+    }
+  },
+  "where_the_bytes_are": {
+    "by_the_writer": [
+      {
+        "path": "raw/6ab0a3b9-9439-4939-bf54-f9dce8548604",
+        "structure_family": "container",
+        "data_sources": null
+      },
+      {
+        "path": "raw/6ab0a3b9-9439-4939-bf54-f9dce8548604/primary",
+        "structure_family": "container",
+        "data_sources": null
+      },
+      {
+        "path": "raw/6ab0a3b9-9439-4939-bf54-f9dce8548604/primary/internal/seq_num",
+        "structure_family": "array",
+        "data_sources": null
+      },
+      {
+        "path": "raw/6ab0a3b9-9439-4939-bf54-f9dce8548604/primary/internal/time",
+        "structure_family": "array",
+        "data_sources": null
+      },
+      {
+        "path": "raw/6ab0a3b9-9439-4939-bf54-f9dce8548604/primary/internal/det",
+        "structure_family": "array",
+        "data_sources": null
+      },
+      {
+        "path": "raw/6ab0a3b9-9439-4939-bf54-f9dce8548604/primary/internal/ts_det",
+        "structure_family": "array",
+        "data_sources": null
+      }
+    ],
+    "by_the_client": {
+      "path": "/written_directly",
+      "assets": [
+        "file://localhost/var/folders/q9/65s0yd8s2dj_prlvytf_yn9m0000gq/T/tmp1a556wxx/data/written_directly"
+      ]
+    }
+  },
+  "scenarios": {
+    "completes": {
+      "label": "completes",
+      "raised": null,
+      "document_order": [
+        "start",
+        "descriptor",
+        "event",
+        "event",
+        "event",
+        "stop"
+      ],
+      "run_uid": "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+      "engine_start_time": 1789915805.6147609,
+      "engine_stop_time": 1789915805.639091,
+      "engine_exit_status": "success",
+      "keys_under_the_writer_root": [
+        "6aebd91c-8afd-478d-8ae1-57570b6102fc"
+      ],
+      "node": {
+        "key": "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+        "ancestors": [
+          "raw"
+        ],
+        "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+        "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+        "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+        "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+        "asset_data_uris": [],
+        "specs": [
+          {
+            "name": "BlueskyRun",
+            "version": "3.0"
+          }
+        ],
+        "structure_family": "container"
+      },
+      "tree": [
+        {
+          "depth": 0,
+          "key": "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+          "ancestors": [
+            "raw"
+          ],
+          "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+          "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+          "asset_data_uris": [],
+          "specs": [
+            {
+              "name": "BlueskyRun",
+              "version": "3.0"
+            }
+          ],
+          "structure_family": "container"
+        },
+        {
+          "depth": 1,
+          "key": "primary",
+          "ancestors": [
+            "raw",
+            "6aebd91c-8afd-478d-8ae1-57570b6102fc"
+          ],
+          "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary",
+          "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary",
+          "asset_data_uris": [],
+          "specs": [
+            {
+              "name": "BlueskyEventStream",
+              "version": "3.0"
+            },
+            {
+              "name": "composite",
+              "version": null
+            }
+          ],
+          "structure_family": "container"
+        },
+        {
+          "depth": 2,
+          "key": "seq_num",
+          "ancestors": [
+            "raw",
+            "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+            "primary",
+            "internal"
+          ],
+          "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/seq_num",
+          "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/seq_num",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/seq_num",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/seq_num",
+          "asset_data_uris": [],
+          "specs": [],
+          "structure_family": "array"
+        },
+        {
+          "depth": 2,
+          "key": "time",
+          "ancestors": [
+            "raw",
+            "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+            "primary",
+            "internal"
+          ],
+          "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/time",
+          "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/time",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/time",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/time",
+          "asset_data_uris": [],
+          "specs": [],
+          "structure_family": "array"
+        },
+        {
+          "depth": 2,
+          "key": "det",
+          "ancestors": [
+            "raw",
+            "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+            "primary",
+            "internal"
+          ],
+          "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/det",
+          "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/det",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/det",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/det",
+          "asset_data_uris": [],
+          "specs": [],
+          "structure_family": "array"
+        },
+        {
+          "depth": 2,
+          "key": "ts_det",
+          "ancestors": [
+            "raw",
+            "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+            "primary",
+            "internal"
+          ],
+          "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/ts_det",
+          "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/ts_det",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/ts_det",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/ts_det",
+          "asset_data_uris": [],
+          "specs": [],
+          "structure_family": "array"
+        }
+      ],
+      "metadata_top_level_keys": [
+        "start",
+        "stop"
+      ],
+      "store_start_time": 1789915805.6147609,
+      "store_stop_time": 1789915805.639091,
+      "store_exit_status": "success",
+      "search": {
+        "from_the_store_root": [],
+        "from_the_writer_root": [
+          "6aebd91c-8afd-478d-8ae1-57570b6102fc"
+        ]
+      },
+      "over_http": {
+        "url": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+        "status": 200,
+        "envelope_keys": [
+          "data",
+          "error",
+          "links",
+          "meta"
+        ],
+        "data_keys": [
+          "attributes",
+          "id",
+          "links",
+          "meta"
+        ],
+        "attribute_keys": [
+          "access_blob",
+          "ancestors",
+          "data_sources",
+          "metadata",
+          "sorting",
+          "specs",
+          "structure",
+          "structure_family"
+        ],
+        "id": "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+        "ancestors": [
+          "raw"
+        ],
+        "metadata_keys": [
+          "start",
+          "stop"
+        ],
+        "stop_time": 1789915805.639091,
+        "stop_exit_status": "success",
+        "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+        "same_key_as_the_client": true,
+        "missing_status": 404
+      }
+    },
+    "plan_raises": {
+      "label": "plan_raises",
+      "raised": "RuntimeError: the spike broke this run on purpose",
+      "document_order": [
+        "start",
+        "stop"
+      ],
+      "run_uid": "ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+      "engine_start_time": 1789915807.425368,
+      "engine_stop_time": 1789915807.445785,
+      "engine_exit_status": "fail",
+      "keys_under_the_writer_root": [
+        "ea7a1b05-0db1-47c3-812a-9eb62afae2bc"
+      ],
+      "node": {
+        "key": "ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+        "ancestors": [
+          "raw"
+        ],
+        "path": "raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+        "normalised_path": "raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+        "uri": "http://local-tiled-app/api/v1/metadata/raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+        "link_self": "http://local-tiled-app/api/v1/metadata/raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+        "asset_data_uris": [],
+        "specs": [
+          {
+            "name": "BlueskyRun",
+            "version": "3.0"
+          }
+        ],
+        "structure_family": "container"
+      },
+      "tree": [
+        {
+          "depth": 0,
+          "key": "ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+          "ancestors": [
+            "raw"
+          ],
+          "path": "raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+          "normalised_path": "raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+          "asset_data_uris": [],
+          "specs": [
+            {
+              "name": "BlueskyRun",
+              "version": "3.0"
+            }
+          ],
+          "structure_family": "container"
+        }
+      ],
+      "metadata_top_level_keys": [
+        "start",
+        "stop"
+      ],
+      "store_start_time": 1789915807.425368,
+      "store_stop_time": 1789915807.445785,
+      "store_exit_status": "fail",
+      "search": {
+        "from_the_store_root": [],
+        "from_the_writer_root": [
+          "ea7a1b05-0db1-47c3-812a-9eb62afae2bc"
+        ]
+      },
+      "over_http": {
+        "url": "http://local-tiled-app/api/v1/metadata/raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+        "status": 200,
+        "envelope_keys": [
+          "data",
+          "error",
+          "links",
+          "meta"
+        ],
+        "data_keys": [
+          "attributes",
+          "id",
+          "links",
+          "meta"
+        ],
+        "attribute_keys": [
+          "access_blob",
+          "ancestors",
+          "data_sources",
+          "metadata",
+          "sorting",
+          "specs",
+          "structure",
+          "structure_family"
+        ],
+        "id": "ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+        "ancestors": [
+          "raw"
+        ],
+        "metadata_keys": [
+          "start",
+          "stop"
+        ],
+        "stop_time": 1789915807.445785,
+        "stop_exit_status": "fail",
+        "normalised_path": "raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+        "same_key_as_the_client": true,
+        "missing_status": 404
+      }
+    },
+    "abort_from_pause": {
+      "label": "abort_from_pause",
+      "raised": "BrokenPipeError: [Errno 32] Broken pipe",
+      "document_order": [
+        "start",
+        "stop"
+      ],
+      "run_uid": "63320c0a-a52d-451e-99e8-4a573c396cd5",
+      "engine_start_time": 1789915809.050403,
+      "engine_stop_time": 1789915809.071008,
+      "engine_exit_status": "abort",
+      "keys_under_the_writer_root": [
+        "63320c0a-a52d-451e-99e8-4a573c396cd5"
+      ],
+      "node": {
+        "key": "63320c0a-a52d-451e-99e8-4a573c396cd5",
+        "ancestors": [
+          "raw"
+        ],
+        "path": "raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+        "normalised_path": "raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+        "uri": "http://local-tiled-app/api/v1/metadata/raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+        "link_self": "http://local-tiled-app/api/v1/metadata/raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+        "asset_data_uris": [],
+        "specs": [
+          {
+            "name": "BlueskyRun",
+            "version": "3.0"
+          }
+        ],
+        "structure_family": "container"
+      },
+      "tree": [
+        {
+          "depth": 0,
+          "key": "63320c0a-a52d-451e-99e8-4a573c396cd5",
+          "ancestors": [
+            "raw"
+          ],
+          "path": "raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+          "normalised_path": "raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+          "asset_data_uris": [],
+          "specs": [
+            {
+              "name": "BlueskyRun",
+              "version": "3.0"
+            }
+          ],
+          "structure_family": "container"
+        }
+      ],
+      "metadata_top_level_keys": [
+        "start",
+        "stop"
+      ],
+      "store_start_time": 1789915809.050403,
+      "store_stop_time": 1789915809.071008,
+      "store_exit_status": "abort",
+      "search": {
+        "from_the_store_root": [],
+        "from_the_writer_root": [
+          "63320c0a-a52d-451e-99e8-4a573c396cd5"
+        ]
+      },
+      "over_http": {
+        "url": "http://local-tiled-app/api/v1/metadata/raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+        "status": 200,
+        "envelope_keys": [
+          "data",
+          "error",
+          "links",
+          "meta"
+        ],
+        "data_keys": [
+          "attributes",
+          "id",
+          "links",
+          "meta"
+        ],
+        "attribute_keys": [
+          "access_blob",
+          "ancestors",
+          "data_sources",
+          "metadata",
+          "sorting",
+          "specs",
+          "structure",
+          "structure_family"
+        ],
+        "id": "63320c0a-a52d-451e-99e8-4a573c396cd5",
+        "ancestors": [
+          "raw"
+        ],
+        "metadata_keys": [
+          "start",
+          "stop"
+        ],
+        "stop_time": 1789915809.071008,
+        "stop_exit_status": "abort",
+        "normalised_path": "raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+        "same_key_as_the_client": true,
+        "missing_status": 404
+      }
+    },
+    "stop_from_pause": {
+      "label": "stop_from_pause",
+      "raised": "BrokenPipeError: [Errno 32] Broken pipe",
+      "document_order": [
+        "start",
+        "stop"
+      ],
+      "run_uid": "6448d0f5-2b9b-4550-9cfc-85735829268e",
+      "engine_start_time": 1789915810.832781,
+      "engine_stop_time": 1789915810.85417,
+      "engine_exit_status": "success",
+      "keys_under_the_writer_root": [
+        "6448d0f5-2b9b-4550-9cfc-85735829268e"
+      ],
+      "node": {
+        "key": "6448d0f5-2b9b-4550-9cfc-85735829268e",
+        "ancestors": [
+          "raw"
+        ],
+        "path": "raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+        "normalised_path": "raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+        "uri": "http://local-tiled-app/api/v1/metadata/raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+        "link_self": "http://local-tiled-app/api/v1/metadata/raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+        "asset_data_uris": [],
+        "specs": [
+          {
+            "name": "BlueskyRun",
+            "version": "3.0"
+          }
+        ],
+        "structure_family": "container"
+      },
+      "tree": [
+        {
+          "depth": 0,
+          "key": "6448d0f5-2b9b-4550-9cfc-85735829268e",
+          "ancestors": [
+            "raw"
+          ],
+          "path": "raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+          "normalised_path": "raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+          "asset_data_uris": [],
+          "specs": [
+            {
+              "name": "BlueskyRun",
+              "version": "3.0"
+            }
+          ],
+          "structure_family": "container"
+        }
+      ],
+      "metadata_top_level_keys": [
+        "start",
+        "stop"
+      ],
+      "store_start_time": 1789915810.832781,
+      "store_stop_time": 1789915810.85417,
+      "store_exit_status": "success",
+      "search": {
+        "from_the_store_root": [],
+        "from_the_writer_root": [
+          "6448d0f5-2b9b-4550-9cfc-85735829268e"
+        ]
+      },
+      "over_http": {
+        "url": "http://local-tiled-app/api/v1/metadata/raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+        "status": 200,
+        "envelope_keys": [
+          "data",
+          "error",
+          "links",
+          "meta"
+        ],
+        "data_keys": [
+          "attributes",
+          "id",
+          "links",
+          "meta"
+        ],
+        "attribute_keys": [
+          "access_blob",
+          "ancestors",
+          "data_sources",
+          "metadata",
+          "sorting",
+          "specs",
+          "structure",
+          "structure_family"
+        ],
+        "id": "6448d0f5-2b9b-4550-9cfc-85735829268e",
+        "ancestors": [
+          "raw"
+        ],
+        "metadata_keys": [
+          "start",
+          "stop"
+        ],
+        "stop_time": 1789915810.85417,
+        "stop_exit_status": "success",
+        "normalised_path": "raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+        "same_key_as_the_client": true,
+        "missing_status": 404
+      }
+    }
+  }
+}

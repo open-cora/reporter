@@ -17,12 +17,19 @@ anything moves, and put each document through the translator and the relay.
 Inside the engine's own process, `Relay.submit` is the subscription
 callback and nothing here is involved. The README has the recipe.
 
-## The startup check earns its place here
+## The startup checks earn their place here
 
 Every plan in the map is looked up before the first document moves. A
 typo in a plan id otherwise fails on the first run of that plan, at
 whatever hour that is, with a 404 that reads like an AROC problem rather
 than a configuration one.
+
+A configured store is reached for once, in the same spirit and with a
+weaker claim. All it asks is whether something answers where the writer
+is supposed to be pointed; whether runs actually land there is not
+knowable before one does. A store that cannot be reached at all is worth
+refusing to start over, because the alternative is a reporter that
+records every run and quietly files no data.
 
 ## Durability, stated rather than discovered
 
@@ -49,6 +56,12 @@ from reporter.outcomes import Held, Outcome
 from reporter.relay import Relay
 from reporter.session import Session
 from reporter.sources import DecodeError, Delivery, from_capture, from_subscription
+from reporter.stores import (
+    HttpStoreLookup,
+    StoreHttpClient,
+    StoreLookup,
+    StoreRefusedError,
+)
 from reporter.wire import documents_into
 
 REQUEST_TIMEOUT_SECONDS = 10.0
@@ -111,7 +124,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"configuration: AROC holds no plan for {', '.join(missing)}", file=sys.stderr)
             return 2
 
-        relay = Relay(documents_into(Session(client, config)), tally.record)
+        store = store_lookup(http, config)
+        unreachable = store_that_does_not_answer(store, config)
+        if unreachable is not None:
+            print(f"configuration: {unreachable}", file=sys.stderr)
+            return 2
+
+        relay = Relay(documents_into(Session(client, config, store)), tally.record)
         relay.start()
         try:
             unreadable = drive(_documents(arguments), relay)
@@ -193,6 +212,39 @@ def plans_aroc_does_not_hold(client: ArocClient, config: ReporterConfig) -> list
     return sorted(
         name for name, plan_id in config.plan_ids.items() if not client.plan_exists(plan_id)
     )
+
+
+def store_lookup(http: StoreHttpClient, config: ReporterConfig) -> StoreLookup | None:
+    """The store this deployment keeps its data in, if it has one.
+
+    `None` switches the dataset leg off, which is a configuration this
+    reporter supports rather than a degraded one. One HTTP client serves
+    both AROC and the store, so timeouts and the connection pool are set
+    in a single place.
+    """
+    if config.store is None:
+        return None
+    return HttpStoreLookup(http, config.store.base_url, config.store.root)
+
+
+def store_that_does_not_answer(store: StoreLookup | None, config: ReporterConfig) -> str | None:
+    """Whether a configured store answers, said the way a person would fix it.
+
+    The probe asks for a run that cannot exist, so a reachable store says
+    it holds nothing and an unreachable one raises. That keeps the check
+    free of any assumption about what is in there already, which matters
+    because a reporter is usually started before the first scan of the
+    day.
+    """
+    if store is None or config.store is None:
+        return None
+    try:
+        store.locate("a-run-that-cannot-exist")
+    except StoreRefusedError as refusal:
+        return f"the store at {config.store.base_url} refused: {refusal}"
+    except (OSError, httpx.HTTPError) as unreachable:
+        return f"the store at {config.store.base_url} did not answer: {unreachable}"
+    return None
 
 
 def stop_on_termination() -> None:

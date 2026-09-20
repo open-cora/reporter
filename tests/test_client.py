@@ -21,9 +21,15 @@ from uuid import UUID
 
 import pytest
 
-from reporter.client import ArocClient, RequestRefusedError, idempotency_key_for
+from reporter.client import (
+    ArocClient,
+    RequestRefusedError,
+    dataset_key_for,
+    idempotency_key_for,
+)
 from reporter.config import from_mapping
 from reporter.intents import ReportRun, Transition, Verb
+from reporter.stores import Location
 from tests._fakes import Answer, Recorder
 
 A_PLAN = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
@@ -239,3 +245,71 @@ def test_the_idempotency_key_is_the_same_on_every_recomputation() -> None:
     assert idempotency_key_for("5b4f40e7") == idempotency_key_for("5b4f40e7")
     assert idempotency_key_for("5b4f40e7") != idempotency_key_for("5b4f40e8")
     assert "5b4f40e7" in idempotency_key_for("5b4f40e7")
+
+
+# Registering a dataset. The store half is `tests/test_stores.py`; these
+# check only what this package sends to AROC once it has a location.
+
+A_DATASET = UUID("01a0ba66-1c41-7f02-9e48-5b7a0c6d2e19")
+A_PATH = f"raw/{A_UID}"
+A_SCHEME = "tiled-node-path"
+
+
+def test_register_dataset_posts_the_address_the_store_gave_and_returns_the_id() -> None:
+    client, recorder = client_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
+
+    registered = client.register_dataset(
+        A_RUN, Location(path=A_PATH, occurred_at=AN_INSTANT), scheme=A_SCHEME
+    )
+
+    assert registered == A_DATASET
+    sent = recorder.sent[0]
+    assert sent.method == "POST"
+    assert sent.url == "https://aroc.example/datasets"
+    assert sent.json == {
+        "run_id": str(A_RUN),
+        "external_ref": {"scheme": A_SCHEME, "value": A_PATH},
+        "occurred_at": AN_INSTANT.isoformat(),
+    }
+
+
+def test_register_dataset_sends_a_key_derived_from_the_address_not_the_run() -> None:
+    client, recorder = client_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
+
+    client.register_dataset(A_RUN, Location(path=A_PATH, occurred_at=None), scheme=A_SCHEME)
+
+    sent = recorder.sent[0]
+    assert sent.headers is not None
+    assert sent.headers["Idempotency-Key"] == dataset_key_for(A_PATH)
+    assert sent.headers["Authorization"] == "Bearer a-token"
+
+
+def test_two_datasets_from_one_run_are_keyed_apart() -> None:
+    """The whole reason the key names an address. Keyed on the run, the
+    second of these would come back holding the first one's id."""
+    primary = dataset_key_for(f"{A_PATH}/primary")
+    darks = dataset_key_for(f"{A_PATH}/darkfields")
+
+    assert primary != darks
+    assert idempotency_key_for(A_UID) != primary
+
+
+def test_register_dataset_sends_no_moment_when_the_store_held_no_ending() -> None:
+    client, recorder = client_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
+
+    client.register_dataset(A_RUN, Location(path=A_PATH, occurred_at=None), scheme=A_SCHEME)
+
+    sent = recorder.sent[0]
+    assert sent.json is not None
+    assert sent.json["occurred_at"] is None
+
+
+@pytest.mark.parametrize("status", [400, 403, 404, 422, 500])
+def test_register_dataset_refuses_on_anything_but_a_201(status: int) -> None:
+    client, _ = client_answering(Answer(status, text="no"))
+
+    with pytest.raises(RequestRefusedError) as refusal:
+        client.register_dataset(A_RUN, Location(path=A_PATH, occurred_at=None), scheme=A_SCHEME)
+
+    assert refusal.value.status == status
+    assert refusal.value.path == "/datasets"

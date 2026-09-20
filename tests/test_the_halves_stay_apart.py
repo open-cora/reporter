@@ -38,6 +38,22 @@ ENGINE_SIDE = frozenset({"translate", "sources"})
 AROC_SIDE = frozenset({"client", "config", "session", "relay"})
 """Modules that talk to AROC, and would be reused for a second engine."""
 
+STORE_SIDE = frozenset({"stores"})
+"""Modules that read a store, and would be replaced for a different one.
+
+A third outside system, and neither set above fits it: it does not read an
+engine and it does not talk to AROC.
+
+The AROC side is allowed to name it, which looks like the rule below being
+bent and is not. The two outward halves differ in direction. An engine
+pushes, so its translator is called from `wire`, above the session, and
+the session never names it. A store is asked, so its lookup is called from
+inside the session, below it. What the session names is `StoreLookup`, a
+Protocol, so a second store is an implementation swapped at the entrypoint
+and nothing in here changes. There is no such Protocol on the engine side
+because there is nothing to call: documents arrive.
+"""
+
 CONTRACT = frozenset({"intents", "outcomes"})
 """The vocabulary both sides share, which is what makes the split possible.
 
@@ -53,6 +69,21 @@ JOINS_THEM = frozenset({"wire", "__main__", "__init__"})
 an entrypoint and a package surface reach everything by definition.
 """
 
+STORE_LIBRARIES = frozenset({"tiled"})
+"""Store clients no module here may import, for a different reason.
+
+The engine ban below is about identity: this package's claim is that it is
+not the engine. This one is about a measurement. The spike read one node
+both through the store's client and off its raw HTTP surface and got the
+same address four times out of four, so the client would buy insulation
+from an envelope that two fields are read out of, and cost a dependency.
+`spikes/tiled_adapter/FINDINGS.md` section 1 is the evidence.
+
+Separate from the set below rather than merged into it, because the two
+bans would be lifted for different reasons and a merged set would hide
+which argument had stopped holding.
+"""
+
 ENGINE_LIBRARIES = frozenset({"bluesky", "ophyd", "databroker", "epics", "caproto", "tomoscan"})
 """Libraries no module here may import.
 
@@ -62,7 +93,7 @@ depend on the engine. `apps/api` bans these names in prose; this bans
 them as imports, which is the failure that would actually matter.
 """
 
-EXPECTED_MODULE_COUNT = 11
+EXPECTED_MODULE_COUNT = 12
 """Modules under `src/reporter`, counting `__init__` and `__main__`.
 
 Pinned so that a check ranging over an empty set fails instead of passing.
@@ -116,7 +147,7 @@ def test_the_scan_finds_every_module_it_should() -> None:
 
 def test_every_module_is_placed_on_one_side_or_named_as_joining_them() -> None:
     """A module nobody classified is a module no rule below constrains."""
-    classified = ENGINE_SIDE | AROC_SIDE | CONTRACT | JOINS_THEM
+    classified = ENGINE_SIDE | AROC_SIDE | STORE_SIDE | CONTRACT | JOINS_THEM
 
     assert set(modules()) == classified, (
         "A module is missing from the sets in this file, so no rule below applies to it: "
@@ -150,11 +181,40 @@ def test_a_module_that_reads_an_engine_names_nothing_but_the_contract(name: str)
     )
 
 
+@pytest.mark.parametrize("name", sorted(STORE_SIDE))
+def test_a_module_that_reads_a_store_names_nothing_but_the_contract(name: str) -> None:
+    """The same rule the engine side gets, for the same reason.
+
+    A lookup that reached into `session` or `client` would make a second
+    store a change to this reporter rather than a class implementing a
+    Protocol.
+    """
+    reached = imports_of(modules()[name]) - CONTRACT
+
+    assert not reached, (
+        f"`{name}` reads a store and imports {sorted(reached)}. It may name only "
+        f"{sorted(CONTRACT)}, or a second store stops being an adapter swap."
+    )
+
+
+@pytest.mark.parametrize("name", sorted(ENGINE_SIDE))
+def test_a_module_that_reads_an_engine_never_names_a_store(name: str) -> None:
+    """The two outward halves have nothing to say to each other.
+
+    A translator that read a store would be answering "where did the data
+    go" from inside "what did the engine say". Joining those two is the
+    session's job, because only the session holds the id they join on.
+    """
+    reached = imports_of(modules()[name]) & STORE_SIDE
+
+    assert not reached, f"`{name}` reads an engine and imports {sorted(reached)}, which is a store."
+
+
 @pytest.mark.parametrize("name", sorted(CONTRACT))
 def test_the_contract_depends_on_neither_side(name: str) -> None:
     """A vocabulary that imported one side would not be shared, it would
     belong to that side."""
-    reached = imports_of(modules()[name]) & (ENGINE_SIDE | AROC_SIDE)
+    reached = imports_of(modules()[name]) & (ENGINE_SIDE | AROC_SIDE | STORE_SIDE)
 
     assert not reached, f"`{name}` is the shared vocabulary and imports {sorted(reached)}."
 
@@ -183,6 +243,14 @@ def test_no_module_imports_an_engine_library(name: str) -> None:
 
 
 @pytest.mark.parametrize("name", sorted(set(modules())))
+def test_no_module_imports_a_store_library(name: str) -> None:
+    """The dependency the spike measured as unnecessary rather than refused."""
+    reached = outside_imports(modules()[name]) & STORE_LIBRARIES
+
+    assert not reached, f"`{name}` imports {sorted(reached)}, which is a store client."
+
+
+@pytest.mark.parametrize("name", sorted(set(modules())))
 def test_no_module_imports_aroc_itself(name: str) -> None:
     """Separate deployables, and the separation is the interpreter's rule
     rather than a convention only while this passes."""
@@ -195,7 +263,8 @@ def test_no_module_imports_aroc_itself(name: str) -> None:
 def test_the_engine_library_ban_would_catch_something() -> None:
     """A banned-name check that matched nothing would pass on an empty
     list as readily as on a clean tree."""
-    pretend = ast.parse("import bluesky\nfrom aroc.execution import Run\n")
+    pretend = ast.parse("import bluesky\nimport tiled.client\nfrom aroc.execution import Run\n")
 
     assert outside_imports(pretend) & ENGINE_LIBRARIES == {"bluesky"}
+    assert outside_imports(pretend) & STORE_LIBRARIES == {"tiled"}
     assert "aroc" in outside_imports(pretend)

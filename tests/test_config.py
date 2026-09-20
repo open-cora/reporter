@@ -130,3 +130,82 @@ def test_a_file_that_is_not_toml_says_so(tmp_path: Path) -> None:
 
     with pytest.raises(ConfigError, match="valid TOML"):
         load(path)
+
+
+# The store table, which is optional. Its absence switches the dataset leg
+# off; its presence and being wrong is refused like anything else here.
+
+WITH_STORE = {
+    **WELL_FORMED,
+    "store": {
+        "base_url": "https://store.example/",
+        "root": "/raw/",
+        "external_ref_scheme": "tiled-node-path",
+    },
+}
+
+
+def test_a_document_with_no_store_table_switches_the_dataset_leg_off() -> None:
+    """A real deployment rather than a degraded one, so it is `None` and not
+    an empty configuration that would look reachable."""
+    assert from_mapping(WELL_FORMED).store is None
+
+
+def test_a_store_table_loads_and_is_punctuated_once() -> None:
+    store = from_mapping(WITH_STORE).store
+
+    assert store is not None
+    assert store.base_url == "https://store.example"
+    assert store.root == "raw"
+    assert store.external_ref_scheme == "tiled-node-path"
+
+
+def test_a_store_serving_its_runs_from_the_top_level_may_leave_the_root_out() -> None:
+    """An empty root is an arrangement, not an omission."""
+    store = from_mapping({**WELL_FORMED, "store": {**WITH_STORE["store"], "root": ""}}).store
+
+    assert store is not None
+    assert store.root == ""
+
+
+def test_a_store_with_no_root_at_all_is_read_as_the_top_level() -> None:
+    table = {k: v for k, v in WITH_STORE["store"].items() if k != "root"}
+    store = from_mapping({**WELL_FORMED, "store": table}).store
+
+    assert store is not None
+    assert store.root == ""
+
+
+def test_the_two_reference_schemes_are_separate_settings() -> None:
+    """One names the vocabulary an engine's run ids belong to and the other
+    a store's addresses. A deployment that conflated them would be saying
+    two kinds of reference are interchangeable."""
+    config = from_mapping(WITH_STORE)
+
+    assert config.store is not None
+    assert config.external_ref_scheme != config.store.external_ref_scheme
+
+
+@pytest.mark.parametrize("missing", ["base_url", "external_ref_scheme"])
+def test_a_store_table_missing_a_required_field_is_refused_by_name(missing: str) -> None:
+    table = {k: v for k, v in WITH_STORE["store"].items() if k != missing}
+
+    with pytest.raises(ConfigError, match=re.escape(f"store.{missing}")):
+        from_mapping({**WELL_FORMED, "store": table})
+
+
+def test_a_store_base_url_that_is_not_a_url_is_refused() -> None:
+    with pytest.raises(ConfigError, match=re.escape("store.base_url")):
+        from_mapping({**WELL_FORMED, "store": {**WITH_STORE["store"], "base_url": "store.example"}})
+
+
+def test_a_store_root_that_is_not_a_string_is_refused() -> None:
+    with pytest.raises(ConfigError, match=re.escape("store.root")):
+        from_mapping({**WELL_FORMED, "store": {**WITH_STORE["store"], "root": 7}})
+
+
+def test_a_store_that_is_not_a_table_is_refused_rather_than_ignored() -> None:
+    """Left out is a setting. Present and nonsense is a typo, and a typo
+    that switched the leg off silently is the failure this exists to stop."""
+    with pytest.raises(ConfigError, match="store must be a table"):
+        from_mapping({**WELL_FORMED, "store": "https://store.example"})

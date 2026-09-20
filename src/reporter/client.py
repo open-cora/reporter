@@ -5,10 +5,11 @@ request and a response into either an id or a typed refusal, and it holds
 no decisions: which plan a name means comes from configuration, which
 documents matter comes from the translator.
 
-## Four calls, and the two that are not here
+## Five calls, and the two that are not here
 
     POST /runs                    a run happened
     POST /runs/{id}/{verb}        a run moved
+    POST /datasets                a run produced data, kept over there
     GET  /runs?external_ref=...   which run was that, after a restart
     GET  /plans/{id}              does this configured plan exist
 
@@ -33,6 +34,15 @@ the second delivery of a start returns the first one's run id rather than
 recording a second run. Without the key this is the gap the spike
 demonstrated by recording one engine run three times.
 
+`register_dataset` derives its key from the store's address rather than
+from the run. The two are the same string today, because one run produces
+one dataset, and they part company the moment one produces two: a key
+naming the run would give both registrations one note, so the second would
+come back holding the first dataset's id and would never be recorded at
+all. AROC deliberately did not derive a dataset's identity from its run,
+so that one-per-run would not be frozen into the schema, and keying the
+retry note on the run would put it back somewhere no migration announces.
+
 ## What it is given rather than what it builds
 
 An HTTP client is passed in. That keeps the connection pool, timeouts,
@@ -48,6 +58,7 @@ from uuid import UUID
 
 from reporter.config import ReporterConfig
 from reporter.intents import ReportRun, Transition
+from reporter.stores import Location
 
 
 def idempotency_key_for(external_ref_value: str) -> str:
@@ -68,6 +79,20 @@ def idempotency_key_for(external_ref_value: str) -> str:
     one engine in order to talk to AROC.
     """
     return f"report-run:{external_ref_value}"
+
+
+def dataset_key_for(external_ref_value: str) -> str:
+    """The key that makes a redelivered registration harmless.
+
+    The same trick as above with a different derivation. A start is
+    identified by the run it began, so that key names a run; a dataset is
+    identified by where the data is, so this one names an address.
+
+    The distinction costs nothing while a run produces one dataset and is
+    the whole difference the day it produces two. See the module docstring
+    for why naming the run instead would lose the second one silently.
+    """
+    return f"register-dataset:{external_ref_value}"
 
 
 class Response(Protocol):
@@ -180,6 +205,35 @@ class ArocClient:
         if response.status_code != 204:
             raise RequestRefusedError(response.status_code, response.text, method="POST", path=path)
 
+    def register_dataset(self, run_id: UUID, location: Location, *, scheme: str) -> UUID:
+        """Record where a run's output ended up, and return AROC's id for it.
+
+        `scheme` is passed in rather than read off the configuration here,
+        because it belongs to the optional store table and a client
+        reaching into that would have to decide what to do when there is
+        none. A caller holding a location necessarily holds the store
+        configuration that produced it.
+
+        `occurred_at` is the store's copy of the engine's own ending. It
+        travels as `None` when the store holds no ending yet, and AROC
+        then stamps the moment it was told, which is honest and less
+        precise.
+        """
+        path = "/datasets"
+        body: dict[str, Any] = {
+            "run_id": str(run_id),
+            "external_ref": {"scheme": scheme, "value": location.path},
+            "occurred_at": _instant(location.occurred_at),
+        }
+        response = self._http.post(
+            self._url(path),
+            json=body,
+            headers=self._headers({"Idempotency-Key": dataset_key_for(location.path)}),
+        )
+        if response.status_code != 201:
+            raise RequestRefusedError(response.status_code, response.text, method="POST", path=path)
+        return UUID(str(response.json()["dataset_id"]))
+
     def find_run(self, external_ref_value: str) -> UUID | None:
         """The run AROC holds for an engine's run id, if it holds one.
 
@@ -246,5 +300,6 @@ __all__ = [
     "HttpClient",
     "RequestRefusedError",
     "Response",
+    "dataset_key_for",
     "idempotency_key_for",
 ]

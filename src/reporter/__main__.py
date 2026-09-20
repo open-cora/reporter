@@ -1,17 +1,21 @@
-"""Run the reporter against a file of captured documents.
+"""Run the reporter, against a live engine or against a capture.
 
+    python -m reporter --config reporter.toml --subscribe tcp://127.0.0.1:5568
     python -m reporter --config reporter.toml --replay documents.json
 
-One command, and it is a replay rather than a daemon, because nothing
-subscribes to a live engine yet. What it proves is the whole path with
-only the engine simulated: configuration loads, every configured plan is
-checked against AROC before anything is sent, documents go through the
-translator and the relay, and the run appears in AROC with the engine's
-own id on it.
+One command and two sources, because the second one is how the first is
+tested. A replay proves the whole path with only the engine simulated, and
+it keeps doing that after a live subscription exists: it needs no beamline
+and it is the same shipped code either way.
 
-That is what `spikes/bluesky_adapter/replay.py` does by printing a report.
-The difference is that this is the shipped code doing it, against a real
-AROC over a real socket, rather than a script imitating it in-process.
+The difference between them is only that a subscription does not end. Both
+load configuration, check every configured plan against AROC before
+anything moves, and put each document through the translator and the relay.
+
+## A third way to run this, which is not a command
+
+Inside the engine's own process, `Relay.submit` is the subscription
+callback and nothing here is involved. The README has the recipe.
 
 ## The startup check earns its place here
 
@@ -22,17 +26,20 @@ than a configuration one.
 
 ## Durability, stated rather than discovered
 
-Documents live in the relay's queue and nowhere else. Kill this process
-and whatever was queued is gone, with nothing to replay it from. That is
-at-most-once for anything in flight, and closing it needs a durable
-transport between the engine and this process rather than anything here.
+Documents live in the relay's queue and nowhere else, and a 0MQ
+subscription has nothing behind it to ask again. Kill this process and
+whatever was queued is gone, along with whatever was published while it
+was down. That is at-most-once, and closing it needs a transport that
+keeps a log rather than anything here.
 """
 
 import argparse
+import signal
 import sys
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from pathlib import Path
+from types import FrameType
 
 import httpx
 
@@ -41,7 +48,7 @@ from reporter.config import ConfigError, ReporterConfig, load
 from reporter.outcomes import Held, Outcome
 from reporter.relay import Relay
 from reporter.session import Session
-from reporter.sources import from_capture
+from reporter.sources import DecodeError, Delivery, from_capture, from_subscription
 
 REQUEST_TIMEOUT_SECONDS = 10.0
 """How long one call to AROC may take before it counts as not arriving.
@@ -51,9 +58,42 @@ retried: it occupies the worker until the socket gives up, which is the
 queue backing up behind a single document.
 """
 
+DRAIN_TIMEOUT_SECONDS = 60.0
+"""How long shutdown waits for the relay to finish what it is holding."""
+
+
+class Tally:
+    """What a run came to, without keeping every outcome to say so.
+
+    Counts rather than a list, because a subscription runs for as long as
+    the engine does and a list of every document it ever saw is a leak
+    with a summary attached.
+
+    `Held` is printed when it happens rather than at the end. It is the
+    only outcome worth somebody's attention, and a process that reports it
+    on shutdown reports it to nobody.
+
+    Written from the relay's single worker thread and read after that
+    thread has been joined, which is what makes a plain `Counter` enough.
+    """
+
+    def __init__(self) -> None:
+        self._counts: Counter[str] = Counter()
+
+    def record(self, outcome: Outcome) -> None:
+        self._counts[type(outcome).__name__] += 1
+        if isinstance(outcome, Held):
+            print(f"  held ({outcome.document_name}): {outcome.reason}", file=sys.stderr)
+
+    def report(self) -> int:
+        """Print what happened, and fail the run if anything was held."""
+        for name in sorted(self._counts):
+            print(f"  {name:<12} {self._counts[name]}")
+        return 1 if self._counts[Held.__name__] else 0
+
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Load, check, replay, and report. Returns a shell exit status."""
+    """Load, check, run, and report. Returns a shell exit status."""
     arguments = _parse(argv)
     try:
         config = load(arguments.config)
@@ -61,9 +101,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"configuration: {problem}", file=sys.stderr)
         return 2
 
-    documents = from_capture(arguments.replay)
-    seen: list[Outcome] = []
-
+    tally = Tally()
+    unreadable: str | None = None
     with httpx.Client(timeout=REQUEST_TIMEOUT_SECONDS) as http:
         client = ArocClient(http, config)
         missing = plans_aroc_does_not_hold(client, config)
@@ -71,30 +110,82 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"configuration: AROC holds no plan for {', '.join(missing)}", file=sys.stderr)
             return 2
 
-        relay = Relay(Session(client, config), seen.append)
+        relay = Relay(Session(client, config), tally.record)
         relay.start()
         try:
-            for name, document in documents:
-                relay.submit(name, document)
+            unreadable = drive(_documents(arguments), relay)
         finally:
-            relay.stop(timeout=60)
+            relay.stop(timeout=DRAIN_TIMEOUT_SECONDS)
 
-    return summarise(seen)
+    status = tally.report()
+    if unreadable is not None:
+        print(f"subscription: {unreadable}", file=sys.stderr)
+        return 2
+    return status
+
+
+def _documents(arguments: argparse.Namespace) -> Iterator[Delivery]:
+    """The source the arguments asked for."""
+    if arguments.replay is not None:
+        return from_capture(arguments.replay)
+    return from_subscription(arguments.subscribe, prefix=arguments.prefix.encode())
+
+
+def drive(documents: Iterator[Delivery], relay: Relay) -> str | None:
+    """Hand every document over, until they run out or somebody stops it.
+
+    Returns what made the stream unreadable, or `None` for either of the
+    two ordinary endings: a capture that ran out, or a subscription that
+    was stopped. Being stopped is ordinary because stopping is the only
+    way a subscription ever ends, and the relay still drains what it holds
+    on the way out.
+
+    A frame that cannot be decoded ends the run rather than being skipped.
+    Every frame on a stream is encoded the same way, so one unreadable
+    frame means the publisher and this disagree about the encoding and all
+    of them are unreadable. Carrying on would drop every run on that
+    stream while looking like a reporter that was working.
+    """
+    try:
+        for name, document in documents:
+            relay.submit(name, document)
+    except KeyboardInterrupt:
+        print("\nstopping, and finishing what is already queued", file=sys.stderr)
+    except DecodeError as unreadable:
+        return str(unreadable)
+    return None
 
 
 def _parse(argv: Sequence[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="reporter",
-        description="Replay captured engine documents into AROC.",
+        description="Turn one engine's documents into AROC's run commands.",
     )
     parser.add_argument("--config", type=Path, required=True, help="path to reporter.toml")
-    parser.add_argument(
+
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument(
+        "--subscribe",
+        metavar="ADDRESS",
+        help="0MQ endpoint an engine publishes to, such as tcp://127.0.0.1:5568",
+    )
+    source.add_argument(
         "--replay",
         type=Path,
-        required=True,
+        metavar="PATH",
         help="path to captured documents, in the shape collect.py writes",
     )
-    return parser.parse_args(argv)
+
+    parser.add_argument(
+        "--prefix",
+        default="",
+        help="publisher prefix to select, when several publish to one proxy",
+    )
+
+    arguments = parser.parse_args(argv)
+    if arguments.prefix and arguments.subscribe is None:
+        parser.error("--prefix selects among publishers, so it needs --subscribe")
+    return arguments
 
 
 def plans_aroc_does_not_hold(client: ArocClient, config: ReporterConfig) -> list[str]:
@@ -103,22 +194,27 @@ def plans_aroc_does_not_hold(client: ArocClient, config: ReporterConfig) -> list
     )
 
 
-def summarise(seen: Sequence[Outcome]) -> int:
-    """Print what happened, and fail the run if anything was held.
+def stop_on_termination() -> None:
+    """Make a service manager's stop signal behave like Ctrl-C.
 
-    Held is the only outcome worth a non-zero status: the other four are
-    the reporter working, including `Unchanged`, which is what a replay of
-    documents AROC has already seen looks like.
+    A reporter is a daemon, and a daemon is stopped by SIGTERM rather than
+    by somebody pressing a key. Without this, the one moment this process
+    can avoid losing documents is the moment it is killed during: the
+    relay drains on the way out, and a default SIGTERM never reaches the
+    way out.
+
+    Ctrl-C already arrives as `KeyboardInterrupt`, so the cheapest way to
+    give the two signals one shutdown is to make the second one arrive
+    that way too.
     """
-    counts = Counter(type(outcome).__name__ for outcome in seen)
-    for name in sorted(counts):
-        print(f"  {name:<12} {counts[name]}")
 
-    held = [outcome for outcome in seen if isinstance(outcome, Held)]
-    for outcome in held:
-        print(f"  held ({outcome.document_name}): {outcome.reason}", file=sys.stderr)
-    return 1 if held else 0
+    def interrupt(number: int, frame: FrameType | None) -> None:
+        _ = number, frame
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, interrupt)
 
 
 if __name__ == "__main__":
+    stop_on_termination()
     raise SystemExit(main())

@@ -2,10 +2,11 @@
 
 Turns one engine's document stream into AROC's run commands.
 
-**Runs, against a capture.** `python -m reporter` replays captured
-documents into a real AROC over a real socket, and the round trip is
-demonstrated below. What is missing is the mouth of the pipe: nothing
-subscribes to a live engine yet. See [What is missing](#what-is-missing).
+**Runs, against a live engine.** `python -m reporter --subscribe` reads
+documents off a real engine's 0MQ stream and reports the runs to AROC, and
+it has. It also replays a capture, which is how it is tested without a
+beamline. What is still missing is durability: see
+[What is missing](#what-is-missing).
 
 ## What it is, and what it is not
 
@@ -104,6 +105,70 @@ Re-running the spike's `collect.py` overwrites it. That is deliberate: a
 capture from a newer engine that changes an assertion is the signal worth
 having, and the diff is the finding.
 
+## Two ways to run it, and the same code either way
+
+**Beside the engine, reading its published stream.** The engine publishes
+to a 0MQ proxy, this connects to the other side of it, and the two know
+nothing about each other beyond an address.
+
+```
+   engine  ---->  0MQ proxy  ---->  python -m reporter --subscribe  ---->  AROC
+                      |
+                      +---->  whatever else wants the documents
+```
+
+Preferred where there is a proxy, because it survives the engine
+restarting, it lets more than one thing read the stream, and a bug in here
+cannot take a scan down.
+
+**Inside the engine's process.** `Relay.submit` is already the callback a
+subscription wants, so there is nothing to build and nothing to configure
+past the file below:
+
+```python
+from pathlib import Path
+import httpx
+from reporter import ArocClient, Relay, Session, load
+
+config = load(Path("reporter.toml"))
+relay = Relay(Session(ArocClient(httpx.Client(timeout=10), config), config), print)
+relay.start()
+
+RE.subscribe(relay.submit)
+```
+
+That is the whole integration. `submit` queues and returns in microseconds
+and a worker thread does the talking, so a scan never waits on AROC even
+though this is running inside it.
+
+**What both have in common** is that a publisher drops what it sends while
+nothing is listening. Start the reporter before the engine, not after.
+
+### The stream is msgpack, and this refuses pickle
+
+A publisher serializes with `pickle` unless it is told otherwise, and a
+subscriber that went along with that would run whatever code reached the
+port. So construct the publisher to match:
+
+```python
+import msgpack
+from bluesky.callbacks.zmq import Publisher
+
+RE.subscribe(Publisher("127.0.0.1:5567", serializer=msgpack.dumps))
+```
+
+A frame this cannot read stops the run rather than being skipped, with one
+line naming the cause and exit 2. Every frame on a stream is encoded the
+same way, so one unreadable frame means all of them, and carrying on would
+drop every run on that stream while looking like a reporter that was
+working.
+
+Nothing here imports the engine's library to read its frames. The wire is
+a prefix, a document name and a msgpack payload separated by single
+spaces, which is the whole protocol, and reading it through the engine's
+own package would drag the engine in as a dependency of the thing whose
+claim is that it is not the engine.
+
 ## Configuring it
 
 ```toml
@@ -136,7 +201,7 @@ run of that plan at whatever hour that is.
 ```sh
 uv sync
 uv run pytest -q
-uv run ruff check src tests && uv run ruff format --check src tests
+uv run ruff check src tests typings && uv run ruff format --check src tests typings
 uv run pyright src tests
 ```
 
@@ -147,13 +212,12 @@ Or from the repository root, where `make lint`, `make typecheck` and
 
 | Piece | Waiting on |
 | --- | --- |
-| A live document source | Whatever is decided below. `sources.py` is where it goes, beside the capture reader that is there now. |
-| The subscription itself | Whether anything other than AROC wants these documents. If yes, a broker is already justified and this is one of its consumers. If no, a callback next to the engine is enough. |
-| The checkpoint | The same decision. A direct subscription means a file here; a broker in between means a consumer-group offset and no file at all. |
-| Durability | Nothing today. Documents live in the relay's queue and nowhere else, so a process that dies loses whatever was in flight, with no source to replay it from. At-most-once, known rather than accidental, and closing it is the same decision again. |
+| Durability | A transport that keeps a log. Documents live in the relay's queue and nowhere else, and 0MQ publish and subscribe has nothing behind it to ask again, so a document published while this is down was never published as far as this is concerned. At-most-once, known rather than accidental. |
+| The checkpoint | The same thing. There is nothing to check point against: an offset is only meaningful over a transport that can be rewound to one. A broker in between gives both at once, and this becomes one of its consumers. |
+| Anything other than AROC wanting these documents | Which is the question that decides the two rows above. If something else wants them, a broker is already justified and durability arrives with it. If not, this is the deployment and the gap is a cost somebody has to accept out loud. |
 | An identity to run as | A deployment. It is an actor in Access, and the grant list is recorded in the spike's `FINDINGS.md` section 5. It must **not** be granted `DefinePlan`: an adapter cannot honestly author a plan, and withholding the grant makes that a refusal at the boundary rather than a sentence in a document. |
 
-Delivery is at-least-once in every design above, and safe because
+Redelivery is safe, whatever the transport turns out to be, because
 `report_run` sends an idempotency key that `idempotency_key_for` derives
 from the engine's own run id. A restarted reporter recomputes it having
 persisted nothing, so a redelivered start returns the first run's id
@@ -169,26 +233,63 @@ run, which needs `session.py`.
 
 ## Proving it, end to end
 
-There is no live subscription yet, so the entrypoint replays a capture.
-That still exercises everything except the engine: real configuration,
-real HTTP, a real AROC.
+Two demonstrations, and neither is a test double. The first has a real
+engine in it.
+
+### An engine nobody captured
+
+Four processes, and every one of them real:
 
 ```sh
-# 1. an AROC with no database, in another terminal
+# 1. an AROC with no database
 cd apps/api && APP_ENV=test uv run uvicorn aroc.api.main:app --port 8077
 
-# 2. author the plans, as an operator would. the reporter cannot:
-#    it is not granted DefinePlan, and could not derive a correct
-#    schema from one invocation if it were.
+# 2. author the plans, as an operator would. the reporter cannot: it is
+#    not granted DefinePlan, and could not derive a correct schema from
+#    one invocation if it were. put the ids it returns in reporter.toml.
 curl -X POST http://127.0.0.1:8077/plans -H 'content-type: application/json' \
   -d '{"name":"count","parameters_schema":{...}}'
 
-# 3. put the ids it returns in reporter.toml, then
+# 3. a proxy for the engine to publish to
+python -c "from bluesky.callbacks.zmq import Proxy; Proxy(5567, 5568).start()"
+
+# 4. the reporter, before the engine, because a publisher drops what it
+#    sends while nothing is listening
 cd apps/reporter && uv run python -m reporter \
-  --config reporter.toml --replay tests/documents.json
+  --config reporter.toml --subscribe tcp://127.0.0.1:5568
 ```
 
-Against the seven captured scenarios that prints:
+Then, in an engine wired to that proxy:
+
+```python
+import msgpack
+from bluesky.callbacks.zmq import Publisher
+from bluesky.plans import count
+from ophyd.sim import det
+
+RE.subscribe(Publisher("127.0.0.1:5567", serializer=msgpack.dumps))
+RE(count([det], num=3))
+```
+
+Stop the reporter, and the six documents that scan emitted come out as:
+
+```
+   stopping, and finishing what is already queued
+     Moved        1        the stop document
+     Recorded     1        the start document
+     Skipped      4        a descriptor and three readings
+```
+
+and `GET /runs` holds a Completed run carrying the engine's own uid. No
+capture file was involved at any point.
+
+Stopping is SIGTERM as well as Ctrl-C, and both drain what the relay is
+still holding before the process goes.
+
+### A capture, which needs no beamline
+
+The same command with `--replay tests/documents.json` runs the seven
+captured scenarios:
 
 ```
    Moved        12
@@ -206,4 +307,5 @@ seven runs rather than fourteen:
 ```
 
 Which is the redelivery gap closed, demonstrated rather than argued. A
-wrong plan id in the config exits 2 before anything is sent.
+wrong plan id in the config exits 2 before anything is sent, and so does a
+publisher this cannot decode.

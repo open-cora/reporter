@@ -7,11 +7,21 @@ requires-python = ">=3.13"
 authors = [{ name = "Doga Gursoy" }]
 license = { text = "Apache-2.0" }
 
-# One runtime dependency, and only the entrypoint imports it. Every module
-# below `__main__` takes an HTTP client shaped like the two verbs it uses,
-# so the library is a choice a deployment makes rather than one this
-# package embeds. The engine subscription will add the second.
-dependencies = ["httpx>=0.28,<1"]
+# Three, and none of them is an engine. Every module below `__main__`
+# takes an HTTP client shaped like the two verbs it uses, so the library is
+# a choice a deployment makes rather than one this package embeds.
+#
+# The subscription reads a published document stream off a 0MQ socket, and
+# that needs the socket and the encoding and nothing else: the frame is a
+# prefix, a name and a msgpack payload separated by spaces. Reading it
+# through the engine's own library would buy that split and drag in the
+# engine, numpy included, which is a strange dependency for a package whose
+# claim is that it is not the engine. See `sources.py`.
+dependencies = [
+    "httpx>=0.28,<1",
+    "pyzmq>=27,<28",
+    "msgpack>=1.1,<2",
+]
 
 # Pinned to the same ranges as apps/api. Two projects linting under two ruff
 # versions is a drift source with no upside, and the pre-commit hook that

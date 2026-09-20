@@ -7,22 +7,30 @@ needs a URL and a token rather than a port declared for it. Nothing in
 `apps/api` imports this package and nothing here imports `aroc`.
 
 Hand a `Session` one document at a time and it does the rest: translate,
-resolve, send, and report what came of it. What is still missing is only
-the mouth of the pipe. Nothing here subscribes to an engine and nothing
-remembers how far it has read, because those are one decision rather than
-two and it is not made yet; see the README.
+resolve, send, and report what came of it. `Relay` puts a queue and a
+thread in front of that, so an engine handing a document over waits on
+nothing, and `sources` is where documents come from: a live engine
+publishing over 0MQ, or a capture on disk.
+
+What is still missing is durability. Nothing remembers how far it has
+read, and nothing it is subscribed to remembers either, so a document
+published while this is down is a document lost. See the README.
 """
 
 from reporter.client import ArocClient, HttpClient, RequestRefusedError, Response
 from reporter.config import ConfigError, ReporterConfig, from_mapping, load
 from reporter.intents import Ignored, Intent, ReportRun, Transition, Unmappable, Verb
 from reporter.outcomes import Held, Moved, Outcome, Recorded, Skipped, Unchanged
+from reporter.relay import Relay
 from reporter.session import Session, is_worth_retrying
+from reporter.sources import DecodeError, Delivery, from_capture, from_subscription
 from reporter.translate import Translator, engine_instant, idempotency_key_for
 
 __all__ = [
     "ArocClient",
     "ConfigError",
+    "DecodeError",
+    "Delivery",
     "Held",
     "HttpClient",
     "Ignored",
@@ -30,6 +38,7 @@ __all__ = [
     "Moved",
     "Outcome",
     "Recorded",
+    "Relay",
     "ReportRun",
     "ReporterConfig",
     "RequestRefusedError",
@@ -42,7 +51,9 @@ __all__ = [
     "Unmappable",
     "Verb",
     "engine_instant",
+    "from_capture",
     "from_mapping",
+    "from_subscription",
     "idempotency_key_for",
     "is_worth_retrying",
     "load",

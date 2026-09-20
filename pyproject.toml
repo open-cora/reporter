@@ -7,11 +7,11 @@ requires-python = ">=3.13"
 authors = [{ name = "Doga Gursoy" }]
 license = { text = "Apache-2.0" }
 
-# No runtime dependencies. Everything shipped so far is a pure function
-# from a document to an intent, which needs nothing but the standard
-# library. The HTTP client and the engine subscription both arrive with
-# dependencies; this file is where the cost of each will show.
-dependencies = []
+# One runtime dependency, and only the entrypoint imports it. Every module
+# below `__main__` takes an HTTP client shaped like the two verbs it uses,
+# so the library is a choice a deployment makes rather than one this
+# package embeds. The engine subscription will add the second.
+dependencies = ["httpx>=0.28,<1"]
 
 # Pinned to the same ranges as apps/api. Two projects linting under two ruff
 # versions is a drift source with no upside, and the pre-commit hook that

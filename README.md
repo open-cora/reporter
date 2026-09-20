@@ -2,10 +2,10 @@
 
 Turns one engine's document stream into AROC's run commands.
 
-**Nearly whole.** Hand a `Session` one document and it translates it,
-resolves what it needs, sends it, and tells you what came of it. What is
-missing is the mouth of the pipe: nothing subscribes to an engine yet. See
-[What is missing](#what-is-missing).
+**Runs, against a capture.** `python -m reporter` replays captured
+documents into a real AROC over a real socket, and the round trip is
+demonstrated below. What is missing is the mouth of the pipe: nothing
+subscribes to a live engine yet. See [What is missing](#what-is-missing).
 
 ## What it is, and what it is not
 
@@ -147,9 +147,10 @@ Or from the repository root, where `make lint`, `make typecheck` and
 
 | Piece | Waiting on |
 | --- | --- |
+| A live document source | Whatever is decided below. `sources.py` is where it goes, beside the capture reader that is there now. |
 | The subscription itself | Whether anything other than AROC wants these documents. If yes, a broker is already justified and this is one of its consumers. If no, a callback next to the engine is enough. |
 | The checkpoint | The same decision. A direct subscription means a file here; a broker in between means a consumer-group offset and no file at all. |
-| `__main__.py` | Both of the above, since its whole job is wiring them to a `Session`. |
+| Durability | Nothing today. Documents live in the relay's queue and nowhere else, so a process that dies loses whatever was in flight, with no source to replay it from. At-most-once, known rather than accidental, and closing it is the same decision again. |
 | An identity to run as | A deployment. It is an actor in Access, and the grant list is recorded in the spike's `FINDINGS.md` section 5. It must **not** be granted `DefinePlan`: an adapter cannot honestly author a plan, and withholding the grant makes that a refusal at the boundary rather than a sentence in a document. |
 
 Delivery is at-least-once in every design above, and safe because
@@ -165,3 +166,44 @@ would put the model in this project's environment and end the separation
 above. So a route rename fails in `apps/api`'s own path pin, and whoever
 does it has to look for callers. Closing it properly needs one end-to-end
 run, which needs `session.py`.
+
+## Proving it, end to end
+
+There is no live subscription yet, so the entrypoint replays a capture.
+That still exercises everything except the engine: real configuration,
+real HTTP, a real AROC.
+
+```sh
+# 1. an AROC with no database, in another terminal
+cd apps/api && APP_ENV=test uv run uvicorn aroc.api.main:app --port 8077
+
+# 2. author the plans, as an operator would. the reporter cannot:
+#    it is not granted DefinePlan, and could not derive a correct
+#    schema from one invocation if it were.
+curl -X POST http://127.0.0.1:8077/plans -H 'content-type: application/json' \
+  -d '{"name":"count","parameters_schema":{...}}'
+
+# 3. put the ids it returns in reporter.toml, then
+cd apps/reporter && uv run python -m reporter \
+  --config reporter.toml --replay tests/documents.json
+```
+
+Against the seven captured scenarios that prints:
+
+```
+   Moved        12
+   Recorded      7
+   Skipped      10
+```
+
+Run it a second time and it prints this instead, with AROC still holding
+seven runs rather than fourteen:
+
+```
+   Recorded      7      the idempotency key returned the first run's id
+   Skipped      10
+   Unchanged    12      the transitions had already happened
+```
+
+Which is the redelivery gap closed, demonstrated rather than argued. A
+wrong plan id in the config exits 2 before anything is sent.

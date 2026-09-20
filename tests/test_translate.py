@@ -25,7 +25,6 @@ from reporter.translate import (
     ENDING_BY_EXIT_STATUS,
     Translator,
     engine_instant,
-    idempotency_key_for,
 )
 
 CAPTURED = Path(__file__).parent / "documents.json"
@@ -309,11 +308,3 @@ def test_every_captured_document_that_moves_a_run_carries_a_time() -> None:
     ]
 
     assert not undated, f"Documents that move a run and carry no time: {undated}"
-
-
-def test_the_idempotency_key_is_the_same_on_every_recomputation() -> None:
-    """Derived rather than remembered, which is what makes a redelivery safe
-    after a restart that persisted nothing."""
-    assert idempotency_key_for("5b4f40e7") == idempotency_key_for("5b4f40e7")
-    assert idempotency_key_for("5b4f40e7") != idempotency_key_for("5b4f40e8")
-    assert "5b4f40e7" in idempotency_key_for("5b4f40e7")

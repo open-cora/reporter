@@ -11,12 +11,12 @@ from uuid import UUID
 
 import pytest
 
-from reporter.__main__ import documents_into
 from reporter.client import ArocClient
 from reporter.config import from_mapping
 from reporter.outcomes import Held, Outcome, Recorded, Skipped
 from reporter.relay import DEFAULT_RETRY_DELAYS, Relay
 from reporter.session import Session
+from reporter.wire import documents_into
 from tests._fakes import Answer, Routed
 
 A_PLAN = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")

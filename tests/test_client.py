@@ -21,7 +21,7 @@ from uuid import UUID
 
 import pytest
 
-from reporter.client import ArocClient, RequestRefusedError
+from reporter.client import ArocClient, RequestRefusedError, idempotency_key_for
 from reporter.config import from_mapping
 from reporter.intents import ReportRun, Transition, Verb
 from tests._fakes import Answer, Recorder
@@ -231,3 +231,11 @@ def test_every_write_carries_the_bearer_token(
     call(client)
 
     assert (recorder.sent[0].headers or {})["Authorization"] == "Bearer a-token"
+
+
+def test_the_idempotency_key_is_the_same_on_every_recomputation() -> None:
+    """Derived rather than remembered, which is what makes a redelivery safe
+    after a restart that persisted nothing."""
+    assert idempotency_key_for("5b4f40e7") == idempotency_key_for("5b4f40e7")
+    assert idempotency_key_for("5b4f40e7") != idempotency_key_for("5b4f40e8")
+    assert "5b4f40e7" in idempotency_key_for("5b4f40e7")

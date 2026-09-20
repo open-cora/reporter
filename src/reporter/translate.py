@@ -86,21 +86,6 @@ def engine_instant(document: Mapping[str, Any]) -> datetime | None:
     return datetime.fromtimestamp(float(seconds), tz=UTC)
 
 
-def idempotency_key_for(external_ref_value: str) -> str:
-    """The key that makes a redelivered start harmless.
-
-    Derived rather than remembered, which is the whole point. AROC's store
-    keys on `(principal_id, key, surface_id)`, so a reporter running as
-    one actor recomputes this after any restart having persisted nothing,
-    and the second delivery of a start returns the first one's run id
-    instead of minting a second record.
-
-    Prefixed because a bare uid in that table says nothing about what it
-    was for, and somebody will eventually read the table.
-    """
-    return f"report-run:{external_ref_value}"
-
-
 def _parameters(start: Mapping[str, Any]) -> tuple[dict[str, Any], tuple[str, ...]]:
     """Compose a run's parameters, and name what was left out.
 
@@ -231,5 +216,4 @@ __all__ = [
     "VERB_BY_INTERRUPTION",
     "Translator",
     "engine_instant",
-    "idempotency_key_for",
 ]

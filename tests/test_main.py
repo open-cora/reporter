@@ -16,7 +16,6 @@ import pytest
 
 from reporter.__main__ import (
     Tally,
-    documents_into,
     drive,
     main,
     plans_aroc_does_not_hold,
@@ -28,6 +27,7 @@ from reporter.outcomes import Held, Moved, Outcome, Recorded, Skipped, Unchanged
 from reporter.relay import Relay
 from reporter.session import Session
 from reporter.sources import DecodeError, Delivery
+from reporter.wire import documents_into
 from tests._fakes import Answer, Routed
 
 A_PLAN = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")

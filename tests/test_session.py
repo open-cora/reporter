@@ -19,13 +19,13 @@ from uuid import UUID
 
 import pytest
 
-from reporter.__main__ import documents_into
 from reporter.client import ArocClient, RequestRefusedError
 from reporter.config import from_mapping
 from reporter.intents import Verb
 from reporter.outcomes import Held, Moved, Outcome, Recorded, Skipped, Unchanged
 from reporter.relay import Handle
 from reporter.session import ENDINGS, Session, is_worth_retrying
+from reporter.wire import documents_into
 from tests._fakes import Answer, Routed
 
 CAPTURED = Path(__file__).parent / "documents.json"

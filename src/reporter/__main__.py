@@ -37,20 +37,19 @@ import argparse
 import signal
 import sys
 from collections import Counter
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from types import FrameType
-from typing import Any
 
 import httpx
 
 from reporter.client import ArocClient
 from reporter.config import ConfigError, ReporterConfig, load
 from reporter.outcomes import Held, Outcome
-from reporter.relay import Handle, Relay
+from reporter.relay import Relay
 from reporter.session import Session
 from reporter.sources import DecodeError, Delivery, from_capture, from_subscription
-from reporter.translate import Translator
+from reporter.wire import documents_into
 
 REQUEST_TIMEOUT_SECONDS = 10.0
 """How long one call to AROC may take before it counts as not arriving.
@@ -124,26 +123,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"subscription: {unreadable}", file=sys.stderr)
         return 2
     return status
-
-
-def documents_into(session: Session) -> Handle:
-    """Compose the engine-shaped half with the AROC-shaped half.
-
-    These two lines are the whole of what ties this reporter to one
-    engine. `Translator` reads that engine's documents and `Session` knows
-    only intents, so a second engine is a second translator composed the
-    same way, and everything under it is reused rather than rewritten.
-
-    Written out here rather than hidden inside `Session`, where it used to
-    be, because a boundary nobody can see is a boundary that stops being
-    one.
-    """
-    translator = Translator()
-
-    def handle(name: str, document: Mapping[str, Any]) -> Outcome:
-        return session.act(translator.feed(name, document))
-
-    return handle
 
 
 def _documents(arguments: argparse.Namespace) -> Iterator[Delivery]:

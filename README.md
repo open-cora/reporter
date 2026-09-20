@@ -30,48 +30,43 @@ one. Being out here is how that stays true without an exception.
 
 ## The design in one picture
 
-```
-   engine documents            this package              AROC
-   ----------------            ------------              ----
-   start          ---->  ReportRun    ---------->  POST /runs
-   event (pause)  ---->  Transition   ---------->  POST /runs/{id}/pause
-   stop           ---->  Transition   ---------->  POST /runs/{id}/complete
-   descriptor     ---->  Ignored               (nothing is sent)
-   exit_status ?  ---->  Unmappable            (nothing is sent, loudly)
-
-                         ^ translate.py        ^ client.py
-                           pure, tested          every request asserted
-                           against a real        through a recording
-                           capture               transport
-
-                              session.py joins them, and decides
-                              what to do with a no
-```
-
-`Session.handle(name, document)` returns one of five outcomes, and the
-split is by what a caller should do rather than by what happened:
+The package is in two halves that do not import each other, joined in one
+named place. A second engine replaces the left column and reuses the
+right, which is a claim `tests/test_the_halves_stay_apart.py` enforces
+rather than one this paragraph makes.
 
 ```
-   Recorded    a run is in AROC that was not
-   Moved       a run changed state
-   Unchanged   AROC declined; the run is not where the document
-               expects it to be. a redelivery, almost always
-   Skipped     the document said nothing about a run's life
-   Held        it said something and could not be acted on
+   reads one engine            the vocabulary          talks to AROC
+   ----------------            --------------          -------------
+   sources.py                                          client.py
+     a live 0MQ stream                                   report_run
+     or a capture                                        move_run
+        |                                                find_run
+        v                                                plan_exists
+   translate.py  ---------->  intents.py  <----------  session.py
+     start        ---->         ReportRun    ---->       POST /runs
+     event(pause) ---->         Transition   ---->       POST /runs/{id}/pause
+     stop         ---->         Transition   ---->       POST /runs/{id}/complete
+     descriptor   ---->         Ignored                (nothing is sent)
+     exit_status? ---->         Unmappable             (nothing is sent, loudly)
+                                                          |
+                               outcomes.py  <-------------+
+                                 Recorded Moved Unchanged
+                                 Skipped  Held
+
+                    wire.py   documents_into(session)
+                              the only module that names both halves
 ```
 
-Advance past all five: every one is settled, so sending the document again
-gets the same answer. Only `Held` is worth waking somebody. A refusal that
-*could* pass later, a 429 or a 5xx, raises instead of returning, so a
-caller that ignores outcomes cannot accidentally skip past one.
+`relay.py` sits in front of all of it with a queue and a worker thread, so
+the engine's own thread never waits on a network. It takes a function
+rather than a session, because a queue and a retry policy are the same
+whatever is behind them.
 
-That is also why the checkpoint is the caller's. An outcome means the
-document is finished with; an exception means ask again.
-
-`Ignored` and `Unmappable` are separate because the reasons are opposite.
-A descriptor producing nothing is the design working. An `exit_status`
-nobody recognises is either a bug here or an engine that has grown a
-fourth ending.
+The split was not designed. It was found by driving a second engine in
+`spikes/tomoscan_adapter/`, whose stream has no documents in it at all,
+and discovering that the only thing coupling the right column to the left
+was a function signature.
 
 ## Why the translator holds state
 
@@ -128,8 +123,7 @@ past the file below:
 ```python
 from pathlib import Path
 import httpx
-from reporter import ArocClient, Relay, Session, load
-from reporter.__main__ import documents_into
+from reporter import ArocClient, Relay, Session, documents_into, load
 
 config = load(Path("reporter.toml"))
 session = Session(ArocClient(httpx.Client(timeout=10), config), config)

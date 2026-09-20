@@ -51,11 +51,12 @@ one. Being out here is how that stays true without an exception.
 split is by what a caller should do rather than by what happened:
 
 ```
-   Recorded       a run is in AROC that was not
-   Moved          a run changed state
-   AlreadyMoved   it had changed already. a redelivery, almost always
-   Skipped        the document said nothing about a run's life
-   Held           it said something and could not be acted on
+   Recorded    a run is in AROC that was not
+   Moved       a run changed state
+   Unchanged   AROC declined; the run is not where the document
+               expects it to be. a redelivery, almost always
+   Skipped     the document said nothing about a run's life
+   Held        it said something and could not be acted on
 ```
 
 Advance past all five: every one is settled, so sending the document again

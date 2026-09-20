@@ -16,12 +16,11 @@ two and it is not made yet; see the README.
 from reporter.client import ArocClient, HttpClient, RequestRefusedError, Response
 from reporter.config import ConfigError, ReporterConfig, from_mapping, load
 from reporter.intents import Ignored, Intent, ReportRun, Transition, Unmappable, Verb
-from reporter.outcomes import AlreadyMoved, Held, Moved, Outcome, Recorded, Skipped
+from reporter.outcomes import Held, Moved, Outcome, Recorded, Skipped, Unchanged
 from reporter.session import Session, is_worth_retrying
 from reporter.translate import Translator, engine_instant, idempotency_key_for
 
 __all__ = [
-    "AlreadyMoved",
     "ArocClient",
     "ConfigError",
     "Held",
@@ -39,6 +38,7 @@ __all__ = [
     "Skipped",
     "Transition",
     "Translator",
+    "Unchanged",
     "Unmappable",
     "Verb",
     "engine_instant",

@@ -6,11 +6,12 @@ and the split is by what the caller should do rather than by what
 occurred, because a subscription loop has exactly two decisions to make:
 whether to advance its checkpoint, and whether to wake somebody.
 
-    Recorded      a run is now in AROC that was not
-    Moved         a run changed state
-    AlreadyMoved  it had changed already. a redelivery, almost always
-    Skipped       the document said nothing about a run's life
-    Held          it said something and could not be acted on
+    Recorded     a run is now in AROC that was not
+    Moved        a run changed state
+    Unchanged    AROC declined, because the run is not where the
+                 document expects it to be
+    Skipped      the document said nothing about a run's life
+    Held         it said something and could not be acted on
 
 Advance the checkpoint on all five. Every one of them is settled: sending
 the same document again produces the same outcome, so there is nothing to
@@ -47,14 +48,24 @@ class Moved:
 
 
 @dataclass(frozen=True)
-class AlreadyMoved:
-    """AROC refused the transition because the run is past it.
+class Unchanged:
+    """AROC declined the transition, and its record is as it was.
 
-    Separate from `Held` because this is the expected shape of a
-    redelivery and must not read like a problem. `detail` carries what
-    AROC said, which names the state the run is actually in, and that is
-    the one thing distinguishing a harmless replay from a reporter that
-    has lost track of which run it is talking about.
+    Named for the effect rather than the cause, because a 409 covers two
+    situations this cannot tell apart on its own: the run is already past
+    the state the document asks for, which is what a redelivery looks
+    like, or the run went somewhere else entirely and this is the wrong
+    verb for it. `detail` carries what AROC said, which names the state
+    the run is actually in, and that is what separates a harmless replay
+    from a reporter talking about the wrong run.
+
+    Separate from `Held` because the first situation is the system
+    working. One outcome covering both would teach whoever reads the
+    alerts to ignore the one that matters.
+
+    Separate from `Skipped` too, and the difference is worth holding on
+    to: `Skipped` means nothing was sent, this means something was sent
+    and declined.
     """
 
     run_id: UUID
@@ -98,13 +109,13 @@ class Held:
     document_name: str
 
 
-Outcome = Recorded | Moved | AlreadyMoved | Skipped | Held
+Outcome = Recorded | Moved | Unchanged | Skipped | Held
 
 __all__ = [
-    "AlreadyMoved",
     "Held",
     "Moved",
     "Outcome",
     "Recorded",
     "Skipped",
+    "Unchanged",
 ]

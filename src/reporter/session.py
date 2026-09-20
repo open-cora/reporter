@@ -40,7 +40,7 @@ from uuid import UUID
 from reporter.client import ArocClient, RequestRefusedError
 from reporter.config import ReporterConfig
 from reporter.intents import Ignored, ReportRun, Transition, Unmappable, Verb
-from reporter.outcomes import AlreadyMoved, Held, Moved, Outcome, Recorded, Skipped
+from reporter.outcomes import Held, Moved, Outcome, Recorded, Skipped, Unchanged
 from reporter.translate import ENDING_BY_EXIT_STATUS, Translator
 
 ENDINGS: Final[frozenset[Verb]] = frozenset(ENDING_BY_EXIT_STATUS.values())
@@ -135,7 +135,7 @@ class Session:
         except RequestRefusedError as refusal:
             if refusal.status == _CONFLICT:
                 self._forget(intent)
-                return AlreadyMoved(run_id, intent.verb, refusal.detail)
+                return Unchanged(run_id, intent.verb, refusal.detail)
             return self._held_or_raise(refusal, document_name)
 
         self._forget(intent)

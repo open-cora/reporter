@@ -18,7 +18,7 @@ import pytest
 
 from reporter.client import ArocClient, RequestRefusedError
 from reporter.config import from_mapping
-from reporter.outcomes import AlreadyMoved, Held, Moved, Outcome, Recorded, Skipped
+from reporter.outcomes import Held, Moved, Outcome, Recorded, Skipped, Unchanged
 from reporter.session import Session, is_worth_retrying
 from tests._fakes import Answer, Routed
 
@@ -184,7 +184,7 @@ def test_a_run_is_looked_up_again_after_it_has_ended() -> None:
     assert len(routed.calls("GET")) == before + 1
 
 
-def test_a_redelivered_ending_reads_as_already_moved_rather_than_a_problem() -> None:
+def test_a_redelivered_ending_leaves_the_record_unchanged() -> None:
     """The shape of a replay. AROC's 409 names the state the run is in, and
     that is a settled answer rather than something to alert on."""
     session, _ = session_over(
@@ -193,7 +193,7 @@ def test_a_redelivered_ending_reads_as_already_moved_rather_than_a_problem() -> 
     outcomes = drive("completes", session)
 
     ending = outcomes[-1]
-    assert isinstance(ending, AlreadyMoved)
+    assert isinstance(ending, Unchanged)
     assert "already Completed" in ending.detail
 
 

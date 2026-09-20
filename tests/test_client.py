@@ -28,8 +28,7 @@ from reporter.client import (
     idempotency_key_for,
 )
 from reporter.config import from_mapping
-from reporter.intents import ReportRun, Transition, Verb
-from reporter.stores import Location
+from reporter.intents import RegisterDataset, ReportRun, Transition, Verb
 from tests._fakes import Answer, Recorder
 
 A_PLAN = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
@@ -63,6 +62,10 @@ def a_run(**overrides: Any) -> ReportRun:
         "origin": "start",
     }
     return ReportRun(**{**fields, **overrides})
+
+
+def a_dataset(at: datetime | None = None) -> RegisterDataset:
+    return RegisterDataset(run_uid=A_UID, external_ref_value=A_PATH, occurred_at=at, origin="stop")
 
 
 def a_move(verb: Verb, origin: str, at: datetime | None = None) -> Transition:
@@ -258,9 +261,7 @@ A_SCHEME = "tiled-node-path"
 def test_register_dataset_posts_the_address_the_store_gave_and_returns_the_id() -> None:
     client, recorder = client_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
 
-    registered = client.register_dataset(
-        A_RUN, Location(path=A_PATH, occurred_at=AN_INSTANT), scheme=A_SCHEME
-    )
+    registered = client.register_dataset(a_dataset(AN_INSTANT), A_RUN, scheme=A_SCHEME)
 
     assert registered == A_DATASET
     sent = recorder.sent[0]
@@ -276,7 +277,7 @@ def test_register_dataset_posts_the_address_the_store_gave_and_returns_the_id() 
 def test_register_dataset_sends_a_key_derived_from_the_address_not_the_run() -> None:
     client, recorder = client_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
 
-    client.register_dataset(A_RUN, Location(path=A_PATH, occurred_at=None), scheme=A_SCHEME)
+    client.register_dataset(a_dataset(), A_RUN, scheme=A_SCHEME)
 
     sent = recorder.sent[0]
     assert sent.headers is not None
@@ -297,7 +298,7 @@ def test_two_datasets_from_one_run_are_keyed_apart() -> None:
 def test_register_dataset_sends_no_moment_when_the_store_held_no_ending() -> None:
     client, recorder = client_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
 
-    client.register_dataset(A_RUN, Location(path=A_PATH, occurred_at=None), scheme=A_SCHEME)
+    client.register_dataset(a_dataset(), A_RUN, scheme=A_SCHEME)
 
     sent = recorder.sent[0]
     assert sent.json is not None
@@ -309,7 +310,7 @@ def test_register_dataset_refuses_on_anything_but_a_201(status: int) -> None:
     client, _ = client_answering(Answer(status, text="no"))
 
     with pytest.raises(RequestRefusedError) as refusal:
-        client.register_dataset(A_RUN, Location(path=A_PATH, occurred_at=None), scheme=A_SCHEME)
+        client.register_dataset(a_dataset(), A_RUN, scheme=A_SCHEME)
 
     assert refusal.value.status == status
     assert refusal.value.path == "/datasets"

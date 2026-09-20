@@ -1,11 +1,15 @@
 """What translating one document produces, before anything is sent.
 
-Four outcomes, in two pairs. `ReportRun` and `Transition` each name a
-command AROC publishes and carry everything that command needs except the
-ids, which only something that can talk to AROC can supply. `Ignored` and
-`Unmappable` both mean nothing will be sent, and they are separate because
-the reasons are opposite: one is the design working and the other is the
-design out of date.
+Five outcomes, in two groups. `ReportRun`, `Transition` and
+`RegisterDataset` each name a command AROC publishes and carry everything
+that command needs except the ids, which only something that can talk to
+AROC can supply. `Ignored` and `Unmappable` both mean nothing will be
+sent, and they are separate because the reasons are opposite: one is the
+design working and the other is the design out of date.
+
+The first three cover two bounded contexts, and that is deliberate. This
+file is the description of everything the reporter can ask AROC for, so a
+command missing from it is a command nobody reading this knows about.
 
 Each of the three that can produce an alert carries an `origin`: a short
 label naming whatever in the engine's stream this came from. It is there
@@ -101,11 +105,40 @@ class Unmappable:
     origin: str
 
 
-Intent = ReportRun | Transition | Ignored | Unmappable
+@dataclass(frozen=True)
+class RegisterDataset:
+    """A run produced data, and a store is keeping it at this address.
+
+    The Custody half of the vocabulary, and the reason this file describes
+    the whole job rather than most of it.
+
+    `run_uid` is the engine's id, not AROC's, exactly as on a `Transition`.
+    Resolving it is the same lookup, which is what lets a dataset be
+    reported by something that has never seen the run recorded.
+
+    `external_ref_value` is the store's address for the data and nothing
+    else: not a file path, because a run's readings are often rows in a
+    table with no file to point at, and not a copy of what the store knows
+    about the data. The scheme it belongs to is configuration, the way a
+    run's is, so it is not on the intent.
+
+    `occurred_at` is when whatever wrote the data finished, as the store
+    reports it. `None` when the store holds no ending yet, and AROC then
+    stamps the moment it was told, which is honest and less precise.
+    """
+
+    run_uid: str
+    external_ref_value: str
+    occurred_at: datetime | None
+    origin: str
+
+
+Intent = ReportRun | Transition | RegisterDataset | Ignored | Unmappable
 
 __all__ = [
     "Ignored",
     "Intent",
+    "RegisterDataset",
     "ReportRun",
     "Transition",
     "Unmappable",

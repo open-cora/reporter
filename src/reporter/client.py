@@ -57,8 +57,7 @@ from typing import Any, Protocol
 from uuid import UUID
 
 from reporter.config import ReporterConfig
-from reporter.intents import ReportRun, Transition
-from reporter.stores import Location
+from reporter.intents import RegisterDataset, ReportRun, Transition
 
 
 def idempotency_key_for(external_ref_value: str) -> str:
@@ -205,13 +204,18 @@ class ArocClient:
         if response.status_code != 204:
             raise RequestRefusedError(response.status_code, response.text, method="POST", path=path)
 
-    def register_dataset(self, run_id: UUID, location: Location, *, scheme: str) -> UUID:
+    def register_dataset(self, intent: RegisterDataset, run_id: UUID, *, scheme: str) -> UUID:
         """Record where a run's output ended up, and return AROC's id for it.
+
+        Takes an intent and an id, exactly as `report_run` does, and for
+        the same reason: the intent carries what the engine or the store
+        said, and the id is the thing only something that can talk to AROC
+        could have resolved.
 
         `scheme` is passed in rather than read off the configuration here,
         because it belongs to the optional store table and a client
         reaching into that would have to decide what to do when there is
-        none. A caller holding a location necessarily holds the store
+        none. A caller holding an address necessarily holds the store
         configuration that produced it.
 
         `occurred_at` is the store's copy of the engine's own ending. It
@@ -222,13 +226,13 @@ class ArocClient:
         path = "/datasets"
         body: dict[str, Any] = {
             "run_id": str(run_id),
-            "external_ref": {"scheme": scheme, "value": location.path},
-            "occurred_at": _instant(location.occurred_at),
+            "external_ref": {"scheme": scheme, "value": intent.external_ref_value},
+            "occurred_at": _instant(intent.occurred_at),
         }
         response = self._http.post(
             self._url(path),
             json=body,
-            headers=self._headers({"Idempotency-Key": dataset_key_for(location.path)}),
+            headers=self._headers({"Idempotency-Key": dataset_key_for(intent.external_ref_value)}),
         )
         if response.status_code != 201:
             raise RequestRefusedError(response.status_code, response.text, method="POST", path=path)

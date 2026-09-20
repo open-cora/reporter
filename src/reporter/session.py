@@ -65,7 +65,15 @@ from uuid import UUID
 
 from reporter.client import ArocClient, RequestRefusedError
 from reporter.config import ReporterConfig
-from reporter.intents import Ignored, Intent, ReportRun, Transition, Unmappable, Verb
+from reporter.intents import (
+    Ignored,
+    Intent,
+    RegisterDataset,
+    ReportRun,
+    Transition,
+    Unmappable,
+    Verb,
+)
 from reporter.outcomes import Held, Kept, Moved, Outcome, Recorded, Skipped, Unchanged
 from reporter.stores import StoreLookup, StoreRefusedError
 
@@ -133,6 +141,8 @@ class Session:
                 return Held(reason, origin)
             case ReportRun():
                 return self._report(intent)
+            case RegisterDataset():
+                return self._register(intent)
             case Transition():
                 return self._move(intent)
 
@@ -198,6 +208,11 @@ class Session:
         died before recording the data. Re-registering an address AROC
         already holds costs one request and returns the same id, because
         the retry key is derived from that address.
+
+        This is the fast path: the document that ended the run is what
+        prompts the question, so the answer is filed in the same breath.
+        The slow path is `_register`, reached through `act` by anything
+        that found the data some other way.
         """
         if self._store is None or self._config.store is None or intent.verb not in ENDINGS:
             return None
@@ -216,14 +231,54 @@ class Session:
                 intent.origin,
             )
 
+        return self._file(
+            RegisterDataset(
+                run_uid=intent.run_uid,
+                external_ref_value=location.path,
+                occurred_at=location.occurred_at,
+                origin=intent.origin,
+            ),
+            run_id,
+            verb=intent.verb,
+        )
+
+    def _register(self, intent: RegisterDataset) -> Outcome:
+        """File a dataset somebody else went and found.
+
+        The other way in, and the one that makes `intents` a complete
+        description of this reporter rather than most of one. Whatever
+        produced this intent did the asking: a sweep of a store, a
+        backfill, a repair by hand. This resolves the run and files it.
+
+        There is no verb because no transition arrived with it, which is
+        exactly the difference from the fast path above.
+        """
+        run_id = self._run_id_for(intent.run_uid)
+        if run_id is None:
+            return Held(
+                f"no run recorded for uid {intent.run_uid}, so the data at "
+                f"{intent.external_ref_value} cannot be attributed to one",
+                intent.origin,
+            )
+        return self._file(intent, run_id, verb=None)
+
+    def _file(self, intent: RegisterDataset, run_id: UUID, *, verb: Verb | None) -> Outcome:
+        """The one request both ways in make, and the one outcome."""
+        if self._config.store is None:
+            return Held(
+                "a dataset was reported and no [store] table says what scheme its "
+                "address belongs to",
+                intent.origin,
+            )
+
         try:
             dataset_id = self._client.register_dataset(
-                run_id, location, scheme=self._config.store.external_ref_scheme
+                intent, run_id, scheme=self._config.store.external_ref_scheme
             )
         except RequestRefusedError as refusal:
             return self._held_or_raise(refusal, intent.origin)
 
-        return Kept(run_id, intent.verb, dataset_id, location.path)
+        return Kept(run_id, verb, dataset_id, intent.external_ref_value)
 
     def _run_id_for(self, run_uid: str) -> UUID | None:
         """AROC's id for an engine run: from memory, then from AROC.

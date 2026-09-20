@@ -22,7 +22,7 @@ import pytest
 
 from reporter.client import ArocClient, RequestRefusedError
 from reporter.config import from_mapping
-from reporter.intents import Verb
+from reporter.intents import RegisterDataset, Verb
 from reporter.outcomes import Held, Kept, Moved, Outcome, Recorded, Skipped, Unchanged
 from reporter.relay import Handle
 from reporter.session import ENDINGS, Session, is_worth_retrying
@@ -488,3 +488,107 @@ def test_a_store_lookup_without_a_store_table_is_refused_at_construction() -> No
     them carries the scheme the other's addresses belong to."""
     with pytest.raises(ValueError, match="store"):
         Session(ArocClient(Routed(report=[], move=[]), CONFIG), CONFIG, Store())
+
+
+def a_session_with_store(store: Store, **answers: list[Answer]) -> tuple[Session, Routed]:
+    """The session itself, not wrapped in a translator.
+
+    The slow path has no documents in it, so there is nothing to
+    translate. What reaches `act` was built by whatever went looking.
+    """
+    routed = Routed(
+        report=answers.get("report") or [Answer(201, {"run_id": str(A_RUN)})],
+        move=answers.get("move") or [Answer(204)],
+        find=answers.get("find") or [Answer(200, {"items": []})],
+        register=answers.get("register") or [Answer(201, {"dataset_id": str(A_DATASET)})],
+    )
+    return Session(ArocClient(routed, STORE_CONFIG), STORE_CONFIG, store), routed
+
+
+def a_found_dataset(uid: str = "r1") -> RegisterDataset:
+    return RegisterDataset(
+        run_uid=uid,
+        external_ref_value=f"raw/{uid}",
+        occurred_at=AN_ENDING,
+        origin="a sweep",
+    )
+
+
+def test_a_dataset_found_on_its_own_is_filed_against_the_run_it_names() -> None:
+    """The slow path, and the reason `RegisterDataset` is in `intents`.
+
+    Nothing here saw a document. Something swept a store, found data, and
+    said so, and the session resolved the run and filed it exactly as the
+    ending document's path would have.
+    """
+    session, routed = a_session_with_store(
+        store_holding("completes"), find=[Answer(200, {"items": [{"run_id": str(A_RUN)}]})]
+    )
+
+    outcome = session.act(a_found_dataset())
+
+    assert outcome == Kept(A_RUN, None, A_DATASET, "raw/r1")
+    assert routed.calls("POST", containing="/datasets")
+
+
+def test_a_dataset_found_on_its_own_carries_no_verb() -> None:
+    """What separates the two paths in a log: one says a run just ended,
+    the other says somebody found data for a run that ended earlier."""
+    session, _ = a_session_with_store(
+        store_holding("completes"), find=[Answer(200, {"items": [{"run_id": str(A_RUN)}]})]
+    )
+
+    found = session.act(a_found_dataset())
+    fast = drive("completes", documents_into(a_session_with_store(store_holding("completes"))[0]))
+
+    assert isinstance(found, Kept) and found.verb is None
+    assert isinstance(fast[-1], Kept) and fast[-1].verb == "complete"
+
+
+def test_a_dataset_for_a_run_aroc_never_heard_of_is_held() -> None:
+    """A sweep reaching data whose run was never reported. Worth an alert
+    rather than a guess, because the join is the whole record."""
+    session, routed = a_session_with_store(
+        store_holding("completes"), find=[Answer(200, {"items": []})]
+    )
+
+    outcome = session.act(a_found_dataset())
+
+    assert isinstance(outcome, Held)
+    assert "r1" in outcome.reason
+    assert not routed.calls("POST", containing="/datasets")
+
+
+def test_a_dataset_found_on_its_own_resolves_the_run_through_aroc() -> None:
+    """The lookup the slow path depends on entirely. It holds no memory of
+    a run, because it never saw one start."""
+    session, routed = a_session_with_store(
+        store_holding("completes"), find=[Answer(200, {"items": [{"run_id": str(A_RUN)}]})]
+    )
+
+    session.act(a_found_dataset())
+
+    assert len(routed.calls("GET")) == 1
+
+
+def test_both_ways_in_send_the_same_request() -> None:
+    """The point of the symmetry. Whatever found the data, AROC is asked
+    the same thing, with the same key, so the two paths cannot make two
+    records of one body of data."""
+    uid = uid_of("completes")
+    fast_session, fast_routed = a_session_with_store(store_holding("completes"))
+    drive("completes", documents_into(fast_session))
+
+    slow_session, slow_routed = a_session_with_store(
+        store_holding("completes"), find=[Answer(200, {"items": [{"run_id": str(A_RUN)}]})]
+    )
+    slow_session.act(
+        RegisterDataset(
+            run_uid=uid, external_ref_value=f"raw/{uid}", occurred_at=AN_ENDING, origin="a sweep"
+        )
+    )
+
+    fast = fast_routed.calls("POST", containing="/datasets")[0]
+    slow = slow_routed.calls("POST", containing="/datasets")[0]
+    assert fast.json == slow.json
+    assert (fast.headers or {})["Idempotency-Key"] == (slow.headers or {})["Idempotency-Key"]

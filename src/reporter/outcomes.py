@@ -97,12 +97,18 @@ class Kept:
     either way and `Held` names the store as it happens; it is the
     summary that misleads, not the record.
 
+    `verb` is `None` when no transition arrived with the registration,
+    which is what anything other than the ending document produces: a
+    sweep of a store, a backfill, a repair by hand. The two cases are
+    worth telling apart in a log, because one says a run just finished and
+    the other says somebody found data for a run that finished earlier.
+
     `external_ref_value` is the address the store gave, carried so a
     caller can print what it filed without asking AROC back.
     """
 
     run_id: UUID
-    verb: Verb
+    verb: Verb | None
     dataset_id: UUID
     external_ref_value: str
 

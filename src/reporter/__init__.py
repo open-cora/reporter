@@ -34,7 +34,15 @@ from reporter.client import (
     idempotency_key_for,
 )
 from reporter.config import ConfigError, ReporterConfig, StoreConfig, from_mapping, load
-from reporter.intents import Ignored, Intent, ReportRun, Transition, Unmappable, Verb
+from reporter.intents import (
+    Ignored,
+    Intent,
+    RegisterDataset,
+    ReportRun,
+    Transition,
+    Unmappable,
+    Verb,
+)
 from reporter.outcomes import Held, Kept, Moved, Outcome, Recorded, Skipped, Unchanged
 from reporter.relay import Handle, Relay
 from reporter.session import Session, is_worth_retrying
@@ -65,6 +73,7 @@ __all__ = [
     "Moved",
     "Outcome",
     "Recorded",
+    "RegisterDataset",
     "Relay",
     "ReportRun",
     "ReporterConfig",

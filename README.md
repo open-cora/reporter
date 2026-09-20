@@ -136,18 +136,29 @@ the stream already delivered, not anything read from outside.
 The spike this replaces tracked "the run we are currently walking"
 instead, which held only because it replayed one scenario at a time.
 
-## The fixture
+## The two fixtures
 
 `tests/documents.json` is captured output from a real engine driven through
 seven scenarios: every ending, both interruptions, a plan that raises, and
-one plan with real arguments. It arrived with the spike at
-`spikes/bluesky_adapter/`, which wrote it, printed findings from it, and is
-marked for deletion; the file moved here because the tests that assert
-against it are not going anywhere.
+one plan with real arguments. `tests/nodes.json` is the same idea against a
+real store: four scenarios written by the writer a deployment would use,
+then interrogated from outside the way this package has to.
 
-Re-running the spike's `collect.py` overwrites it. That is deliberate: a
-capture from a newer engine that changes an assertion is the signal worth
-having, and the diff is the finding.
+Neither is written by hand and neither can be regenerated from here. The
+two collectors live in `spikes/`, because they import an engine and a store
+and this package depends on neither:
+
+```
+   spikes/bluesky_adapter/collect.py  ---->  tests/documents.json
+   spikes/tiled_adapter/collect.py    ---->  tests/nodes.json
+```
+
+Re-running either overwrites its capture, which is deliberate and is the
+closest thing here to a test of the real thing. Ids and timestamps change
+every run, so the diff is mostly noise; what to read is whether the suite
+still passes. The assertions are written against the structural claims, so
+an engine or a store that changed one turns a test red with a message
+naming it, and that message is the finding.
 
 ## Two ways to run it, and the same code either way
 
@@ -315,11 +326,9 @@ above. So a route rename fails in `apps/api`'s own path pin, and whoever
 does it has to look for callers. What closes it is the run below, which
 needs no test double at any point.
 
-The store half has the same gap and one fewer worry. `tests/nodes.json` is
-real output from a real store rather than a shape imagined here, written
-by `spikes/tiled_adapter/collect.py`. Re-running that overwrites it, which
-is deliberate: a capture from a newer store that changes an assertion is
-the signal worth having, and the diff is the finding.
+The store half has the same gap and one fewer worry, for the reason
+[The two fixtures](#the-two-fixtures) gives: what it is checked against is
+real output from a real store rather than a shape imagined here.
 
 ## Proving it, end to end
 

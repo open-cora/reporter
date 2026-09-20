@@ -5,8 +5,8 @@
       {
         "name": "start",
         "doc": {
-          "uid": "5b4f40e7-abbd-4ff0-84c1-a3ca3ca5a10a",
-          "time": 1789812131.801357,
+          "uid": "dfc635f8-0a4d-4cdb-9f02-3ccedc945389",
+          "time": 1789945385.019201,
           "versions": {
             "ophyd": "1.11.2",
             "bluesky": "1.15.1",
@@ -30,9 +30,9 @@
           },
           "name": "interruptions",
           "object_keys": {},
-          "run_start": "5b4f40e7-abbd-4ff0-84c1-a3ca3ca5a10a",
-          "time": 1789812131.801611,
-          "uid": "f8f50e58-7cc8-4398-9dc4-d90efc7f40b7",
+          "run_start": "dfc635f8-0a4d-4cdb-9f02-3ccedc945389",
+          "time": 1789945385.0194728,
+          "uid": "53012524-d948-4e0b-bcf1-62ef06b9aaa7",
           "object_classes": {},
           "hints": {}
         }
@@ -40,9 +40,9 @@
       {
         "name": "stop",
         "doc": {
-          "uid": "a137598c-7424-41b9-9ec7-17c51ac133dc",
-          "time": 1789812131.823853,
-          "run_start": "5b4f40e7-abbd-4ff0-84c1-a3ca3ca5a10a",
+          "uid": "04198e25-6505-46a3-ad41-6ebb5436268e",
+          "time": 1789945385.042548,
+          "run_start": "dfc635f8-0a4d-4cdb-9f02-3ccedc945389",
           "exit_status": "success",
           "reason": "",
           "num_events": {
@@ -70,8 +70,8 @@
       {
         "name": "start",
         "doc": {
-          "uid": "8eac32ea-ec99-46c1-a445-955f696ed253",
-          "time": 1789812131.8248808,
+          "uid": "5d9311fa-1742-4fb1-ae08-4cdd8b50c3fc",
+          "time": 1789945385.043401,
           "versions": {
             "ophyd": "1.11.2",
             "bluesky": "1.15.1",
@@ -95,9 +95,9 @@
           },
           "name": "interruptions",
           "object_keys": {},
-          "run_start": "8eac32ea-ec99-46c1-a445-955f696ed253",
-          "time": 1789812131.825772,
-          "uid": "2882c415-ba93-4763-9481-ed09fab1052e",
+          "run_start": "5d9311fa-1742-4fb1-ae08-4cdd8b50c3fc",
+          "time": 1789945385.043539,
+          "uid": "7a53812a-2acb-4b5c-bb64-08caafd0272c",
           "object_classes": {},
           "hints": {}
         }
@@ -105,41 +105,41 @@
       {
         "name": "event",
         "doc": {
-          "uid": "08aa175f-7120-42c1-821b-4433b52fc1b3",
-          "time": 1789812131.83774,
+          "uid": "3df233f4-772f-4010-846a-f79fcaa7a87d",
+          "time": 1789945385.055211,
           "data": {
             "interruption": "pause"
           },
           "timestamps": {
-            "interruption": 1789812131.8377259
+            "interruption": 1789945385.055198
           },
           "seq_num": 1,
           "filled": {},
-          "descriptor": "2882c415-ba93-4763-9481-ed09fab1052e"
+          "descriptor": "7a53812a-2acb-4b5c-bb64-08caafd0272c"
         }
       },
       {
         "name": "event",
         "doc": {
-          "uid": "eef8f39a-2031-41be-bd91-eaae2599bbcb",
-          "time": 1789812131.838044,
+          "uid": "18aac6af-56b4-4d29-882f-eab4a75d5f7b",
+          "time": 1789945385.055507,
           "data": {
             "interruption": "resume"
           },
           "timestamps": {
-            "interruption": 1789812131.838033
+            "interruption": 1789945385.055495
           },
           "seq_num": 2,
           "filled": {},
-          "descriptor": "2882c415-ba93-4763-9481-ed09fab1052e"
+          "descriptor": "7a53812a-2acb-4b5c-bb64-08caafd0272c"
         }
       },
       {
         "name": "stop",
         "doc": {
-          "uid": "4367a0f3-5b3d-4a95-b170-fee08ab2251a",
-          "time": 1789812131.860988,
-          "run_start": "8eac32ea-ec99-46c1-a445-955f696ed253",
+          "uid": "929e7108-7a7b-4d1d-a790-3b6a8919706d",
+          "time": 1789945385.0784051,
+          "run_start": "5d9311fa-1742-4fb1-ae08-4cdd8b50c3fc",
           "exit_status": "success",
           "reason": "",
           "num_events": {
@@ -180,8 +180,8 @@
       {
         "name": "start",
         "doc": {
-          "uid": "5e833505-3dc2-4339-b8a9-4462fc227558",
-          "time": 1789812131.862014,
+          "uid": "2bf73925-3441-42a9-bbd4-a69dc90ffedd",
+          "time": 1789945385.079337,
           "versions": {
             "ophyd": "1.11.2",
             "bluesky": "1.15.1",
@@ -205,9 +205,9 @@
           },
           "name": "interruptions",
           "object_keys": {},
-          "run_start": "5e833505-3dc2-4339-b8a9-4462fc227558",
-          "time": 1789812131.862137,
-          "uid": "00fa48d5-5790-423f-9397-8e03daf23a1a",
+          "run_start": "2bf73925-3441-42a9-bbd4-a69dc90ffedd",
+          "time": 1789945385.079493,
+          "uid": "cdc2fcac-f4b3-4b15-8396-a243bb00553f",
           "object_classes": {},
           "hints": {}
         }
@@ -215,25 +215,25 @@
       {
         "name": "event",
         "doc": {
-          "uid": "6b460be8-471b-4d0e-afd2-a45ee715acc8",
-          "time": 1789812131.873751,
+          "uid": "9cc2dd66-f267-4be1-b162-4ea965daa578",
+          "time": 1789945385.090334,
           "data": {
             "interruption": "pause"
           },
           "timestamps": {
-            "interruption": 1789812131.8737438
+            "interruption": 1789945385.0903199
           },
           "seq_num": 1,
           "filled": {},
-          "descriptor": "00fa48d5-5790-423f-9397-8e03daf23a1a"
+          "descriptor": "cdc2fcac-f4b3-4b15-8396-a243bb00553f"
         }
       },
       {
         "name": "stop",
         "doc": {
-          "uid": "1322cef1-157f-41e8-81ca-d5326256fc93",
-          "time": 1789812131.8742359,
-          "run_start": "5e833505-3dc2-4339-b8a9-4462fc227558",
+          "uid": "2e50cc0f-5b0b-4596-8b50-5f2abca94abf",
+          "time": 1789945385.090948,
+          "run_start": "2bf73925-3441-42a9-bbd4-a69dc90ffedd",
           "exit_status": "success",
           "reason": "",
           "num_events": {
@@ -274,8 +274,8 @@
       {
         "name": "start",
         "doc": {
-          "uid": "9f5a6ac8-e423-4c4a-8676-388d190e4b33",
-          "time": 1789812131.874911,
+          "uid": "104d9517-2a45-4a35-9f2a-83c8b4c24bb9",
+          "time": 1789945385.091771,
           "versions": {
             "ophyd": "1.11.2",
             "bluesky": "1.15.1",
@@ -299,9 +299,9 @@
           },
           "name": "interruptions",
           "object_keys": {},
-          "run_start": "9f5a6ac8-e423-4c4a-8676-388d190e4b33",
-          "time": 1789812131.875031,
-          "uid": "d9aaea16-2d26-490b-a468-66175d93ebca",
+          "run_start": "104d9517-2a45-4a35-9f2a-83c8b4c24bb9",
+          "time": 1789945385.0919209,
+          "uid": "305b0506-a7b9-4b64-b621-b4c655ce9144",
           "object_classes": {},
           "hints": {}
         }
@@ -309,25 +309,25 @@
       {
         "name": "event",
         "doc": {
-          "uid": "018b9667-3e2b-4493-ab99-508f114e7d0a",
-          "time": 1789812131.8866508,
+          "uid": "c75dcff2-9843-4964-9bbe-e368a85492f9",
+          "time": 1789945385.103756,
           "data": {
             "interruption": "pause"
           },
           "timestamps": {
-            "interruption": 1789812131.886644
+            "interruption": 1789945385.103737
           },
           "seq_num": 1,
           "filled": {},
-          "descriptor": "d9aaea16-2d26-490b-a468-66175d93ebca"
+          "descriptor": "305b0506-a7b9-4b64-b621-b4c655ce9144"
         }
       },
       {
         "name": "stop",
         "doc": {
-          "uid": "c19b24a5-39de-43b0-9b4b-eab156a644b5",
-          "time": 1789812131.887109,
-          "run_start": "9f5a6ac8-e423-4c4a-8676-388d190e4b33",
+          "uid": "a72b6cb4-0247-4bf9-bf16-c19b7e66e5f8",
+          "time": 1789945385.104631,
+          "run_start": "104d9517-2a45-4a35-9f2a-83c8b4c24bb9",
           "exit_status": "abort",
           "reason": "",
           "num_events": {
@@ -368,8 +368,8 @@
       {
         "name": "start",
         "doc": {
-          "uid": "ecad31b1-91a9-4700-94b9-38b881d52446",
-          "time": 1789812131.888561,
+          "uid": "8548ee7b-f66f-4766-8f24-34de1e910742",
+          "time": 1789945385.108274,
           "versions": {
             "ophyd": "1.11.2",
             "bluesky": "1.15.1",
@@ -393,9 +393,9 @@
           },
           "name": "interruptions",
           "object_keys": {},
-          "run_start": "ecad31b1-91a9-4700-94b9-38b881d52446",
-          "time": 1789812131.888693,
-          "uid": "4d183f01-a160-411b-ac93-7690ab784997",
+          "run_start": "8548ee7b-f66f-4766-8f24-34de1e910742",
+          "time": 1789945385.108442,
+          "uid": "979e514b-b867-4c84-b258-7d756e7b1ff5",
           "object_classes": {},
           "hints": {}
         }
@@ -403,25 +403,25 @@
       {
         "name": "event",
         "doc": {
-          "uid": "2b9d5e0d-6b84-4af5-9b8d-891e7b0db3f3",
-          "time": 1789812131.900337,
+          "uid": "7361a872-b103-4cb0-b2c1-581385aee870",
+          "time": 1789945385.1201742,
           "data": {
             "interruption": "pause"
           },
           "timestamps": {
-            "interruption": 1789812131.9003289
+            "interruption": 1789945385.120098
           },
           "seq_num": 1,
           "filled": {},
-          "descriptor": "4d183f01-a160-411b-ac93-7690ab784997"
+          "descriptor": "979e514b-b867-4c84-b258-7d756e7b1ff5"
         }
       },
       {
         "name": "stop",
         "doc": {
-          "uid": "b154395d-d87e-4b2c-a890-95add4cfbfe7",
-          "time": 1789812131.901126,
-          "run_start": "ecad31b1-91a9-4700-94b9-38b881d52446",
+          "uid": "59717825-8c5c-4c3a-9aa5-63271d9bbc4e",
+          "time": 1789945385.122001,
+          "run_start": "8548ee7b-f66f-4766-8f24-34de1e910742",
           "exit_status": "abort",
           "reason": "",
           "num_events": {
@@ -460,8 +460,8 @@
       {
         "name": "start",
         "doc": {
-          "uid": "d46142e2-e134-4e8f-9188-52434fddbf2f",
-          "time": 1789812131.9017951,
+          "uid": "72516ff9-5230-4356-9931-7e4e51328965",
+          "time": 1789945385.12389,
           "versions": {
             "ophyd": "1.11.2",
             "bluesky": "1.15.1",
@@ -485,9 +485,9 @@
           },
           "name": "interruptions",
           "object_keys": {},
-          "run_start": "d46142e2-e134-4e8f-9188-52434fddbf2f",
-          "time": 1789812131.9019241,
-          "uid": "1feaea03-1de8-4831-8ee8-d656cd50ae9f",
+          "run_start": "72516ff9-5230-4356-9931-7e4e51328965",
+          "time": 1789945385.1240692,
+          "uid": "157be24a-4fb8-4e63-9726-2b16404bc593",
           "object_classes": {},
           "hints": {}
         }
@@ -495,9 +495,9 @@
       {
         "name": "stop",
         "doc": {
-          "uid": "0e79c8ed-7504-4c14-a5c5-f715226d9453",
-          "time": 1789812131.9135842,
-          "run_start": "d46142e2-e134-4e8f-9188-52434fddbf2f",
+          "uid": "583ec7fb-2590-4fa6-82eb-c0b7c7eaf18a",
+          "time": 1789945385.1361542,
+          "run_start": "72516ff9-5230-4356-9931-7e4e51328965",
           "exit_status": "fail",
           "reason": "the spike broke this run on purpose",
           "num_events": {
@@ -523,8 +523,8 @@
       {
         "name": "start",
         "doc": {
-          "uid": "a5ff6b50-e952-43ec-b5e5-2fc2809baf67",
-          "time": 1789812131.9311428,
+          "uid": "38a7d1ed-e3f8-48df-9f15-0446bf579c0d",
+          "time": 1789945385.198808,
           "versions": {
             "ophyd": "1.11.2",
             "bluesky": "1.15.1",
@@ -570,9 +570,9 @@
           },
           "name": "interruptions",
           "object_keys": {},
-          "run_start": "a5ff6b50-e952-43ec-b5e5-2fc2809baf67",
-          "time": 1789812131.931492,
-          "uid": "6c09bcb5-4f53-401d-acea-7a7d3942114e",
+          "run_start": "38a7d1ed-e3f8-48df-9f15-0446bf579c0d",
+          "time": 1789945385.199245,
+          "uid": "bfa72c4d-3feb-4fd1-8df3-2ec019de2a9a",
           "object_classes": {},
           "hints": {}
         }
@@ -590,11 +590,11 @@
                 "det_noise_multiplier": 1
               },
               "timestamps": {
-                "det_Imax": 1789812131.927236,
-                "det_center": 1789812131.927234,
-                "det_sigma": 1789812131.92724,
-                "det_noise": 1789812131.9272242,
-                "det_noise_multiplier": 1789812131.927231
+                "det_Imax": 1789945385.191308,
+                "det_center": 1789945385.191305,
+                "det_sigma": 1789945385.1913128,
+                "det_noise": 1789945385.191288,
+                "det_noise_multiplier": 1789945385.1913002
               },
               "data_keys": {
                 "det_Imax": {
@@ -645,9 +645,9 @@
               "det"
             ]
           },
-          "run_start": "a5ff6b50-e952-43ec-b5e5-2fc2809baf67",
-          "time": 1789812131.933677,
-          "uid": "893aa3ac-0d2d-446a-8cc6-f4d7fd884325",
+          "run_start": "38a7d1ed-e3f8-48df-9f15-0446bf579c0d",
+          "time": 1789945385.2018619,
+          "uid": "461e5bf9-19d8-4f88-89d6-1fe8938013c3",
           "object_classes": {},
           "hints": {
             "det": {
@@ -661,41 +661,41 @@
       {
         "name": "event",
         "doc": {
-          "uid": "8334d96b-5670-4ee3-a216-c1d0010c899c",
-          "time": 1789812131.9343848,
+          "uid": "8b71893f-c8c3-4e10-a421-760488353353",
+          "time": 1789945385.202677,
           "data": {
             "det": 1.0
           },
           "timestamps": {
-            "det": 1789812131.932443
+            "det": 1789945385.200309
           },
           "seq_num": 1,
           "filled": {},
-          "descriptor": "893aa3ac-0d2d-446a-8cc6-f4d7fd884325"
+          "descriptor": "461e5bf9-19d8-4f88-89d6-1fe8938013c3"
         }
       },
       {
         "name": "event",
         "doc": {
-          "uid": "acb603af-c37c-426a-9ceb-618992508b09",
-          "time": 1789812131.9358442,
+          "uid": "e97b887f-ed29-4e86-b047-aaa75b50feda",
+          "time": 1789945385.20437,
           "data": {
             "det": 1.0
           },
           "timestamps": {
-            "det": 1789812131.934996
+            "det": 1789945385.203385
           },
           "seq_num": 2,
           "filled": {},
-          "descriptor": "893aa3ac-0d2d-446a-8cc6-f4d7fd884325"
+          "descriptor": "461e5bf9-19d8-4f88-89d6-1fe8938013c3"
         }
       },
       {
         "name": "stop",
         "doc": {
-          "uid": "8199842a-bf01-40a6-9947-201b87384e9c",
-          "time": 1789812131.93608,
-          "run_start": "a5ff6b50-e952-43ec-b5e5-2fc2809baf67",
+          "uid": "bac6e6e6-e146-43c5-aa89-1afc815b55fe",
+          "time": 1789945385.204654,
+          "run_start": "38a7d1ed-e3f8-48df-9f15-0446bf579c0d",
           "exit_status": "success",
           "reason": "",
           "num_events": {

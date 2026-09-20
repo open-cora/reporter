@@ -28,7 +28,7 @@ as a key because the writer's readings have no file.
 """
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -186,8 +186,21 @@ def test_locate_returns_the_address_and_the_ending_the_store_holds() -> None:
     )
 
 
-def test_locate_returns_the_engines_own_ending_time_to_the_last_digit() -> None:
-    """The store keeps the engine's timestamps verbatim, so a record can use them."""
+def test_locate_returns_the_engines_own_ending_moment_to_the_microsecond() -> None:
+    """As close to the engine's own ending as a datetime can carry.
+
+    Not to the last digit, which is what this asserted until a refreshed
+    capture produced `...8619268` and the round trip returned `...861927`.
+    The loss is real and is this conversion's, not the store's: an engine
+    stamps a float with sub-microsecond precision and `datetime` holds
+    microseconds. Two hundred nanoseconds is far below anything a record
+    of when data was written could mean.
+
+    That the store keeps the engine's number exactly is a separate claim
+    and is checked against the capture further down, float to float, where
+    it is true without a caveat.
+    """
+    tolerance = timedelta(microseconds=1)
     for label, scenario in scenarios().items():
         node = scenario["node"]
         http = Recorder(Answer(200, body_for(node, stop_time=scenario["store_stop_time"])))
@@ -196,7 +209,8 @@ def test_locate_returns_the_engines_own_ending_time_to_the_last_digit() -> None:
 
         assert located is not None
         assert located.occurred_at is not None
-        assert located.occurred_at.timestamp() == scenario["engine_stop_time"], label
+        engine = datetime.fromtimestamp(scenario["engine_stop_time"], tz=UTC)
+        assert abs(located.occurred_at - engine) < tolerance, label
 
 
 def test_locate_returns_a_location_with_no_time_when_the_store_holds_no_ending() -> None:
@@ -321,10 +335,15 @@ def test_the_writers_readings_have_no_file_a_record_could_point_at() -> None:
     )
 
 
-def test_the_store_keeps_the_engines_start_and_exit_status_as_well_as_its_stop() -> None:
-    """The rest of section 3. The stop time is checked above, through the
-    adapter; these two are the other fields a store-only reporter would
-    have to trust, and nothing else reads them."""
+def test_the_store_keeps_every_timestamp_and_status_the_engine_emitted() -> None:
+    """Section 3, float to float, which is where the claim is exact.
+
+    The adapter test above can only check this to a microsecond, because
+    that is all a `datetime` holds. Here there is no conversion in the
+    way, so "verbatim" is asserted as written: three fields, four runs,
+    and nothing else in the suite reads two of them.
+    """
     for label, scenario in scenarios().items():
         assert scenario["store_start_time"] == scenario["engine_start_time"], label
+        assert scenario["store_stop_time"] == scenario["engine_stop_time"], label
         assert scenario["store_exit_status"] == scenario["engine_exit_status"], label

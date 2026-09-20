@@ -117,32 +117,32 @@
   "where_the_bytes_are": {
     "by_the_writer": [
       {
-        "path": "raw/6ab0a3b9-9439-4939-bf54-f9dce8548604",
+        "path": "raw/175ea22e-f7eb-4b66-913c-2ee666d3026c",
         "structure_family": "container",
         "data_sources": null
       },
       {
-        "path": "raw/6ab0a3b9-9439-4939-bf54-f9dce8548604/primary",
+        "path": "raw/175ea22e-f7eb-4b66-913c-2ee666d3026c/primary",
         "structure_family": "container",
         "data_sources": null
       },
       {
-        "path": "raw/6ab0a3b9-9439-4939-bf54-f9dce8548604/primary/internal/seq_num",
+        "path": "raw/175ea22e-f7eb-4b66-913c-2ee666d3026c/primary/internal/seq_num",
         "structure_family": "array",
         "data_sources": null
       },
       {
-        "path": "raw/6ab0a3b9-9439-4939-bf54-f9dce8548604/primary/internal/time",
+        "path": "raw/175ea22e-f7eb-4b66-913c-2ee666d3026c/primary/internal/time",
         "structure_family": "array",
         "data_sources": null
       },
       {
-        "path": "raw/6ab0a3b9-9439-4939-bf54-f9dce8548604/primary/internal/det",
+        "path": "raw/175ea22e-f7eb-4b66-913c-2ee666d3026c/primary/internal/det",
         "structure_family": "array",
         "data_sources": null
       },
       {
-        "path": "raw/6ab0a3b9-9439-4939-bf54-f9dce8548604/primary/internal/ts_det",
+        "path": "raw/175ea22e-f7eb-4b66-913c-2ee666d3026c/primary/internal/ts_det",
         "structure_family": "array",
         "data_sources": null
       }
@@ -150,7 +150,7 @@
     "by_the_client": {
       "path": "/written_directly",
       "assets": [
-        "file://localhost/var/folders/q9/65s0yd8s2dj_prlvytf_yn9m0000gq/T/tmp1a556wxx/data/written_directly"
+        "file://localhost/var/folders/q9/65s0yd8s2dj_prlvytf_yn9m0000gq/T/tmp15qx2h7d/data/written_directly"
       ]
     }
   },
@@ -166,22 +166,22 @@
         "event",
         "stop"
       ],
-      "run_uid": "6aebd91c-8afd-478d-8ae1-57570b6102fc",
-      "engine_start_time": 1789915805.6147609,
-      "engine_stop_time": 1789915805.639091,
+      "run_uid": "c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
+      "engine_start_time": 1789945399.8330328,
+      "engine_stop_time": 1789945399.8619268,
       "engine_exit_status": "success",
       "keys_under_the_writer_root": [
-        "6aebd91c-8afd-478d-8ae1-57570b6102fc"
+        "c0b94f18-6cfd-4ef0-bc7e-d69128fa628c"
       ],
       "node": {
-        "key": "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+        "key": "c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
         "ancestors": [
           "raw"
         ],
-        "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
-        "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
-        "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
-        "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+        "path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
+        "normalised_path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
+        "uri": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
+        "link_self": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
         "asset_data_uris": [],
         "specs": [
           {
@@ -194,14 +194,14 @@
       "tree": [
         {
           "depth": 0,
-          "key": "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+          "key": "c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
           "ancestors": [
             "raw"
           ],
-          "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
-          "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
-          "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
-          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+          "path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
+          "normalised_path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
           "asset_data_uris": [],
           "specs": [
             {
@@ -216,12 +216,12 @@
           "key": "primary",
           "ancestors": [
             "raw",
-            "6aebd91c-8afd-478d-8ae1-57570b6102fc"
+            "c0b94f18-6cfd-4ef0-bc7e-d69128fa628c"
           ],
-          "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary",
-          "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary",
-          "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary",
-          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary",
+          "path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary",
+          "normalised_path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary",
           "asset_data_uris": [],
           "specs": [
             {
@@ -240,14 +240,14 @@
           "key": "seq_num",
           "ancestors": [
             "raw",
-            "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+            "c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
             "primary",
             "internal"
           ],
-          "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/seq_num",
-          "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/seq_num",
-          "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/seq_num",
-          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/seq_num",
+          "path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/seq_num",
+          "normalised_path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/seq_num",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/seq_num",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/seq_num",
           "asset_data_uris": [],
           "specs": [],
           "structure_family": "array"
@@ -257,14 +257,14 @@
           "key": "time",
           "ancestors": [
             "raw",
-            "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+            "c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
             "primary",
             "internal"
           ],
-          "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/time",
-          "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/time",
-          "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/time",
-          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/time",
+          "path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/time",
+          "normalised_path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/time",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/time",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/time",
           "asset_data_uris": [],
           "specs": [],
           "structure_family": "array"
@@ -274,14 +274,14 @@
           "key": "det",
           "ancestors": [
             "raw",
-            "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+            "c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
             "primary",
             "internal"
           ],
-          "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/det",
-          "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/det",
-          "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/det",
-          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/det",
+          "path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/det",
+          "normalised_path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/det",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/det",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/det",
           "asset_data_uris": [],
           "specs": [],
           "structure_family": "array"
@@ -291,14 +291,14 @@
           "key": "ts_det",
           "ancestors": [
             "raw",
-            "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+            "c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
             "primary",
             "internal"
           ],
-          "path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/ts_det",
-          "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/ts_det",
-          "uri": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/ts_det",
-          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc/primary/internal/ts_det",
+          "path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/ts_det",
+          "normalised_path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/ts_det",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/ts_det",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c/primary/internal/ts_det",
           "asset_data_uris": [],
           "specs": [],
           "structure_family": "array"
@@ -308,17 +308,17 @@
         "start",
         "stop"
       ],
-      "store_start_time": 1789915805.6147609,
-      "store_stop_time": 1789915805.639091,
+      "store_start_time": 1789945399.8330328,
+      "store_stop_time": 1789945399.8619268,
       "store_exit_status": "success",
       "search": {
         "from_the_store_root": [],
         "from_the_writer_root": [
-          "6aebd91c-8afd-478d-8ae1-57570b6102fc"
+          "c0b94f18-6cfd-4ef0-bc7e-d69128fa628c"
         ]
       },
       "over_http": {
-        "url": "http://local-tiled-app/api/v1/metadata/raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+        "url": "http://local-tiled-app/api/v1/metadata/raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
         "status": 200,
         "envelope_keys": [
           "data",
@@ -342,7 +342,7 @@
           "structure",
           "structure_family"
         ],
-        "id": "6aebd91c-8afd-478d-8ae1-57570b6102fc",
+        "id": "c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
         "ancestors": [
           "raw"
         ],
@@ -350,9 +350,9 @@
           "start",
           "stop"
         ],
-        "stop_time": 1789915805.639091,
+        "stop_time": 1789945399.8619268,
         "stop_exit_status": "success",
-        "normalised_path": "raw/6aebd91c-8afd-478d-8ae1-57570b6102fc",
+        "normalised_path": "raw/c0b94f18-6cfd-4ef0-bc7e-d69128fa628c",
         "same_key_as_the_client": true,
         "missing_status": 404
       }
@@ -364,22 +364,22 @@
         "start",
         "stop"
       ],
-      "run_uid": "ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
-      "engine_start_time": 1789915807.425368,
-      "engine_stop_time": 1789915807.445785,
+      "run_uid": "c637ce73-e29b-47ec-8900-1327c02feea7",
+      "engine_start_time": 1789945402.22092,
+      "engine_stop_time": 1789945402.2413251,
       "engine_exit_status": "fail",
       "keys_under_the_writer_root": [
-        "ea7a1b05-0db1-47c3-812a-9eb62afae2bc"
+        "c637ce73-e29b-47ec-8900-1327c02feea7"
       ],
       "node": {
-        "key": "ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+        "key": "c637ce73-e29b-47ec-8900-1327c02feea7",
         "ancestors": [
           "raw"
         ],
-        "path": "raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
-        "normalised_path": "raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
-        "uri": "http://local-tiled-app/api/v1/metadata/raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
-        "link_self": "http://local-tiled-app/api/v1/metadata/raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+        "path": "raw/c637ce73-e29b-47ec-8900-1327c02feea7",
+        "normalised_path": "raw/c637ce73-e29b-47ec-8900-1327c02feea7",
+        "uri": "http://local-tiled-app/api/v1/metadata/raw/c637ce73-e29b-47ec-8900-1327c02feea7",
+        "link_self": "http://local-tiled-app/api/v1/metadata/raw/c637ce73-e29b-47ec-8900-1327c02feea7",
         "asset_data_uris": [],
         "specs": [
           {
@@ -392,14 +392,14 @@
       "tree": [
         {
           "depth": 0,
-          "key": "ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+          "key": "c637ce73-e29b-47ec-8900-1327c02feea7",
           "ancestors": [
             "raw"
           ],
-          "path": "raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
-          "normalised_path": "raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
-          "uri": "http://local-tiled-app/api/v1/metadata/raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
-          "link_self": "http://local-tiled-app/api/v1/metadata/raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+          "path": "raw/c637ce73-e29b-47ec-8900-1327c02feea7",
+          "normalised_path": "raw/c637ce73-e29b-47ec-8900-1327c02feea7",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/c637ce73-e29b-47ec-8900-1327c02feea7",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/c637ce73-e29b-47ec-8900-1327c02feea7",
           "asset_data_uris": [],
           "specs": [
             {
@@ -414,17 +414,17 @@
         "start",
         "stop"
       ],
-      "store_start_time": 1789915807.425368,
-      "store_stop_time": 1789915807.445785,
+      "store_start_time": 1789945402.22092,
+      "store_stop_time": 1789945402.2413251,
       "store_exit_status": "fail",
       "search": {
         "from_the_store_root": [],
         "from_the_writer_root": [
-          "ea7a1b05-0db1-47c3-812a-9eb62afae2bc"
+          "c637ce73-e29b-47ec-8900-1327c02feea7"
         ]
       },
       "over_http": {
-        "url": "http://local-tiled-app/api/v1/metadata/raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+        "url": "http://local-tiled-app/api/v1/metadata/raw/c637ce73-e29b-47ec-8900-1327c02feea7",
         "status": 200,
         "envelope_keys": [
           "data",
@@ -448,7 +448,7 @@
           "structure",
           "structure_family"
         ],
-        "id": "ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+        "id": "c637ce73-e29b-47ec-8900-1327c02feea7",
         "ancestors": [
           "raw"
         ],
@@ -456,36 +456,36 @@
           "start",
           "stop"
         ],
-        "stop_time": 1789915807.445785,
+        "stop_time": 1789945402.2413251,
         "stop_exit_status": "fail",
-        "normalised_path": "raw/ea7a1b05-0db1-47c3-812a-9eb62afae2bc",
+        "normalised_path": "raw/c637ce73-e29b-47ec-8900-1327c02feea7",
         "same_key_as_the_client": true,
         "missing_status": 404
       }
     },
     "abort_from_pause": {
       "label": "abort_from_pause",
-      "raised": "BrokenPipeError: [Errno 32] Broken pipe",
+      "raised": null,
       "document_order": [
         "start",
         "stop"
       ],
-      "run_uid": "63320c0a-a52d-451e-99e8-4a573c396cd5",
-      "engine_start_time": 1789915809.050403,
-      "engine_stop_time": 1789915809.071008,
+      "run_uid": "9b613516-4cb9-4468-ab5a-67c0195b9cc5",
+      "engine_start_time": 1789945403.965711,
+      "engine_stop_time": 1789945403.986451,
       "engine_exit_status": "abort",
       "keys_under_the_writer_root": [
-        "63320c0a-a52d-451e-99e8-4a573c396cd5"
+        "9b613516-4cb9-4468-ab5a-67c0195b9cc5"
       ],
       "node": {
-        "key": "63320c0a-a52d-451e-99e8-4a573c396cd5",
+        "key": "9b613516-4cb9-4468-ab5a-67c0195b9cc5",
         "ancestors": [
           "raw"
         ],
-        "path": "raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
-        "normalised_path": "raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
-        "uri": "http://local-tiled-app/api/v1/metadata/raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
-        "link_self": "http://local-tiled-app/api/v1/metadata/raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+        "path": "raw/9b613516-4cb9-4468-ab5a-67c0195b9cc5",
+        "normalised_path": "raw/9b613516-4cb9-4468-ab5a-67c0195b9cc5",
+        "uri": "http://local-tiled-app/api/v1/metadata/raw/9b613516-4cb9-4468-ab5a-67c0195b9cc5",
+        "link_self": "http://local-tiled-app/api/v1/metadata/raw/9b613516-4cb9-4468-ab5a-67c0195b9cc5",
         "asset_data_uris": [],
         "specs": [
           {
@@ -498,14 +498,14 @@
       "tree": [
         {
           "depth": 0,
-          "key": "63320c0a-a52d-451e-99e8-4a573c396cd5",
+          "key": "9b613516-4cb9-4468-ab5a-67c0195b9cc5",
           "ancestors": [
             "raw"
           ],
-          "path": "raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
-          "normalised_path": "raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
-          "uri": "http://local-tiled-app/api/v1/metadata/raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
-          "link_self": "http://local-tiled-app/api/v1/metadata/raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+          "path": "raw/9b613516-4cb9-4468-ab5a-67c0195b9cc5",
+          "normalised_path": "raw/9b613516-4cb9-4468-ab5a-67c0195b9cc5",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/9b613516-4cb9-4468-ab5a-67c0195b9cc5",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/9b613516-4cb9-4468-ab5a-67c0195b9cc5",
           "asset_data_uris": [],
           "specs": [
             {
@@ -520,17 +520,17 @@
         "start",
         "stop"
       ],
-      "store_start_time": 1789915809.050403,
-      "store_stop_time": 1789915809.071008,
+      "store_start_time": 1789945403.965711,
+      "store_stop_time": 1789945403.986451,
       "store_exit_status": "abort",
       "search": {
         "from_the_store_root": [],
         "from_the_writer_root": [
-          "63320c0a-a52d-451e-99e8-4a573c396cd5"
+          "9b613516-4cb9-4468-ab5a-67c0195b9cc5"
         ]
       },
       "over_http": {
-        "url": "http://local-tiled-app/api/v1/metadata/raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+        "url": "http://local-tiled-app/api/v1/metadata/raw/9b613516-4cb9-4468-ab5a-67c0195b9cc5",
         "status": 200,
         "envelope_keys": [
           "data",
@@ -554,7 +554,7 @@
           "structure",
           "structure_family"
         ],
-        "id": "63320c0a-a52d-451e-99e8-4a573c396cd5",
+        "id": "9b613516-4cb9-4468-ab5a-67c0195b9cc5",
         "ancestors": [
           "raw"
         ],
@@ -562,36 +562,36 @@
           "start",
           "stop"
         ],
-        "stop_time": 1789915809.071008,
+        "stop_time": 1789945403.986451,
         "stop_exit_status": "abort",
-        "normalised_path": "raw/63320c0a-a52d-451e-99e8-4a573c396cd5",
+        "normalised_path": "raw/9b613516-4cb9-4468-ab5a-67c0195b9cc5",
         "same_key_as_the_client": true,
         "missing_status": 404
       }
     },
     "stop_from_pause": {
       "label": "stop_from_pause",
-      "raised": "BrokenPipeError: [Errno 32] Broken pipe",
+      "raised": null,
       "document_order": [
         "start",
         "stop"
       ],
-      "run_uid": "6448d0f5-2b9b-4550-9cfc-85735829268e",
-      "engine_start_time": 1789915810.832781,
-      "engine_stop_time": 1789915810.85417,
+      "run_uid": "25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
+      "engine_start_time": 1789945405.8448808,
+      "engine_stop_time": 1789945405.86625,
       "engine_exit_status": "success",
       "keys_under_the_writer_root": [
-        "6448d0f5-2b9b-4550-9cfc-85735829268e"
+        "25db3eee-0b98-4e7e-bc06-fa6f59fffc9d"
       ],
       "node": {
-        "key": "6448d0f5-2b9b-4550-9cfc-85735829268e",
+        "key": "25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
         "ancestors": [
           "raw"
         ],
-        "path": "raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
-        "normalised_path": "raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
-        "uri": "http://local-tiled-app/api/v1/metadata/raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
-        "link_self": "http://local-tiled-app/api/v1/metadata/raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+        "path": "raw/25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
+        "normalised_path": "raw/25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
+        "uri": "http://local-tiled-app/api/v1/metadata/raw/25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
+        "link_self": "http://local-tiled-app/api/v1/metadata/raw/25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
         "asset_data_uris": [],
         "specs": [
           {
@@ -604,14 +604,14 @@
       "tree": [
         {
           "depth": 0,
-          "key": "6448d0f5-2b9b-4550-9cfc-85735829268e",
+          "key": "25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
           "ancestors": [
             "raw"
           ],
-          "path": "raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
-          "normalised_path": "raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
-          "uri": "http://local-tiled-app/api/v1/metadata/raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
-          "link_self": "http://local-tiled-app/api/v1/metadata/raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+          "path": "raw/25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
+          "normalised_path": "raw/25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
+          "uri": "http://local-tiled-app/api/v1/metadata/raw/25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
+          "link_self": "http://local-tiled-app/api/v1/metadata/raw/25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
           "asset_data_uris": [],
           "specs": [
             {
@@ -626,17 +626,17 @@
         "start",
         "stop"
       ],
-      "store_start_time": 1789915810.832781,
-      "store_stop_time": 1789915810.85417,
+      "store_start_time": 1789945405.8448808,
+      "store_stop_time": 1789945405.86625,
       "store_exit_status": "success",
       "search": {
         "from_the_store_root": [],
         "from_the_writer_root": [
-          "6448d0f5-2b9b-4550-9cfc-85735829268e"
+          "25db3eee-0b98-4e7e-bc06-fa6f59fffc9d"
         ]
       },
       "over_http": {
-        "url": "http://local-tiled-app/api/v1/metadata/raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+        "url": "http://local-tiled-app/api/v1/metadata/raw/25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
         "status": 200,
         "envelope_keys": [
           "data",
@@ -660,7 +660,7 @@
           "structure",
           "structure_family"
         ],
-        "id": "6448d0f5-2b9b-4550-9cfc-85735829268e",
+        "id": "25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
         "ancestors": [
           "raw"
         ],
@@ -668,9 +668,9 @@
           "start",
           "stop"
         ],
-        "stop_time": 1789915810.85417,
+        "stop_time": 1789945405.86625,
         "stop_exit_status": "success",
-        "normalised_path": "raw/6448d0f5-2b9b-4550-9cfc-85735829268e",
+        "normalised_path": "raw/25db3eee-0b98-4e7e-bc06-fa6f59fffc9d",
         "same_key_as_the_client": true,
         "missing_status": 404
       }

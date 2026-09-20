@@ -1,0 +1,15 @@
+{
+  "documents.json": {
+    "collected": "2026-09-20",
+    "python": "3.13.12",
+    "bluesky": "1.15.1",
+    "ophyd": "1.11.2"
+  },
+  "nodes.json": {
+    "collected": "2026-09-20",
+    "python": "3.13.12",
+    "tiled": "0.2.18",
+    "bluesky": "1.15.1",
+    "ophyd": "1.11.2"
+  }
+}

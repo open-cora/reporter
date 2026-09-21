@@ -35,10 +35,10 @@ from.
 poll, and does not know whether it was called by a callback the engine
 invokes or by something pulling from a queue. That is deliberate: how this
 reporter subscribes is undecided, and the two shapes differ in who owns
-the loop rather than in what happens to a document.
+the loop rather than in what happens to a delivery.
 
 It also means the checkpoint belongs to the caller. An outcome is a
-document this reporter is finished with, so a caller may advance past it;
+delivery this reporter is finished with, so a caller may advance past it;
 an exception means the opposite. Nothing here writes a cursor, because
 where a cursor lives is the other half of the subscription decision.
 
@@ -101,7 +101,7 @@ def is_worth_retrying(status: int) -> bool:
     other refusal is about the request, and the request will be identical
     next time.
 
-    The split decides whether a document becomes an outcome the caller
+    The split decides whether a delivery becomes an outcome the caller
     can advance past, or an exception telling it not to.
     """
     return status >= 500 or status == _TOO_MANY
@@ -149,8 +149,8 @@ class Session:
     def _report(self, intent: ReportRun) -> Outcome:
         """Send a run, once its plan name resolves to a plan this holds.
 
-        A name with no entry is refused rather than authored. A start
-        document describes one invocation and carries nothing a correct
+        A name with no entry is refused rather than authored. Whatever
+        opens a run describes one invocation and carries nothing a correct
         parameter schema could be derived from, so a reporter that
         authored a plan here would be inventing a constraint and every
         later run would cite it.
@@ -209,7 +209,7 @@ class Session:
         already holds costs one request and returns the same id, because
         the retry key is derived from that address.
 
-        This is the fast path: the document that ended the run is what
+        This is the fast path: the delivery that ended the run is what
         prompts the question, so the answer is filed in the same breath.
         The slow path is `_register`, reached through `act` by anything
         that found the data some other way.

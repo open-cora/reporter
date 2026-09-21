@@ -93,6 +93,28 @@ depend on the engine. `apps/api` bans these names in prose; this bans
 them as imports, which is the failure that would actually matter.
 """
 
+ENGINE_WORDS = frozenset({"document", "descriptor", "datum", "runstart", "runstop"})
+"""Engine vocabulary that may not appear in a name off the engine side.
+
+The import rules above keep the two halves from reaching each other. This
+keeps the engine's words from drifting across while the imports stay
+clean, which is how the leak actually happened: `relay` queued a thing it
+never opens and called it a `document`, so the module that knows least
+about the engine used its vocabulary in a signature.
+
+**Identifiers only, never prose.** Three passages have to say "document"
+to make their point, and all three are explaining this very boundary:
+`session` on why `act` takes an `Intent`, `intents` on why `origin` is a
+plain string, and `relay` on why the word here is `delivery`. A prose ban
+would need a line-level allow-list for them, which is brittle and would
+be edited to silence a failure. A name is a flat fact, so the rule is
+flat.
+
+`wire` and the two entrypoints are exempt for the reason they are exempt
+above: `documents_into` names the engine on purpose, and a second engine
+gets a sibling beside it rather than a rename.
+"""
+
 EXPECTED_MODULE_COUNT = 12
 """Modules under `src/reporter`, counting `__init__` and `__main__`.
 
@@ -133,6 +155,26 @@ def outside_imports(tree: ast.Module) -> set[str]:
         elif isinstance(node, ast.Import):
             found.update(alias.name.split(".")[0] for alias in node.names)
     return found
+
+
+def identifiers_of(tree: ast.Module) -> set[str]:
+    """Every name this module declares, lowercased.
+
+    Definitions, arguments, and anything assigned. Not names it merely
+    reads, which would drag in whatever it imported and make the rule
+    about other modules' choices.
+    """
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            found.add(node.name)
+        elif isinstance(node, ast.arg):
+            found.add(node.arg)
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            found.add(node.id)
+        elif isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Store):
+            found.add(node.attr)
+    return {name.lower() for name in found}
 
 
 def test_the_scan_finds_every_module_it_should() -> None:
@@ -197,6 +239,27 @@ def test_a_module_that_reads_a_store_names_nothing_but_the_contract(name: str) -
     )
 
 
+@pytest.mark.parametrize("name", sorted(AROC_SIDE | CONTRACT | STORE_SIDE))
+def test_a_module_off_the_engine_side_keeps_engine_words_out_of_its_names(name: str) -> None:
+    """The vocabulary half of the split, which the import half missed.
+
+    `relay` held `document` in two signatures while importing nothing
+    from the engine side, so every rule above passed.
+    """
+    reached = {
+        identifier
+        for identifier in identifiers_of(modules()[name])
+        for word in ENGINE_WORDS
+        if word in identifier
+    }
+
+    assert not reached, (
+        f"`{name}` is off the engine side and declares {sorted(reached)}. "
+        "What arrives is a `delivery` and its opaque half is a `payload`; a "
+        "second engine sends neither documents nor descriptors."
+    )
+
+
 @pytest.mark.parametrize("name", sorted(ENGINE_SIDE))
 def test_a_module_that_reads_an_engine_never_names_a_store(name: str) -> None:
     """The two outward halves have nothing to say to each other.
@@ -258,6 +321,32 @@ def test_no_module_imports_aroc_itself(name: str) -> None:
         f"`{name}` imports `aroc`. This is a client of that API over HTTP, and a "
         "reporter that can reach the model directly is not a separate deployable."
     )
+
+
+def test_the_engine_word_ban_would_catch_something() -> None:
+    """A name check that matched nothing would pass on a clean tree and on
+    a tree full of leaks alike.
+
+    The first case is the leak this rule was written for, in the shape it
+    actually had. The last is the reason the check is on declarations
+    rather than on every name: a module may still read one.
+    """
+    pretend = ast.parse(
+        "def submit(self, document):\n"
+        "    self._descriptor = document\n"
+        "\n"
+        "def handle(self, payload):\n"
+        "    return other.document\n"
+    )
+
+    declared = identifiers_of(pretend)
+
+    assert {word for word in ENGINE_WORDS if word in " ".join(declared)} == {
+        "document",
+        "descriptor",
+    }
+    assert "payload" in declared
+    assert "other" not in declared
 
 
 def test_the_engine_library_ban_would_catch_something() -> None:

@@ -1,7 +1,7 @@
-"""What handling one document came to, for whoever is driving.
+"""What handling one delivery came to, for whoever is driving.
 
-The mirror of `intents`. An intent is what a document meant before
-anything was sent; an outcome is what happened when it was. Five of them,
+The mirror of `intents`. An intent is what a delivery meant before
+anything was sent; an outcome is what happened when it was. Six of them,
 and the split is by what the caller should do rather than by what
 occurred, because a subscription loop has exactly two decisions to make:
 whether to advance its checkpoint, and whether to wake somebody.
@@ -10,12 +10,12 @@ whether to advance its checkpoint, and whether to wake somebody.
     Moved        a run changed state
     Kept         a run ended, and what it produced is recorded too
     Unchanged    AROC declined, because the run is not where the
-                 document expects it to be
-    Skipped      the document said nothing about a run's life
+                 delivery expects it to be
+    Skipped      the delivery said nothing about a run's life
     Held         it said something and could not be acted on
 
 Advance the checkpoint on all six. Every one of them is settled: sending
-the same document again produces the same outcome, so there is nothing to
+the same delivery again produces the same outcome, so there is nothing to
 come back for. Only `Held` is worth waking somebody, and only some of them
 urgently.
 
@@ -26,9 +26,9 @@ else. The day it stops being cheap is the day two of them want different
 handling.
 
 What is NOT here is a retry. A request that never arrived, or one AROC
-refused with a 429 or a 5xx, raises out of `Session.handle` instead, so a
+refused with a 429 or a 5xx, raises out of `Session.act` instead, so a
 caller that swallows outcomes cannot swallow those too. The distinction is
-the one that matters for a checkpoint: an outcome means "this document is
+the one that matters for a checkpoint: an outcome means "this delivery is
 done with", and an exception means "ask me again".
 """
 
@@ -60,7 +60,7 @@ class Unchanged:
 
     Named for the effect rather than the cause, because a 409 covers two
     situations this cannot tell apart on its own: the run is already past
-    the state the document asks for, which is what a redelivery looks
+    the state the delivery asks for, which is what a redelivery looks
     like, or the run went somewhere else entirely and this is the wrong
     verb for it. `detail` carries what AROC said, which names the state
     the run is actually in, and that is what separates a harmless replay
@@ -98,7 +98,7 @@ class Kept:
     summary that misleads, not the record.
 
     `verb` is `None` when no transition arrived with the registration,
-    which is what anything other than the ending document produces: a
+    which is what anything other than the ending delivery produces: a
     sweep of a store, a backfill, a repair by hand. The two cases are
     worth telling apart in a log, because one says a run just finished and
     the other says somebody found data for a run that finished earlier.
@@ -115,10 +115,10 @@ class Kept:
 
 @dataclass(frozen=True)
 class Skipped:
-    """The document carried nothing about a run's life.
+    """The delivery carried nothing about a run's life.
 
-    Most of a stream. Descriptors, readings, and the document types that
-    exist to carry data rather than to say anything happened.
+    Most of a stream. The parts that describe what is about to be read, or
+    carry the readings themselves, rather than saying anything happened.
     """
 
     reason: str
@@ -136,7 +136,7 @@ class Held:
         no run recorded for a uid       the start never arrived. usual
                                         when a reporter joins mid-run,
                                         and a real gap otherwise.
-        a document that cannot be       a bug here, or an engine that
+        a delivery that cannot be       a bug here, or an engine that
         mapped                          grew an ending nobody knows
         AROC refused, terminally        a grant is missing, or the plan
                                         map changed mid-run

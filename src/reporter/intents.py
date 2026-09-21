@@ -1,4 +1,4 @@
-"""What translating one document produces, before anything is sent.
+"""What translating one delivery produces, before anything is sent.
 
 Five outcomes, in two groups. `ReportRun`, `Transition` and
 `RegisterDataset` each name a command AROC publishes and carry everything
@@ -19,7 +19,7 @@ not made of documents. For this translator it is a document name.
 
 Keeping these as values rather than calls is what makes the translation
 testable against a captured file. Every finding the spike printed is a
-statement about which of these four a document produces, and a value can
+statement about which of these five a delivery produces, and a value can
 be asserted where a POST cannot.
 """
 
@@ -43,7 +43,7 @@ class ReportRun:
 
     `plan_name` is the engine's handle rather than an AROC plan id, which
     is the whole of why the reporter needs a plan map: the id is not
-    derivable from anything on the document, and two AROC plans may
+    derivable from anything on the delivery, and two AROC plans may
     legitimately answer to one name.
 
     `dropped` names the `plan_args` keys that were left out. Every list
@@ -79,12 +79,12 @@ class Transition:
 
 @dataclass(frozen=True)
 class Ignored:
-    """A document with nothing in it for AROC, which is expected.
+    """A delivery with nothing in it for AROC, which is expected.
 
-    Most of a document stream is this: descriptors, data events, and the
-    several document types that exist to carry readings rather than to
-    say anything about a run's life. `reason` is filled in so a caller
-    can count what it is skipping without the skip being an event.
+    Most of a stream is this: the parts that describe what is about to be
+    read, or carry the readings themselves, rather than saying anything
+    about a run's life. `reason` is filled in so a caller can count what
+    it is skipping without the skip being an event.
     """
 
     reason: str
@@ -92,7 +92,7 @@ class Ignored:
 
 @dataclass(frozen=True)
 class Unmappable:
-    """A document this translator handles, carrying something it cannot map.
+    """A delivery this translator handles, carrying something it cannot map.
 
     Distinct from `Ignored`, and the distinction is the point. An
     unrecognised `exit_status` is either a bug here or an engine that has

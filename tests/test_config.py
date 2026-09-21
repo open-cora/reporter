@@ -25,7 +25,7 @@ WELL_FORMED = {
 }
 
 
-def test_a_well_formed_document_loads() -> None:
+def test_a_well_formed_mapping_loads() -> None:
     config = from_mapping(WELL_FORMED)
 
     assert config.token == "a-token"
@@ -48,9 +48,9 @@ def test_an_unknown_plan_name_resolves_to_nothing() -> None:
 def test_an_empty_plan_map_is_allowed() -> None:
     """A reporter stood up before its plans are authored refuses every run,
     which is a legitimate state and a loud one."""
-    document = {"aroc": dict(WELL_FORMED["aroc"]), "plans": {}}
+    settings = {"aroc": dict(WELL_FORMED["aroc"]), "plans": {}}
 
-    assert from_mapping(document).plan_ids == {}
+    assert from_mapping(settings).plan_ids == {}
 
 
 def test_a_missing_plans_table_is_the_same_as_an_empty_one() -> None:
@@ -85,17 +85,17 @@ def test_a_base_url_that_is_not_a_url_is_refused() -> None:
 def test_a_plan_id_that_is_not_an_id_is_refused_and_names_the_plan() -> None:
     """The message has to name the plan, because a map with thirty entries
     and one typo is otherwise a search."""
-    document = {"aroc": dict(WELL_FORMED["aroc"]), "plans": {"count": "not-an-id"}}
+    settings = {"aroc": dict(WELL_FORMED["aroc"]), "plans": {"count": "not-an-id"}}
 
     with pytest.raises(ConfigError, match="count"):
-        from_mapping(document)
+        from_mapping(settings)
 
 
 def test_a_plan_id_that_is_not_a_string_is_refused() -> None:
-    document = {"aroc": dict(WELL_FORMED["aroc"]), "plans": {"count": 7}}
+    settings = {"aroc": dict(WELL_FORMED["aroc"]), "plans": {"count": 7}}
 
     with pytest.raises(ConfigError, match="count"):
-        from_mapping(document)
+        from_mapping(settings)
 
 
 def test_a_file_is_read_and_parsed(tmp_path: Path) -> None:
@@ -145,7 +145,7 @@ WITH_STORE = {
 }
 
 
-def test_a_document_with_no_store_table_switches_the_dataset_leg_off() -> None:
+def test_a_mapping_with_no_store_table_switches_the_dataset_leg_off() -> None:
     """A real deployment rather than a degraded one, so it is `None` and not
     an empty configuration that would look reachable."""
     assert from_mapping(WELL_FORMED).store is None

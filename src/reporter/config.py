@@ -3,7 +3,7 @@
 Four facts about AROC, an optional fifth group about a store, and the
 interesting one is `plan_ids`.
 
-AROC identifies a plan by id. An engine's documents carry only a name, and
+AROC identifies a plan by id. What an engine sends carries only a name, and
 two AROC plans may legitimately answer to one name, so turning a name into
 an id is a choice somebody has to make. It is made here rather than by
 asking AROC, because the answer depends on which installation this
@@ -98,23 +98,23 @@ def load(path: Path) -> ReporterConfig:
     this one is not the place to grow a second source of truth.
     """
     try:
-        document: dict[str, Any] = tomllib.loads(path.read_text(encoding="utf-8"))
+        settings: dict[str, Any] = tomllib.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
         raise ConfigError(f"Cannot read {path}: {exc}") from exc
     except tomllib.TOMLDecodeError as exc:
         raise ConfigError(f"{path} is not valid TOML: {exc}") from exc
 
-    return from_mapping(document, source=str(path))
+    return from_mapping(settings, source=str(path))
 
 
-def from_mapping(document: Mapping[str, Any], *, source: str = "configuration") -> ReporterConfig:
-    """Build a configuration from an already-parsed document.
+def from_mapping(settings: Mapping[str, Any], *, source: str = "configuration") -> ReporterConfig:
+    """Build a configuration from an already-parsed mapping.
 
     Separate from `load` so the shape can be checked without a file, and
     so a deployment holding its settings somewhere else has one function
     to call rather than a format to imitate.
     """
-    aroc: Mapping[str, Any] = document.get("aroc") or {}
+    aroc: Mapping[str, Any] = settings.get("aroc") or {}
     base_url = _required_string(aroc, "base_url", source)
     token = _required_string(aroc, "token", source)
     scheme = _required_string(aroc, "external_ref_scheme", source)
@@ -125,9 +125,9 @@ def from_mapping(document: Mapping[str, Any], *, source: str = "configuration") 
     return ReporterConfig(
         base_url=base_url.rstrip("/"),
         token=token,
-        plan_ids=_plan_ids(document.get("plans") or {}, source),
+        plan_ids=_plan_ids(settings.get("plans") or {}, source),
         external_ref_scheme=scheme,
-        store=_store(document.get("store"), source),
+        store=_store(settings.get("store"), source),
     )
 
 

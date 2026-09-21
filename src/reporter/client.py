@@ -3,7 +3,7 @@
 The imperative shell on the sending side. It turns an `Intent` into a
 request and a response into either an id or a typed refusal, and it holds
 no decisions: which plan a name means comes from configuration, which
-documents matter comes from the translator.
+deliveries matter comes from the translator.
 
 ## Five calls, and the two that are not here
 
@@ -13,7 +13,7 @@ documents matter comes from the translator.
     GET  /runs?external_ref=...   which run was that, after a restart
     GET  /plans/{id}              does this configured plan exist
 
-`POST /plans` is deliberately absent. A start document describes one
+`POST /plans` is deliberately absent. Whatever opens a run describes one
 invocation and carries nothing a correct parameter schema could be derived
 from, so an adapter that authors a plan invents a constraint. The
 deployment withholds the `DefinePlan` grant as well, which makes this a
@@ -294,7 +294,7 @@ def _instant(moment: datetime | None) -> str | None:
 
     `None` travels rather than being dropped, because the field is
     optional on every run command and sending it explicitly says the
-    document carried no time. AROC then stamps the moment it was told.
+    delivery carried no time. AROC then stamps the moment it was told.
     """
     return None if moment is None else moment.isoformat()
 

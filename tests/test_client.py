@@ -105,7 +105,7 @@ def test_reporting_a_run_carries_a_key_derived_from_the_engines_own_id() -> None
 
 
 def test_a_run_with_no_time_sends_a_null_rather_than_dropping_the_field() -> None:
-    """Sending null says the document carried no time, and AROC stamps the
+    """Sending null says the delivery carried no time, and AROC stamps the
     moment it was told. Omitting the field says the same thing less clearly."""
     client, recorder = client_answering(Answer(201, {"run_id": str(A_RUN)}))
     client.report_run(a_run(occurred_at=None), A_PLAN)

@@ -1,4 +1,4 @@
-"""The relay hands documents over and never makes the engine wait.
+"""The relay hands deliveries over and never makes the engine wait.
 
 Threaded, so every test here drives it to a known point and stops it:
 `stop` drains, which is what makes the assertions deterministic rather
@@ -50,7 +50,7 @@ def relay_over(
     )
 
 
-def test_a_submitted_document_is_handled_on_the_relays_own_thread() -> None:
+def test_a_submitted_delivery_is_handled_on_the_relays_own_thread() -> None:
     relay, seen, _ = relay_over()
     relay.start()
     relay.submit("start", A_START)
@@ -59,7 +59,7 @@ def test_a_submitted_document_is_handled_on_the_relays_own_thread() -> None:
     assert [type(o).__name__ for o in seen] == ["Recorded"]
 
 
-def test_submitting_does_not_wait_for_the_previous_document() -> None:
+def test_submitting_does_not_wait_for_the_previous_delivery() -> None:
     """The property the whole module exists for: the engine's thread hands
     over and carries on while AROC is still being talked to.
 
@@ -80,7 +80,7 @@ def test_submitting_does_not_wait_for_the_previous_document() -> None:
     relay = Relay(handle, block, retry_delays=())
     relay.start()
     relay.submit("start", A_START)
-    assert started.wait(5), "The worker never picked the first document up."
+    assert started.wait(5), "The worker never picked the first delivery up."
 
     def submit_second() -> None:
         relay.submit("start", dict(A_START, uid="r2"))
@@ -96,7 +96,7 @@ def test_submitting_does_not_wait_for_the_previous_document() -> None:
 
 def test_stopping_finishes_what_is_already_queued() -> None:
     """A clean shutdown is the one moment this reporter can avoid losing
-    documents it already holds."""
+    deliveries it already holds."""
     relay, seen, _ = relay_over(Answer(201, {"run_id": str(A_RUN)}))
     relay.start()
     for index in range(5):
@@ -119,7 +119,7 @@ def test_a_full_queue_refuses_rather_than_waiting() -> None:
     assert "full" in seen[0].reason
 
 
-def test_a_dropped_document_is_reported_rather_than_lost_quietly() -> None:
+def test_a_dropped_delivery_is_reported_rather_than_lost_quietly() -> None:
     relay, seen, _ = relay_over(capacity=1)
     relay.submit("start", A_START)
     relay.submit("descriptor", {"uid": "d1", "run_start": "r1"})
@@ -128,7 +128,7 @@ def test_a_dropped_document_is_reported_rather_than_lost_quietly() -> None:
 
 
 def test_a_refusal_worth_waiting_on_is_retried() -> None:
-    """The distinction `Session.handle` draws, acted on. A 503 then a 201
+    """The distinction `Session.act` draws, acted on. A 503 then a 201
     is one Recorded, not one Held."""
     relay, seen, routed = relay_over(
         Answer(503, text="unavailable"),
@@ -144,8 +144,8 @@ def test_a_refusal_worth_waiting_on_is_retried() -> None:
 
 
 def test_retrying_stops_and_says_so_rather_than_blocking_the_queue() -> None:
-    """A worker retrying one document forever is a worker not draining the
-    ones behind it, so an outage would cost every later document too."""
+    """A worker retrying one delivery forever is a worker not draining the
+    ones behind it, so an outage would cost every later delivery too."""
     relay, seen, routed = relay_over(Answer(503, text="unavailable"), retry_delays=(0.0, 0.0))
     relay.start()
     relay.submit("start", A_START)
@@ -182,8 +182,8 @@ def test_a_request_that_never_arrived_is_retried_like_a_refusal() -> None:
     assert len(attempts) == 2
 
 
-def test_a_document_that_needs_no_call_still_reports_an_outcome() -> None:
-    """A caller counting outcomes should see every document, including the
+def test_a_delivery_that_needs_no_call_still_reports_an_outcome() -> None:
+    """A caller counting outcomes should see every delivery, including the
     ones that were never going to produce a request."""
     relay, seen, routed = relay_over()
     relay.start()
@@ -200,7 +200,7 @@ def test_stopping_a_relay_that_never_started_is_harmless() -> None:
 
 
 def test_starting_twice_is_refused_rather_than_silently_ignored() -> None:
-    """Two workers on one queue would interleave documents from one run,
+    """Two workers on one queue would interleave deliveries from one run,
     which is the one ordering this reporter needs."""
     relay, _, _ = relay_over()
     relay.start()

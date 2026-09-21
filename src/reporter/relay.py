@@ -1,11 +1,11 @@
-"""Take a document from the engine and let it go, immediately.
+"""Take a delivery from the engine and let it go, immediately.
 
 The one thing between this reporter and a stalled scan. A subscriber that
 talks to AROC inside the engine's own thread makes every scan wait on a
 network round trip, and at a facility where beamtime is the scarce thing
 that is the property that gets a reporter removed.
 
-So `submit` puts the document on a queue and returns in microseconds, and
+So `submit` puts the payload on a queue and returns in microseconds, and
 a worker thread does the talking. The engine's thread never waits on AROC,
 never waits on a retry, and never waits on a timeout.
 
@@ -14,9 +14,14 @@ The queue and the retries are the same whatever is behind them, and a
 caller composes its own engine's translator with a session rather than
 this module knowing about either.
 
+What arrives is a `name` and a payload this module never opens. A stream
+of documents is one shape that fits and not the only one, so the word
+here is `delivery`: the queue and the retries do not change when the
+engine does, and neither should the vocabulary.
+
 ## What this is not
 
-It is not durable. Documents sit in memory, and a process that dies loses
+It is not durable. Deliveries sit in memory, and a process that dies loses
 whatever was queued, with no source to replay from: the engine does not
 buffer, so a run that ended during a restart is simply never recorded.
 
@@ -32,7 +37,7 @@ The queue is bounded. An unbounded one turns an AROC outage into memory
 exhaustion, which takes the engine's host down with it, which is worse
 than anything it was protecting against. When it is full `submit` refuses
 rather than blocking, and the refusal is reported as `Held` like any other
-document that could not be acted on.
+delivery that could not be acted on.
 """
 
 import queue
@@ -46,10 +51,10 @@ from reporter.outcomes import Held, Outcome
 from reporter.stores import StoreRefusedError
 
 DEFAULT_CAPACITY: Final = 1000
-"""How many documents may wait before `submit` starts refusing.
+"""How many deliveries may wait before `submit` starts refusing.
 
 Large enough to ride out a restart of the thing on the other end, small
-enough that a long outage is noticed as dropped documents rather than as a
+enough that a long outage is noticed as dropped deliveries rather than as a
 host running out of memory. It is a guess; the number worth having is
 whatever a real stream's burst rate says.
 """
@@ -61,9 +66,9 @@ Only failures worth retrying get here: a 429 or a 5xx from AROC or from a
 store, or a request that never arrived. Everything else is already an
 outcome by the time the worker sees it.
 
-Bounded rather than forever, because a worker retrying one document
+Bounded rather than forever, because a worker retrying one delivery
 forever is a worker not draining the queue behind it, and an outage then
-costs every later document as well as this one. Four attempts over about
+costs every later delivery as well as this one. Four attempts over about
 twenty seconds rides out a restart; anything longer is what the durable
 transport above is for.
 """
@@ -72,9 +77,9 @@ _STOP: Final = object()
 
 
 Handle = Callable[[str, Mapping[str, Any]], Outcome]
-"""What the worker calls, once per document.
+"""What the worker calls, once per delivery.
 
-An outcome means the document is finished with. Raising means the
+An outcome means the delivery is finished with. Raising means the
 opposite, and only a refusal from AROC, a refusal from a store, or a
 request that did not arrive are retried, which is the contract
 `Session.act` is written to.
@@ -98,8 +103,8 @@ class Relay:
         self._queue: queue.Queue[Any] = queue.Queue(maxsize=capacity)
         self._worker: threading.Thread | None = None
 
-    def submit(self, name: str, document: Mapping[str, Any]) -> bool:
-        """Hand over a document. Never blocks, never raises.
+    def submit(self, name: str, payload: Mapping[str, Any]) -> bool:
+        """Hand over one delivery. Never blocks, never raises.
 
         Returns whether it was accepted. A caller running inside an engine
         has nothing useful to do with a `False` except carry on, which is
@@ -107,11 +112,11 @@ class Relay:
         left for the caller to notice.
         """
         try:
-            self._queue.put_nowait((name, dict(document)))
+            self._queue.put_nowait((name, dict(payload)))
         except queue.Full:
             self._on_outcome(
                 Held(
-                    "the relay queue is full, so this document was dropped "
+                    "the relay queue is full, so this delivery was dropped "
                     "and whatever it said about a run is lost",
                     name,
                 )
@@ -130,7 +135,7 @@ class Relay:
         """Finish what is queued, then stop.
 
         Draining rather than dropping, because a clean shutdown is the one
-        moment this reporter can avoid losing documents it already holds.
+        moment this reporter can avoid losing deliveries it already holds.
         A `timeout` bounds that: past it the worker is left to its daemon
         status and the process exits, which loses the remainder and is
         still better than refusing to shut down.
@@ -146,21 +151,21 @@ class Relay:
             item = self._queue.get()
             if item is _STOP:
                 return
-            name, document = item
-            self._on_outcome(self._attempt(name, document))
+            name, payload = item
+            self._on_outcome(self._attempt(name, payload))
 
-    def _attempt(self, name: str, document: Mapping[str, Any]) -> Outcome:
-        """One document, retried while retrying could still help.
+    def _attempt(self, name: str, payload: Mapping[str, Any]) -> Outcome:
+        """One delivery, retried while retrying could still help.
 
         Whatever is behind `handle` draws the line: it returns an outcome
-        when the document is finished with, and raises when asking again
+        when the delivery is finished with, and raises when asking again
         might get a different answer. This loop is the only place that
         distinction is acted on.
         """
         last = ""
         for delay in (*self._retry_delays, None):
             try:
-                return self._handle(name, document)
+                return self._handle(name, payload)
             except (RequestRefusedError, StoreRefusedError) as refusal:
                 last = str(refusal)
             except OSError as failure:

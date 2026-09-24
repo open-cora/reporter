@@ -39,6 +39,7 @@ extra_javascript:
 extra:
   hero:
     masthead: Reporter
+    align: right
     tagline: Iris, messenger of the gods
     image: assets/hero-reporter.webp
     image_small: assets/hero-reporter-1200.webp

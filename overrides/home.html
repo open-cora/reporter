@@ -15,7 +15,7 @@
 
 {% block tabs %}
   {{ super() }}
-  <div class="hero" data-name="{{ hero.masthead | lower }}">
+  <div class="hero" data-name="{{ hero.masthead | lower }}" data-align="{{ hero.align | default('left') }}">
     <img class="hero__image" fetchpriority="high" alt="{{ hero.image_alt }}"
          src="{{ hero.image | url }}"
          srcset="{{ hero.image_small | url }} 1200w, {{ hero.image | url }} 2400w"

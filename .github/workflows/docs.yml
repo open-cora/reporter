@@ -1,12 +1,11 @@
 name: Docs
 
-# Pages cannot be enabled on a private repository under the free plan, so this
-# runs only when asked. Once the repository is public, enable Pages with the
-# "GitHub Actions" source and uncomment the push trigger below.
+# Pages is enabled with the "GitHub Actions" source. Docs rebuild on every push
+# to main; workflow_dispatch is kept so a deploy can be forced without a commit.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-  # push:
-  #   branches: [main]
 
 permissions:
   contents: read

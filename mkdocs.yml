@@ -41,8 +41,8 @@ extra:
     masthead: Reporter
     align: right
     tagline: Iris, messenger of the gods
-    image: assets/hero-reporter.webp
-    image_small: assets/hero-reporter-1200.webp
+    image: assets/hero-reporter-2758.webp
+    srcset: "assets/hero-reporter-1200.webp 1200w, assets/hero-reporter-2000.webp 2000w, assets/hero-reporter-2758.webp 2758w"
     image_alt: >-
       Iris Carrying the Water of the River Styx, by Guy Head, about 1793: a winged figure in flight holding a golden ewer aloft.
     strip_label: CORA

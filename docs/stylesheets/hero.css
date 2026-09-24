@@ -6,7 +6,11 @@
   position: relative;
   overflow: hidden;
   background: #1a0b10;
-  height: clamp(420px, 46vw, 660px);
+  /* 45vw is exactly 20:9, the aspect the plates are cut to, so `cover` throws
+     nothing away between roughly 850px and 2300px of viewport. The old fixed
+     660px cap meant a 1920px screen saw only 68 percent of the plate height
+     and a 2560px screen barely half, which is what was cutting off heads. */
+  height: clamp(380px, 45vw, 1040px);
   margin-top: -1px;
 }
 

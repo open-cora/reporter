@@ -9,7 +9,7 @@
   {{ super() }}
   <link rel="preload" as="image" fetchpriority="high"
         href="{{ hero.image | url }}"
-        imagesrcset="{{ hero.image_small | url }} 1200w, {{ hero.image | url }} 2400w"
+        imagesrcset="{{ hero.srcset }}"
         imagesizes="100vw">
 {% endblock %}
 
@@ -18,7 +18,7 @@
   <div class="hero" data-name="{{ hero.masthead | lower }}" data-align="{{ hero.align | default('left') }}">
     <img class="hero__image" fetchpriority="high" alt="{{ hero.image_alt }}"
          src="{{ hero.image | url }}"
-         srcset="{{ hero.image_small | url }} 1200w, {{ hero.image | url }} 2400w"
+         srcset="{{ hero.srcset }}"
          sizes="100vw">
     <div class="hero__layer">
       <div class="md-grid hero__inner">

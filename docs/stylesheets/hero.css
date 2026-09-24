@@ -37,7 +37,14 @@
    type, so the source file is served unmodified. */
 .hero__layer {
   position: absolute;
-  inset: 0;
+  /* Co-extensive with .hero__image: the wash has to darken the same strip
+     of plate that now shows behind the transparent header and tabs, or
+     that strip reads noticeably lighter than the hero below it. */
+  top: calc(-1 * var(--topnav-height, 0px));
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(100% + var(--topnav-height, 0px));
   background:
     linear-gradient(100deg,
       rgba(20, 7, 12, 0.94) 0%,
@@ -54,7 +61,11 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: clamp(2rem, 5vw, 3.5rem);
+  /* .hero__inner's containing block is .hero__layer (its parent), which now
+     starts --topnav-height above .hero itself so the wash can reach the
+     same strip the plate does. Add that back here or the masthead slides
+     up underneath the header instead of sitting clear of it. */
+  top: calc(var(--topnav-height, 0px) + clamp(2rem, 5vw, 3.5rem));
   padding-inline: clamp(1.25rem, 3.5vw, 2.75rem);
 }
 

@@ -53,7 +53,15 @@
       rgba(20, 7, 12, 0) 100%),
     linear-gradient(to top,
       rgba(12, 6, 9, 0.88) 0%,
-      rgba(12, 6, 9, 0) 34%);
+      rgba(12, 6, 9, 0) 34%),
+    /* Caps the strip behind the header and tabs, which the side wash barely
+       reaches at the far edge (the repo link, the right end of the search
+       field). Tapers out around where the tabs bar ends so it reads as a
+       cap, not a second band across the portrait. */
+    linear-gradient(to bottom,
+      rgba(12, 6, 9, 0.85) 0%,
+      rgba(12, 6, 9, 0.35) 12%,
+      rgba(12, 6, 9, 0) 26%);
   opacity: var(--hero-fade, 1);
 }
 
@@ -156,7 +164,11 @@
       rgba(20, 7, 12, 0) 100%),
     linear-gradient(to top,
       rgba(12, 6, 9, 0.88) 0%,
-      rgba(12, 6, 9, 0) 34%);
+      rgba(12, 6, 9, 0) 34%),
+    linear-gradient(to bottom,
+      rgba(12, 6, 9, 0.85) 0%,
+      rgba(12, 6, 9, 0.35) 12%,
+      rgba(12, 6, 9, 0) 26%);
 }
 .hero[data-align="right"] .hero__inner { text-align: right; }
 .hero[data-align="right"] .hero__tagline { margin-left: auto; }

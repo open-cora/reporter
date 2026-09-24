@@ -4,7 +4,10 @@
 
 .hero {
   position: relative;
-  overflow: hidden;
+  /* Visible, not hidden: the plate now bleeds up past this box's own top
+     edge to fill the space behind the header and the Home tab, and hidden
+     would clip that sliver away. */
+  overflow: visible;
   background: #1a0b10;
   /* 45vw is exactly 20:9, the aspect the plates are cut to, so `cover` throws
      nothing away between roughly 850px and 2300px of viewport. The old fixed
@@ -16,9 +19,14 @@
 
 .hero__image {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  /* Extends above the box by the header + Home-tab height (set by
+     hero-fade.js as --topnav-height) so the plate runs from the very top of
+     the page instead of starting under them. */
+  top: calc(-1 * var(--topnav-height, 0px));
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(100% + var(--topnav-height, 0px));
   object-fit: cover;
   object-position: center center;
   display: block;
@@ -32,9 +40,9 @@
   inset: 0;
   background:
     linear-gradient(100deg,
-      rgba(20, 7, 12, 0) 0%,
-      rgba(20, 7, 12, 0) 32%,
-      rgba(20, 7, 12, 0) 66%,
+      rgba(20, 7, 12, 0.94) 0%,
+      rgba(20, 7, 12, 0.80) 32%,
+      rgba(20, 7, 12, 0.12) 66%,
       rgba(20, 7, 12, 0) 100%),
     linear-gradient(to top,
       rgba(12, 6, 9, 0.88) 0%,
@@ -131,9 +139,9 @@
 .hero[data-align="right"] .hero__layer {
   background:
     linear-gradient(260deg,
-      rgba(20, 7, 12, 0) 0%,
-      rgba(20, 7, 12, 0) 32%,
-      rgba(20, 7, 12, 0) 66%,
+      rgba(20, 7, 12, 0.94) 0%,
+      rgba(20, 7, 12, 0.80) 32%,
+      rgba(20, 7, 12, 0.12) 66%,
       rgba(20, 7, 12, 0) 100%),
     linear-gradient(to top,
       rgba(12, 6, 9, 0.88) 0%,
@@ -142,3 +150,28 @@
 .hero[data-align="right"] .hero__inner { text-align: right; }
 .hero[data-align="right"] .hero__tagline { margin-left: auto; }
 .hero[data-align="right"] .hero__strip-inner { justify-content: flex-end; }
+
+/* The header bar (logo, search, repo link) and the Home tab float over the
+   plate instead of sitting on a block of colour above it, so the painting
+   reads as one image from the very top of the page. hero-fade.js adds
+   .hero-scrolled once the page has scrolled past the hero, which is what
+   brings the bars back to their normal colour: without it the header's
+   white text would land on the plain white page underneath. */
+body:has(.hero) {
+  --nav-bg: transparent;
+}
+body.hero-scrolled:has(.hero) {
+  --nav-bg: var(--md-primary-fg-color);
+}
+body:has(.hero) .md-header,
+body:has(.hero) .md-tabs {
+  background-color: var(--nav-bg);
+  box-shadow: none;
+  border-bottom-color: transparent;
+  transition: background-color 0.2s ease;
+}
+body:has(.hero) .md-tabs {
+  /* Material only gives .md-tabs a z-index once it is positioned; static
+     tabs would otherwise paint underneath the plate bleeding up behind it. */
+  position: relative;
+}

@@ -13,34 +13,38 @@ import pytest
 
 from reporter.client import ArocClient
 from reporter.config import from_mapping
-from reporter.outcomes import Held, Outcome, Recorded, Skipped
+from reporter.outcomes import Held, Outcome, Relayed, Skipped
 from reporter.relay import DEFAULT_RETRY_DELAYS, Relay
 from reporter.session import Session
+from reporter.translate import AROC_METADATA_KEYS
 from reporter.wire import documents_into
 from tests._fakes import Answer, Routed
 
-A_PLAN = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
-A_RUN = UUID("01a0ba65-df83-7501-aa5d-3e2318ef956c")
+AN_EXECUTION = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
+A_STEP = UUID("01a0ba65-df83-7501-aa5d-3e2318ef956c")
 
-CONFIG = from_mapping(
-    {
-        "aroc": {
-            "base_url": "https://aroc.example",
-            "token": "a-token",
-            "external_ref_scheme": "engine-run-uid",
-        },
-        "plans": {"count": str(A_PLAN)},
-    }
-)
+CONFIG = from_mapping({"aroc": {"base_url": "https://aroc.example", "token": "a-token"}})
 
-A_START = {"uid": "r1", "plan_name": "count", "time": 1.0}
+_EXECUTION_KEY, _STEP_KEY = AROC_METADATA_KEYS
+A_START = {
+    "uid": "r1",
+    "plan_name": "count",
+    "time": 1.0,
+    _EXECUTION_KEY: str(AN_EXECUTION),
+    _STEP_KEY: str(A_STEP),
+}
+"""A start as it arrives when AROC dispatched the work.
+
+Carries the reference, because a start without one is skipped and a relay
+test that never sent anything would pass for the wrong reason.
+"""
 
 
 def relay_over(
     *answers: Answer, retry_delays: tuple[float, ...] = (), capacity: int = 100
 ) -> tuple[Relay, list[Outcome], Routed]:
     """A relay whose retries take no time, so the tests do not either."""
-    routed = Routed(report=list(answers) or [Answer(201, {"run_id": str(A_RUN)})], move=[])
+    routed = Routed(report=list(answers) or [Answer(204)])
     handle = documents_into(Session(ArocClient(routed, CONFIG), CONFIG))
     seen: list[Outcome] = []
     return (
@@ -56,7 +60,7 @@ def test_a_submitted_delivery_is_handled_on_the_relays_own_thread() -> None:
     relay.submit("start", A_START)
     relay.stop(timeout=5)
 
-    assert [type(o).__name__ for o in seen] == ["Recorded"]
+    assert [type(o).__name__ for o in seen] == ["Relayed"]
 
 
 def test_submitting_does_not_wait_for_the_previous_delivery() -> None:
@@ -75,7 +79,7 @@ def test_submitting_does_not_wait_for_the_previous_delivery() -> None:
         started.set()
         release.wait(5)
 
-    routed = Routed(report=[Answer(201, {"run_id": str(A_RUN)})], move=[])
+    routed = Routed(report=[Answer(204)])
     handle = documents_into(Session(ArocClient(routed, CONFIG), CONFIG))
     relay = Relay(handle, block, retry_delays=())
     relay.start()
@@ -97,14 +101,14 @@ def test_submitting_does_not_wait_for_the_previous_delivery() -> None:
 def test_stopping_finishes_what_is_already_queued() -> None:
     """A clean shutdown is the one moment this reporter can avoid losing
     deliveries it already holds."""
-    relay, seen, _ = relay_over(Answer(201, {"run_id": str(A_RUN)}))
+    relay, seen, _ = relay_over(Answer(204))
     relay.start()
     for index in range(5):
         relay.submit("start", dict(A_START, uid=f"r{index}"))
     relay.stop(timeout=5)
 
     assert len(seen) == 5
-    assert all(isinstance(o, Recorded) for o in seen)
+    assert all(isinstance(o, Relayed) for o in seen)
 
 
 def test_a_full_queue_refuses_rather_than_waiting() -> None:
@@ -129,17 +133,17 @@ def test_a_dropped_delivery_is_reported_rather_than_lost_quietly() -> None:
 
 def test_a_refusal_worth_waiting_on_is_retried() -> None:
     """The distinction `Session.act` draws, acted on. A 503 then a 201
-    is one Recorded, not one Held."""
+    is one Relayed, not one Held."""
     relay, seen, routed = relay_over(
         Answer(503, text="unavailable"),
-        Answer(201, {"run_id": str(A_RUN)}),
+        Answer(204),
         retry_delays=(0.0,),
     )
     relay.start()
     relay.submit("start", A_START)
     relay.stop(timeout=5)
 
-    assert [type(o).__name__ for o in seen] == ["Recorded"]
+    assert [type(o).__name__ for o in seen] == ["Relayed"]
     assert len(routed.calls("POST")) == 2
 
 
@@ -169,7 +173,7 @@ def test_a_request_that_never_arrived_is_retried_like_a_refusal() -> None:
             attempts.append(1)
             if len(attempts) < 2:
                 raise OSError("connection reset")
-            return Answer(201, {"run_id": str(A_RUN)})
+            return Answer(204)
 
     session = Session(ArocClient(Failing(), CONFIG), CONFIG)
     seen: list[Outcome] = []
@@ -178,7 +182,7 @@ def test_a_request_that_never_arrived_is_retried_like_a_refusal() -> None:
     relay.submit("start", A_START)
     relay.stop(timeout=5)
 
-    assert [type(o).__name__ for o in seen] == ["Recorded"]
+    assert [type(o).__name__ for o in seen] == ["Relayed"]
     assert len(attempts) == 2
 
 

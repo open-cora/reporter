@@ -8,8 +8,15 @@ the outcomes. Only the socket is fake.
 The two are composed by `documents_into`, which is the composition the
 entrypoint uses, so these exercise the wiring as well as the parts.
 
-This is what `replay.py` does by printing a report and reading it. The
-difference is that a change breaking one of these fails a run.
+## The capture is decorated, and that is the point
+
+Nothing a real engine emitted carries an AROC reference, because the
+capture was taken by driving an engine directly. `dispatched` puts the
+two keys a driver will write onto each scenario's start, which is the one
+thing invented here and the only thing a driver invents either.
+
+The undecorated capture is exercised too, because a hand-run scan
+reaching this layer must produce requests to nobody.
 """
 
 import json
@@ -22,34 +29,23 @@ import pytest
 
 from reporter.client import ArocClient, RequestRefusedError
 from reporter.config import from_mapping
-from reporter.intents import RegisterDataset, Verb
-from reporter.outcomes import Held, Kept, Moved, Outcome, Recorded, Skipped, Unchanged
+from reporter.intents import RegisterDataset, Report
+from reporter.outcomes import Held, Kept, Outcome, Relayed, Skipped, Unchanged
 from reporter.relay import Handle
 from reporter.session import ENDINGS, Session, is_worth_retrying
 from reporter.stores import Location, StoreRefusedError
+from reporter.translate import AROC_METADATA_KEYS
 from reporter.wire import documents_into
 from tests._fakes import Answer, Routed, Store
 
 CAPTURED = Path(__file__).parent / "documents.json"
 
-A_PLAN = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
-A_RUN = UUID("01a0ba65-df83-7501-aa5d-3e2318ef956c")
+AN_EXECUTION = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
+A_STEP = UUID("01a0ba65-df83-7501-aa5d-3e2318ef956c")
 
-PLAN_NAMES = ("count", "_plain_plan", "_pausing_plan", "_failing_plan")
-"""Every plan name the capture uses, so a scenario is not refused for the
-wrong reason. A deployment's map is written by an operator; this one is
-written from the fixture."""
+CONFIG = from_mapping({"aroc": {"base_url": "https://aroc.example", "token": "a-token"}})
 
-CONFIG = from_mapping(
-    {
-        "aroc": {
-            "base_url": "https://aroc.example",
-            "token": "a-token",
-            "external_ref_scheme": "engine-run-uid",
-        },
-        "plans": dict.fromkeys(PLAN_NAMES, str(A_PLAN)),
-    }
-)
+RUN_PATH = f"/executions/{AN_EXECUTION}/steps/{A_STEP}/run"
 
 
 def captured() -> dict[str, Any]:
@@ -60,9 +56,20 @@ def scenarios() -> list[str]:
     return sorted(captured())
 
 
-def deliveries(scenario: str) -> list[tuple[str, dict[str, Any]]]:
+def raw_deliveries(scenario: str) -> list[tuple[str, dict[str, Any]]]:
     entries: list[dict[str, Any]] = captured()[scenario]["documents"]
     return [(str(entry["name"]), dict(entry["doc"])) for entry in entries]
+
+
+def deliveries(scenario: str) -> list[tuple[str, dict[str, Any]]]:
+    """One scenario's documents, as they arrive when AROC dispatched it."""
+    execution_key, step_key = AROC_METADATA_KEYS
+    return [
+        (name, {**document, execution_key: str(AN_EXECUTION), step_key: str(A_STEP)})
+        if name == "start"
+        else (name, document)
+        for name, document in raw_deliveries(scenario)
+    ]
 
 
 def session_over(**answers: list[Answer]) -> tuple[Handle, Routed]:
@@ -71,11 +78,7 @@ def session_over(**answers: list[Answer]) -> tuple[Handle, Routed]:
     Defaults are the happy path, so a test overrides only the call it is
     about.
     """
-    routed = Routed(
-        report=answers.get("report") or [Answer(201, {"run_id": str(A_RUN)})],
-        move=answers.get("move") or [Answer(204)],
-        find=answers.get("find") or [Answer(200, {"items": []})],
-    )
+    routed = Routed(report=answers.get("report") or [Answer(204)])
     return documents_into(Session(ArocClient(routed, CONFIG), CONFIG)), routed
 
 
@@ -89,12 +92,13 @@ def test_the_capture_holds_scenarios_to_range_over() -> None:
 
 
 @pytest.mark.parametrize("scenario", scenarios())
-def test_a_scenario_records_one_run_and_ends_it_once(scenario: str) -> None:
+def test_a_scenario_relays_a_start_and_an_ending_and_holds_nothing(scenario: str) -> None:
     handle, _ = session_over()
     outcomes = drive(scenario, handle)
 
-    assert len([o for o in outcomes if isinstance(o, Recorded)]) == 1
-    assert len([o for o in outcomes if isinstance(o, Moved)]) >= 1
+    relayed = [o for o in outcomes if isinstance(o, Relayed)]
+    assert relayed[0].reported == "Started"
+    assert relayed[-1].reported in ENDINGS
     assert not [o for o in outcomes if isinstance(o, Held)]
 
 
@@ -104,8 +108,23 @@ def test_a_scenario_sends_one_post_per_thing_that_happened(scenario: str) -> Non
     handle, routed = session_over()
     outcomes = drive(scenario, handle)
 
-    acted = [o for o in outcomes if isinstance(o, (Recorded, Moved))]
+    acted = [o for o in outcomes if isinstance(o, Relayed)]
     assert len(routed.calls("POST")) == len(acted)
+
+
+@pytest.mark.parametrize("scenario", scenarios())
+def test_a_scenario_aroc_never_dispatched_sends_nothing_at_all(scenario: str) -> None:
+    """The undecorated capture, which is a scan somebody ran by hand.
+
+    Every document is skipped, nothing is held, and no request is built.
+    This is the layer where the quiet matters most: a `Held` here would
+    reach whoever is on call.
+    """
+    handle, routed = session_over()
+    outcomes = [handle(name, document) for name, document in raw_deliveries(scenario)]
+
+    assert all(isinstance(o, Skipped) for o in outcomes)
+    assert routed.sent == []
 
 
 def test_a_full_pause_and_resume_produces_the_outcomes_in_order() -> None:
@@ -113,14 +132,21 @@ def test_a_full_pause_and_resume_produces_the_outcomes_in_order() -> None:
 
     outcomes = drive("pause_resume_complete", handle)
 
-    assert [type(o).__name__ for o in outcomes] == [
-        "Recorded",
-        "Skipped",
-        "Moved",
-        "Moved",
-        "Moved",
+    assert [o.reported for o in outcomes if isinstance(o, Relayed)] == [
+        "Started",
+        "Paused",
+        "Resumed",
+        "Completed",
     ]
-    assert [o.verb for o in outcomes if isinstance(o, Moved)] == ["pause", "resume", "complete"]
+
+
+def test_every_report_in_a_scenario_posts_to_the_same_step() -> None:
+    """The reference is read once and carried, so every document of one run
+    reaches the same record."""
+    handle, routed = session_over()
+    drive("pause_resume_complete", handle)
+
+    assert {call.url for call in routed.calls("POST")} == {f"https://aroc.example{RUN_PATH}"}
 
 
 def test_a_descriptor_sends_nothing() -> None:
@@ -131,78 +157,54 @@ def test_a_descriptor_sends_nothing() -> None:
     assert routed.sent == []
 
 
-def test_a_run_whose_plan_is_not_configured_is_held_and_not_authored() -> None:
-    """The refusal that makes the plan map safe. An adapter cannot derive a
-    correct schema from one invocation, so a name with no entry produces
-    nothing rather than a plan nobody asked for."""
+def test_a_start_with_no_aroc_reference_is_skipped_and_not_held() -> None:
+    """Work this system did not dispatch. There is no execution to record
+    it against and no way to make one from a document."""
     handle, routed = session_over()
 
-    outcome = handle("start", {"uid": "r1", "plan_name": "unheard-of", "time": 1.0})
+    outcome = handle("start", {"uid": "r1", "plan_name": "count", "time": 1.0})
 
-    assert isinstance(outcome, Held)
-    assert "unheard-of" in outcome.reason
+    assert isinstance(outcome, Skipped)
     assert routed.sent == []
 
 
-def test_a_transition_for_a_run_aroc_never_heard_of_is_held() -> None:
-    """What a reporter joining mid-run finds: the start went to whoever was
-    listening before it. The lookup is made and comes back empty."""
-    handle, routed = session_over(find=[Answer(200, {"items": []})])
-    handle("descriptor", {"uid": "d1", "run_start": "r1"})
+def test_an_ending_for_a_run_this_stream_never_introduced_is_held() -> None:
+    """What a reporter joining mid-run finds. Unlike the design this
+    replaced there is no lookup behind it: AROC publishes no way to find a
+    step by what an engine calls the run it opened, so the report is lost
+    and says so."""
+    handle, routed = session_over()
 
     outcome = handle("stop", {"run_start": "r1", "exit_status": "success"})
 
     assert isinstance(outcome, Held)
     assert "r1" in outcome.reason
-    assert routed.calls("GET")
+    assert routed.sent == []
 
 
-def test_a_restarted_reporter_recovers_a_run_from_aroc() -> None:
-    """The whole reason the read side landed before this did. A session with
-    no memory resolves an engine uid through `GET /runs` and carries on."""
-    handle, routed = session_over(find=[Answer(200, {"items": [{"run_id": str(A_RUN)}]})])
-    handle("descriptor", {"uid": "d1", "run_start": "r1"})
+def test_nothing_in_a_whole_scenario_reads_from_aroc() -> None:
+    """The lookup is gone, and this is what says so.
 
-    outcome = handle("stop", {"run_start": "r1", "exit_status": "success"})
-
-    assert outcome == Moved(A_RUN, "complete")
-    assert len(routed.calls("GET")) == 1
-
-
-def test_a_run_reported_in_this_session_is_not_looked_up_again() -> None:
-    """The lookup is recovery, not the normal path. One per restart, not one
-    per transition."""
+    The fake raises on any GET, so a session that resolved anything would
+    fail here rather than quietly making a request nobody expects.
+    """
     handle, routed = session_over()
     drive("pause_resume_complete", handle)
 
     assert routed.calls("GET") == []
 
 
-def test_a_run_is_looked_up_again_after_it_has_ended() -> None:
-    """A finished run leaves the map, so the map tracks live runs rather
-    than growing for the life of the stream. A late document for it then
-    reads as unattributable, which is what it is."""
-    handle, routed = session_over(find=[Answer(200, {"items": []})])
-    drive("completes", handle)
-    before = len(routed.calls("GET"))
-
-    stop = next(doc for name, doc in deliveries("completes") if name == "stop")
-    handle("stop", dict(stop))
-
-    assert len(routed.calls("GET")) == before + 1
-
-
 def test_a_redelivered_ending_leaves_the_record_unchanged() -> None:
-    """The shape of a replay. AROC's 409 names the state the run is in, and
-    that is a settled answer rather than something to alert on."""
+    """The shape of a replay. AROC's 409 names the engine state it holds,
+    and that is a settled answer rather than something to alert on."""
     handle, _ = session_over(
-        move=[Answer(409, text="Run cannot be completed: it is already Completed")]
+        report=[Answer(204), Answer(409, text="has Completed from its engine")]
     )
     outcomes = drive("completes", handle)
 
     ending = outcomes[-1]
     assert isinstance(ending, Unchanged)
-    assert "already Completed" in ending.detail
+    assert "already" in ending.detail or "Completed" in ending.detail
 
 
 def test_a_refusal_the_reporter_cannot_fix_is_held_rather_than_raised() -> None:
@@ -210,10 +212,26 @@ def test_a_refusal_the_reporter_cannot_fix_is_held_rather_than_raised() -> None:
     should move past this one and be told, not retry it forever."""
     handle, _ = session_over(report=[Answer(403, text="not permitted")])
 
-    outcome = handle("start", {"uid": "r1", "plan_name": "count", "time": 1.0})
+    outcome = handle(*deliveries("completes")[0])
 
     assert isinstance(outcome, Held)
     assert "403" in outcome.reason
+
+
+def test_a_step_aroc_does_not_hold_is_held_and_names_the_path() -> None:
+    """The reference in the engine's metadata and AROC disagreeing.
+
+    There is no startup check that could have caught it, because the
+    reference arrives per document rather than from configuration. This
+    is where it surfaces.
+    """
+    handle, _ = session_over(report=[Answer(404, text="holds no step")])
+
+    outcome = handle(*deliveries("completes")[0])
+
+    assert isinstance(outcome, Held)
+    assert "404" in outcome.reason
+    assert str(A_STEP) in outcome.reason
 
 
 def test_a_refusal_that_might_pass_later_raises_so_the_caller_waits() -> None:
@@ -222,7 +240,7 @@ def test_a_refusal_that_might_pass_later_raises_so_the_caller_waits() -> None:
     handle, _ = session_over(report=[Answer(503, text="unavailable")])
 
     with pytest.raises(RequestRefusedError) as refusal:
-        handle("start", {"uid": "r1", "plan_name": "count", "time": 1.0})
+        handle(*deliveries("completes")[0])
 
     assert refusal.value.status == 503
 
@@ -249,29 +267,19 @@ def test_an_unmappable_document_is_held_and_names_the_document() -> None:
     assert routed.sent == []
 
 
-def test_the_run_a_scenario_reports_carries_the_engines_own_id() -> None:
-    """The external reference is what makes a restart recoverable, so it has
-    to be on the record rather than only in this process."""
-    handle, routed = session_over()
-    drive("real_plan", handle)
-
-    body = routed.calls("POST")[0].json or {}
-    start = next(doc for name, doc in deliveries("real_plan") if name == "start")
-    assert body["external_ref"] == {"scheme": "engine-run-uid", "value": start["uid"]}
-
-
-def test_every_ending_names_a_verb_that_exists() -> None:
+def test_every_ending_names_a_report_that_exists() -> None:
     """`ENDINGS` used to be derived from one engine's exit statuses, which
     made an AROC fact look like the engine's. Written out, it can drift, so
-    this is what stops a typo becoming a run that is never forgotten."""
-    assert set(get_args(Verb)) >= ENDINGS
+    this is what stops a typo becoming a run whose data is never asked
+    for."""
+    assert set(get_args(Report)) >= ENDINGS
 
 
-def test_a_run_is_forgotten_after_every_ending_and_no_other_verb() -> None:
-    """The set is not just well formed, it is the right one: a run ends on
-    three verbs and continues on the two that cycle."""
-    assert {"complete", "abort", "fail"} == ENDINGS
-    assert set(get_args(Verb)) - ENDINGS == {"pause", "resume"}
+def test_the_store_is_asked_after_every_ending_and_no_other_report() -> None:
+    """The set is not just well formed, it is the right one: an engine is
+    done after three of the six and carries on after the other three."""
+    assert {"Completed", "Aborted", "Failed"} == ENDINGS
+    assert set(get_args(Report)) - ENDINGS == {"Started", "Paused", "Resumed"}
 
 
 # The dataset leg. Everything above runs with no store configured, which is
@@ -281,12 +289,7 @@ A_DATASET = UUID("01a0ba66-1c41-7f02-9e48-5b7a0c6d2e19")
 
 STORE_CONFIG = from_mapping(
     {
-        "aroc": {
-            "base_url": "https://aroc.example",
-            "token": "a-token",
-            "external_ref_scheme": "engine-run-uid",
-        },
-        "plans": dict.fromkeys(PLAN_NAMES, str(A_PLAN)),
+        "aroc": {"base_url": "https://aroc.example", "token": "a-token"},
         "store": {
             "base_url": "https://store.example",
             "root": "raw",
@@ -299,19 +302,21 @@ AN_ENDING = datetime(2026, 9, 20, 11, 30, tzinfo=UTC)
 
 
 def uid_of(scenario: str) -> str:
-    start = next(doc for name, doc in deliveries(scenario) if name == "start")
+    start = next(doc for name, doc in raw_deliveries(scenario) if name == "start")
     return str(start["uid"])
+
+
+def a_session_with_store(store: Store, **answers: list[Answer]) -> tuple[Session, Routed]:
+    routed = Routed(
+        report=answers.get("report") or [Answer(204)],
+        register=answers.get("register") or [Answer(201, {"dataset_id": str(A_DATASET)})],
+    )
+    return Session(ArocClient(routed, STORE_CONFIG), STORE_CONFIG, store), routed
 
 
 def session_with_store(store: Store, **answers: list[Answer]) -> tuple[Handle, Routed]:
     """The same wiring as `session_over`, with the dataset leg switched on."""
-    routed = Routed(
-        report=answers.get("report") or [Answer(201, {"run_id": str(A_RUN)})],
-        move=answers.get("move") or [Answer(204)],
-        find=answers.get("find") or [Answer(200, {"items": []})],
-        register=answers.get("register") or [Answer(201, {"dataset_id": str(A_DATASET)})],
-    )
-    session = Session(ArocClient(routed, STORE_CONFIG), STORE_CONFIG, store)
+    session, routed = a_session_with_store(store, **answers)
     return documents_into(session), routed
 
 
@@ -320,12 +325,12 @@ def store_holding(scenario: str, *, occurred_at: datetime | None = AN_ENDING) ->
     return Store({uid: Location(path=f"raw/{uid}", occurred_at=occurred_at)})
 
 
-def test_a_session_with_no_store_never_asks_one_and_reports_the_move() -> None:
+def test_a_session_with_no_store_never_asks_one_and_reports_the_relay() -> None:
     """The default deployment, unchanged by the leg existing."""
     handle, routed = session_over()
     outcomes = drive("completes", handle)
 
-    assert isinstance(outcomes[-1], Moved)
+    assert isinstance(outcomes[-1], Relayed)
     assert not routed.calls("POST", containing="/datasets")
 
 
@@ -339,9 +344,21 @@ def test_an_ending_registers_what_the_store_holds_and_reports_it_kept() -> None:
     assert isinstance(ending, Kept)
     assert ending.dataset_id == A_DATASET
     assert ending.external_ref_value == f"raw/{uid_of('completes')}"
-    assert ending.verb == "complete"
+    assert ending.reported == "Completed"
+    assert (ending.execution_id, ending.step_id) == (AN_EXECUTION, A_STEP)
     assert store.asked == [uid_of("completes")]
     assert len(routed.calls("POST", containing="/datasets")) == 1
+
+
+def test_the_store_is_asked_by_the_engines_own_name_for_the_run() -> None:
+    """A store watching an engine files under the engine's names, so the
+    reference that travels on every report is what it is asked about."""
+    store = store_holding("completes")
+    handle, _ = session_with_store(store)
+
+    drive("completes", handle)
+
+    assert store.asked == [uid_of("completes")]
 
 
 @pytest.mark.parametrize("scenario", scenarios())
@@ -363,22 +380,24 @@ def test_a_pause_is_not_an_ending_so_nothing_is_registered_for_it() -> None:
 
     outcomes = drive("pause_resume_complete", handle)
 
-    assert [type(o).__name__ for o in outcomes if isinstance(o, (Moved, Kept))] == [
-        "Moved",
-        "Moved",
+    assert [type(o).__name__ for o in outcomes if isinstance(o, (Relayed, Kept))] == [
+        "Relayed",
+        "Relayed",
+        "Relayed",
         "Kept",
     ]
     assert len(routed.calls("POST", containing="/datasets")) == 1
 
 
-def test_the_registration_carries_the_stores_scheme_and_the_endings_moment() -> None:
+def test_the_registration_names_the_step_the_reports_named() -> None:
     handle, routed = session_with_store(store_holding("completes"))
 
     drive("completes", handle)
 
     sent = routed.calls("POST", containing="/datasets")[0]
     assert sent.json == {
-        "run_id": str(A_RUN),
+        "execution_id": str(AN_EXECUTION),
+        "step_id": str(A_STEP),
         "external_ref": {
             "scheme": "tiled-node-path",
             "value": f"raw/{uid_of('completes')}",
@@ -387,9 +406,9 @@ def test_the_registration_carries_the_stores_scheme_and_the_endings_moment() -> 
     }
 
 
-def test_the_registration_is_keyed_on_the_address_rather_than_the_run() -> None:
-    """Two datasets from one run would otherwise share a key, and the second
-    would come back holding the first one's id."""
+def test_the_registration_is_keyed_on_the_address_rather_than_the_step() -> None:
+    """Two datasets from one acquisition would otherwise share a key, and
+    the second would come back holding the first one's id."""
     handle, routed = session_with_store(store_holding("completes"))
 
     drive("completes", handle)
@@ -398,7 +417,7 @@ def test_the_registration_is_keyed_on_the_address_rather_than_the_run() -> None:
     assert sent.headers is not None
     key = sent.headers["Idempotency-Key"]
     assert key == f"register-dataset:raw/{uid_of('completes')}"
-    assert uid_of("completes") in key
+    assert str(A_STEP) not in key
 
 
 def test_a_store_holding_no_ending_still_registers_and_lets_aroc_stamp_it() -> None:
@@ -445,9 +464,9 @@ def test_a_store_having_a_bad_moment_raises_so_the_caller_waits() -> None:
         drive("completes", handle)
 
 
-def test_aroc_refusing_the_registration_is_held_after_the_run_has_moved() -> None:
+def test_aroc_refusing_the_registration_is_held_after_the_report_landed() -> None:
     """The cost of one outcome per intent, pinned rather than left to be
-    discovered: the move happened and the summary will not say so."""
+    discovered: the report landed and the summary will not say so."""
     handle, routed = session_with_store(
         store_holding("completes"), register=[Answer(403, text="not permitted")]
     )
@@ -456,8 +475,8 @@ def test_aroc_refusing_the_registration_is_held_after_the_run_has_moved() -> Non
 
     ending = outcomes[-1]
     assert isinstance(ending, Held)
-    assert not [o for o in outcomes if isinstance(o, Moved)]
-    assert len(routed.calls("POST", containing="/runs/")) == 1
+    assert not [o for o in outcomes if isinstance(o, Relayed) and o.reported == "Completed"]
+    assert len(routed.calls("POST", containing="/run")) == 2
 
 
 def test_a_redelivered_ending_still_registers_the_dataset() -> None:
@@ -465,7 +484,7 @@ def test_a_redelivered_ending_still_registers_the_dataset() -> None:
     data. The retry key makes asking again free."""
     handle, routed = session_with_store(
         store_holding("completes"),
-        move=[Answer(409, text="Run cannot be completed: it is already Completed")],
+        report=[Answer(204), Answer(409, text="has Completed from its engine")],
     )
 
     outcomes = drive("completes", handle)
@@ -476,7 +495,9 @@ def test_a_redelivered_ending_still_registers_the_dataset() -> None:
 
 def test_a_redelivered_ending_the_store_lost_reports_the_decline_it_got() -> None:
     """With nothing to register, the 409 is still the answer worth giving."""
-    handle, _ = session_with_store(Store(), move=[Answer(409, text="already Completed")])
+    handle, _ = session_with_store(
+        Store(), report=[Answer(204), Answer(409, text="has Completed from its engine")]
+    )
 
     outcomes = drive("completes", handle)
 
@@ -487,88 +508,56 @@ def test_a_store_lookup_without_a_store_table_is_refused_at_construction() -> No
     """The two halves of the configuration cannot disagree, because one of
     them carries the scheme the other's addresses belong to."""
     with pytest.raises(ValueError, match="store"):
-        Session(ArocClient(Routed(report=[], move=[]), CONFIG), CONFIG, Store())
+        Session(ArocClient(Routed(), CONFIG), CONFIG, Store())
 
 
-def a_session_with_store(store: Store, **answers: list[Answer]) -> tuple[Session, Routed]:
-    """The session itself, not wrapped in a translator.
-
-    The slow path has no documents in it, so there is nothing to
-    translate. What reaches `act` was built by whatever went looking.
-    """
-    routed = Routed(
-        report=answers.get("report") or [Answer(201, {"run_id": str(A_RUN)})],
-        move=answers.get("move") or [Answer(204)],
-        find=answers.get("find") or [Answer(200, {"items": []})],
-        register=answers.get("register") or [Answer(201, {"dataset_id": str(A_DATASET)})],
-    )
-    return Session(ArocClient(routed, STORE_CONFIG), STORE_CONFIG, store), routed
-
-
-def a_found_dataset(uid: str = "r1") -> RegisterDataset:
+def a_found_dataset(step_id: UUID = A_STEP) -> RegisterDataset:
     return RegisterDataset(
-        run_uid=uid,
-        external_ref_value=f"raw/{uid}",
+        execution_id=AN_EXECUTION,
+        step_id=step_id,
+        external_ref_value="raw/r1",
         occurred_at=AN_ENDING,
         origin="a sweep",
     )
 
 
-def test_a_dataset_found_on_its_own_is_filed_against_the_run_it_names() -> None:
+def test_a_dataset_found_on_its_own_is_filed_against_the_step_it_names() -> None:
     """The slow path, and the reason `RegisterDataset` is in `intents`.
 
     Nothing here saw a document. Something swept a store, found data, and
-    said so, and the session resolved the run and filed it exactly as the
-    ending document's path would have.
+    said so, naming the acquisition it belongs to, and the session filed
+    it exactly as the ending document's path would have.
     """
-    session, routed = a_session_with_store(
-        store_holding("completes"), find=[Answer(200, {"items": [{"run_id": str(A_RUN)}]})]
-    )
+    session, routed = a_session_with_store(store_holding("completes"))
 
     outcome = session.act(a_found_dataset())
 
-    assert outcome == Kept(A_RUN, None, A_DATASET, "raw/r1")
+    assert outcome == Kept(AN_EXECUTION, A_STEP, None, A_DATASET, "raw/r1")
     assert routed.calls("POST", containing="/datasets")
 
 
-def test_a_dataset_found_on_its_own_carries_no_verb() -> None:
+def test_a_dataset_found_on_its_own_carries_no_report() -> None:
     """What separates the two paths in a log: one says a run just ended,
     the other says somebody found data for a run that ended earlier."""
-    session, _ = a_session_with_store(
-        store_holding("completes"), find=[Answer(200, {"items": [{"run_id": str(A_RUN)}]})]
-    )
+    session, _ = a_session_with_store(store_holding("completes"))
 
     found = session.act(a_found_dataset())
     fast = drive("completes", documents_into(a_session_with_store(store_holding("completes"))[0]))
 
-    assert isinstance(found, Kept) and found.verb is None
-    assert isinstance(fast[-1], Kept) and fast[-1].verb == "complete"
+    assert isinstance(found, Kept) and found.reported is None
+    assert isinstance(fast[-1], Kept) and fast[-1].reported == "Completed"
 
 
-def test_a_dataset_for_a_run_aroc_never_heard_of_is_held() -> None:
-    """A sweep reaching data whose run was never reported. Worth an alert
-    rather than a guess, because the join is the whole record."""
-    session, routed = a_session_with_store(
-        store_holding("completes"), find=[Answer(200, {"items": []})]
-    )
-
-    outcome = session.act(a_found_dataset())
-
-    assert isinstance(outcome, Held)
-    assert "r1" in outcome.reason
-    assert not routed.calls("POST", containing="/datasets")
-
-
-def test_a_dataset_found_on_its_own_resolves_the_run_through_aroc() -> None:
-    """The lookup the slow path depends on entirely. It holds no memory of
-    a run, because it never saw one start."""
-    session, routed = a_session_with_store(
-        store_holding("completes"), find=[Answer(200, {"items": [{"run_id": str(A_RUN)}]})]
-    )
+def test_a_dataset_found_on_its_own_resolves_nothing() -> None:
+    """The lookup the slow path used to depend on entirely is gone. A
+    caller that cannot name the acquisition has nothing to file against,
+    so it names one, and this asks AROC nothing before posting."""
+    session, routed = a_session_with_store(store_holding("completes"))
 
     session.act(a_found_dataset())
 
-    assert len(routed.calls("GET")) == 1
+    assert routed.calls("GET") == []
+    assert len(routed.calls("POST")) == 1
 
 
 def test_both_ways_in_send_the_same_request() -> None:
@@ -579,12 +568,14 @@ def test_both_ways_in_send_the_same_request() -> None:
     fast_session, fast_routed = a_session_with_store(store_holding("completes"))
     drive("completes", documents_into(fast_session))
 
-    slow_session, slow_routed = a_session_with_store(
-        store_holding("completes"), find=[Answer(200, {"items": [{"run_id": str(A_RUN)}]})]
-    )
+    slow_session, slow_routed = a_session_with_store(store_holding("completes"))
     slow_session.act(
         RegisterDataset(
-            run_uid=uid, external_ref_value=f"raw/{uid}", occurred_at=AN_ENDING, origin="a sweep"
+            execution_id=AN_EXECUTION,
+            step_id=A_STEP,
+            external_ref_value=f"raw/{uid}",
+            occurred_at=AN_ENDING,
+            origin="a sweep",
         )
     )
 

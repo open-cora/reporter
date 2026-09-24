@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from gc import collect
 from pathlib import Path
 from signal import SIGTERM, getsignal, signal
-from uuid import UUID, uuid4
+from uuid import UUID
 from weakref import ref
 
 import httpx
@@ -19,14 +19,13 @@ from reporter.__main__ import (
     Tally,
     drive,
     main,
-    plans_aroc_does_not_hold,
     stop_on_termination,
     store_lookup,
     store_that_does_not_answer,
 )
 from reporter.client import ArocClient
 from reporter.config import ReporterConfig, from_mapping
-from reporter.outcomes import Held, Moved, Outcome, Recorded, Skipped, Unchanged
+from reporter.outcomes import Held, Outcome, Relayed, Skipped, Unchanged
 from reporter.relay import Relay
 from reporter.session import Session
 from reporter.sources import DecodeError, Delivery
@@ -34,40 +33,13 @@ from reporter.stores import HttpStoreLookup
 from reporter.wire import documents_into
 from tests._fakes import Answer, Recorder, Routed
 
-A_PLAN = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
-A_RUN = UUID("01a0ba65-df83-7501-aa5d-3e2318ef956c")
+AN_EXECUTION = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
+A_STEP = UUID("01a0ba65-df83-7501-aa5d-3e2318ef956c")
 CAPTURED = Path(__file__).parent / "documents.json"
 
 
-def a_config(**plans: str) -> ReporterConfig:
-    return from_mapping(
-        {
-            "aroc": {
-                "base_url": "https://aroc.example",
-                "token": "a-token",
-                "external_ref_scheme": "engine-run-uid",
-            },
-            "plans": plans or {"count": str(A_PLAN)},
-        }
-    )
-
-
-def test_a_plan_aroc_does_not_hold_is_named_before_anything_is_sent() -> None:
-    """The check that turns a typo in the plan map into a message at
-    startup rather than a 404 at whatever hour that plan first runs."""
-    config = a_config(count=str(A_PLAN), scan=str(uuid4()))
-    routed = Routed(report=[], move=[], find=[Answer(200, {}), Answer(404, text="not found")])
-
-    missing = plans_aroc_does_not_hold(ArocClient(routed, config), config)
-
-    assert missing == ["scan"]
-
-
-def test_every_plan_present_leaves_nothing_to_name() -> None:
-    config = a_config()
-    routed = Routed(report=[], move=[], find=[Answer(200, {})])
-
-    assert plans_aroc_does_not_hold(ArocClient(routed, config), config) == []
+def a_config() -> ReporterConfig:
+    return from_mapping({"aroc": {"base_url": "https://aroc.example", "token": "a-token"}})
 
 
 def tallied(*outcomes: Outcome) -> int:
@@ -82,9 +54,9 @@ def test_a_run_with_nothing_held_succeeds() -> None:
     Unchanged, which is what replaying documents AROC has seen looks like."""
     assert (
         tallied(
-            Recorded(A_RUN, "r1"),
-            Moved(A_RUN, "complete"),
-            Unchanged(A_RUN, "complete", "already Completed"),
+            Relayed(AN_EXECUTION, A_STEP, "Started"),
+            Relayed(AN_EXECUTION, A_STEP, "Completed"),
+            Unchanged(AN_EXECUTION, A_STEP, "Completed", "has Completed from its engine"),
             Skipped("a descriptor"),
         )
         == 0
@@ -92,7 +64,13 @@ def test_a_run_with_nothing_held_succeeds() -> None:
 
 
 def test_a_run_holding_anything_fails() -> None:
-    assert tallied(Recorded(A_RUN, "r1"), Held("no plan configured", "start")) == 1
+    assert (
+        tallied(
+            Relayed(AN_EXECUTION, A_STEP, "Started"),
+            Held("the store holds nothing for run r1", "stop"),
+        )
+        == 1
+    )
 
 
 def test_an_empty_run_succeeds() -> None:
@@ -105,9 +83,9 @@ def test_a_held_outcome_is_reported_when_it_happens(capsys: pytest.CaptureFixtur
     """A subscription runs for as long as the engine does, so an alert it
     keeps until shutdown is an alert nobody reads."""
     tally = Tally()
-    tally.record(Held("no plan configured for 'scan'", "start"))
+    tally.record(Held("the store holds nothing for run r1", "stop"))
 
-    assert "no plan configured for 'scan'" in capsys.readouterr().err
+    assert "the store holds nothing for run r1" in capsys.readouterr().err
 
 
 def test_a_tally_lets_go_of_every_outcome_it_counts() -> None:
@@ -201,7 +179,7 @@ def an_idle_relay() -> Relay:
     than about what happens to the documents in it.
     """
     config = a_config()
-    handle = documents_into(Session(ArocClient(Routed(report=[], move=[]), config), config))
+    handle = documents_into(Session(ArocClient(Routed(), config), config))
     return Relay(handle, lambda _: None)
 
 
@@ -228,12 +206,7 @@ def test_a_stream_that_simply_ends_is_not_a_problem() -> None:
 def a_store_config(**overrides: str) -> ReporterConfig:
     return from_mapping(
         {
-            "aroc": {
-                "base_url": "https://aroc.example",
-                "token": "a-token",
-                "external_ref_scheme": "engine-run-uid",
-            },
-            "plans": {"count": str(A_PLAN)},
+            "aroc": {"base_url": "https://aroc.example", "token": "a-token"},
             "store": {
                 "base_url": "https://store.example",
                 "root": "raw",
@@ -245,7 +218,7 @@ def a_store_config(**overrides: str) -> ReporterConfig:
 
 
 def test_no_store_table_means_no_lookup_and_nothing_to_check() -> None:
-    config = a_config(count=str(A_PLAN))
+    config = a_config()
 
     assert store_lookup(Recorder([]), config) is None
     assert store_that_does_not_answer(None, config) is None
@@ -278,7 +251,7 @@ def test_a_store_that_refuses_stops_the_run_and_names_the_store() -> None:
 
 def test_a_store_that_cannot_be_reached_at_all_stops_the_run() -> None:
     """Worth refusing to start over, because the alternative is a reporter
-    that records every run and quietly files no data."""
+    that relays every report and quietly files no data."""
 
     class Unreachable:
         def get(self, url: str) -> Answer:

@@ -8,28 +8,30 @@ tested. A replay proves the whole path with only the engine simulated, and
 it keeps doing that after a live subscription exists: it needs no beamline
 and it is the same shipped code either way.
 
-The difference between them is only that a subscription does not end. Both
-load configuration, check every configured plan against AROC before
-anything moves, and put each document through the translator and the relay.
+The difference between them is only that a subscription does not end.
+Both load configuration, check a configured store answers, and put each
+document through the translator and the relay.
 
 ## A third way to run this, which is not a command
 
 Inside the engine's own process, `Relay.submit` is the subscription
 callback and nothing here is involved. The README has the recipe.
 
-## The startup checks earn their place here
+## The startup check earns its place here
 
-Every plan in the map is looked up before the first document moves. A
-typo in a plan id otherwise fails on the first run of that plan, at
-whatever hour that is, with a 404 that reads like an AROC problem rather
-than a configuration one.
+A configured store is reached for once before the first document moves.
+All it asks is whether something answers where the writer is supposed to
+be pointed; whether runs actually land there is not knowable before one
+does. A store that cannot be reached at all is worth refusing to start
+over, because the alternative is a reporter that relays every report and
+quietly files no data.
 
-A configured store is reached for once, in the same spirit and with a
-weaker claim. All it asks is whether something answers where the writer
-is supposed to be pointed; whether runs actually land there is not
-knowable before one does. A store that cannot be reached at all is worth
-refusing to start over, because the alternative is a reporter that
-records every run and quietly files no data.
+There used to be a second check, looking up every configured plan id.
+It went with the plan map: this reporter resolves nothing now, so there
+is no configured reference left that AROC could fail to recognise. What
+replaces it is not a startup check at all, because the reference arrives
+per document: an execution or step AROC does not hold comes back as a
+404 on the report, and is `Held`.
 
 ## Durability, stated rather than discovered
 
@@ -38,6 +40,11 @@ subscription has nothing behind it to ask again. Kill this process and
 whatever was queued is gone, along with whatever was published while it
 was down. That is at-most-once, and closing it needs a transport that
 keeps a log rather than anything here.
+
+Restarting costs more than it used to, and the extra cost is in
+`translate`: the AROC reference for a run in flight lives in the
+translator and cannot be recovered, so a scan that was running through a
+restart is reported on no further.
 """
 
 import argparse
@@ -119,11 +126,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     unreadable: str | None = None
     with httpx.Client(timeout=REQUEST_TIMEOUT_SECONDS) as http:
         client = ArocClient(http, config)
-        missing = plans_aroc_does_not_hold(client, config)
-        if missing:
-            print(f"configuration: AROC holds no plan for {', '.join(missing)}", file=sys.stderr)
-            return 2
-
         store = store_lookup(http, config)
         unreachable = store_that_does_not_answer(store, config)
         if unreachable is not None:
@@ -179,7 +181,7 @@ def drive(documents: Iterator[Delivery], relay: Relay) -> str | None:
 def _parse(argv: Sequence[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="reporter",
-        description="Turn one engine's documents into AROC's run commands.",
+        description="Relay one engine's documents to AROC as step-run reports.",
     )
     parser.add_argument("--config", type=Path, required=True, help="path to reporter.toml")
 
@@ -206,12 +208,6 @@ def _parse(argv: Sequence[str] | None) -> argparse.Namespace:
     if arguments.prefix and arguments.subscribe is None:
         parser.error("--prefix selects among publishers, so it needs --subscribe")
     return arguments
-
-
-def plans_aroc_does_not_hold(client: ArocClient, config: ReporterConfig) -> list[str]:
-    return sorted(
-        name for name, plan_id in config.plan_ids.items() if not client.plan_exists(plan_id)
-    )
 
 
 def store_lookup(http: StoreHttpClient, config: ReporterConfig) -> StoreLookup | None:

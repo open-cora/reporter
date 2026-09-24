@@ -1,10 +1,21 @@
-"""Turns one engine's document stream into AROC's run commands.
+"""Relays one engine's document stream to AROC as step-run reports.
 
-A client of AROC, not a part of it. The direction Execution commits to is
-reported: an engine runs a routine and something tells AROC afterwards. So
-the dependency arrow points into AROC, and a thing that calls an HTTP API
-needs a URL and a token rather than a port declared for it. Nothing in
-`apps/api` imports this package and nothing here imports `aroc`.
+A client of AROC, not a part of it. The dependency arrow points into
+AROC, and a thing that calls an HTTP API needs a URL and a token rather
+than a port declared for it. Nothing in `apps/api` imports this package
+and nothing here imports `aroc`.
+
+**This reporter creates nothing.** AROC composes a procedure, dispatches
+an execution, and whatever drives that execution carries the step's AROC
+ids into the engine's own metadata. What arrives here is an engine
+talking about work this system already wrote down, so every intent names
+a record that exists and none of them brings one into being. That is the
+whole of what changed when Execution stopped recording runs, and it is
+why there is no plan map, no external-reference lookup, and no command
+here that can be refused for naming something AROC has never heard of.
+
+A document with no AROC reference is a scan somebody ran by hand. It is
+skipped, and `translate` says why that is quiet rather than loud.
 
 Two halves that do not import each other. `Translator` turns one engine's
 documents into the intents in `intents`, and `Session` acts on an intent
@@ -16,9 +27,10 @@ handing a document over waits on nothing, and `sources` is where documents
 come from: a live engine publishing over 0MQ, or a capture on disk.
 
 `stores` is the second thing this reads and the reason it reports into two
-bounded contexts rather than one. An engine says a run happened; a store
-says where the data it produced is being kept. A deployment with no store
-configured leaves the whole of that leg switched off.
+bounded contexts rather than one. An engine says what it did to one
+step's run; a store says where the data that step produced is being kept.
+A deployment with no store configured leaves the whole of that leg
+switched off.
 
 What is still missing is durability. Nothing remembers how far it has
 read, and nothing it is subscribed to remembers either, so a document
@@ -31,19 +43,17 @@ from reporter.client import (
     RequestRefusedError,
     Response,
     dataset_key_for,
-    idempotency_key_for,
 )
 from reporter.config import ConfigError, ReporterConfig, StoreConfig, from_mapping, load
 from reporter.intents import (
     Ignored,
     Intent,
     RegisterDataset,
-    ReportRun,
-    Transition,
+    Report,
+    ReportStepRun,
     Unmappable,
-    Verb,
 )
-from reporter.outcomes import Held, Kept, Moved, Outcome, Recorded, Skipped, Unchanged
+from reporter.outcomes import Held, Kept, Outcome, Relayed, Skipped, Unchanged
 from reporter.relay import Handle, Relay
 from reporter.session import Session, is_worth_retrying
 from reporter.sources import DecodeError, Delivery, from_capture, from_subscription
@@ -54,10 +64,11 @@ from reporter.stores import (
     StoreRefusedError,
     node_path,
 )
-from reporter.translate import Translator, engine_instant
+from reporter.translate import AROC_METADATA_KEYS, Translator, aroc_reference, engine_instant
 from reporter.wire import documents_into
 
 __all__ = [
+    "AROC_METADATA_KEYS",
     "ArocClient",
     "ConfigError",
     "DecodeError",
@@ -70,12 +81,12 @@ __all__ = [
     "Intent",
     "Kept",
     "Location",
-    "Moved",
     "Outcome",
-    "Recorded",
     "RegisterDataset",
     "Relay",
-    "ReportRun",
+    "Relayed",
+    "Report",
+    "ReportStepRun",
     "ReporterConfig",
     "RequestRefusedError",
     "Response",
@@ -84,18 +95,16 @@ __all__ = [
     "StoreConfig",
     "StoreLookup",
     "StoreRefusedError",
-    "Transition",
     "Translator",
     "Unchanged",
     "Unmappable",
-    "Verb",
+    "aroc_reference",
     "dataset_key_for",
     "documents_into",
     "engine_instant",
     "from_capture",
     "from_mapping",
     "from_subscription",
-    "idempotency_key_for",
     "is_worth_retrying",
     "load",
     "node_path",

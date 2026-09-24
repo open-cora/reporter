@@ -1,20 +1,38 @@
 # Reporter
 
-Turns one engine's document stream into AROC's run commands, and says
-where the data those runs produced is being kept.
+Relays one engine's document stream to AROC as reports about the steps
+AROC dispatched, and says where the data those steps produced is being
+kept.
 
 **Runs, against a live engine.** `python -m reporter --subscribe` reads
-documents off a real engine's 0MQ stream and reports the runs to AROC, and
-it has. It also replays a capture, which is how it is tested without a
-beamline. What is still missing is durability: see
+documents off a real engine's 0MQ stream and reports to AROC, and it has.
+It also replays a capture, which is how it is tested without a beamline.
+What is still missing is durability: see
 [What is missing](#what-is-missing).
 
 ## What it is, and what it is not
 
-A client of AROC, not a part of it. Execution's near-term direction is
-*reported*: an engine runs a routine, and afterwards something tells AROC
-that it did. That arrow points into AROC, so this is a thing that calls an
-HTTP API rather than an adapter behind a port AROC declares.
+A client of AROC, not a part of it. It calls an HTTP API rather than
+sitting behind a port AROC declares.
+
+**It creates nothing.** AROC composes a Procedure, dispatches an
+Execution, and whatever drives that execution carries the step's AROC ids
+into the engine's own metadata. What arrives here is an engine talking
+about work this system already wrote down, so every request names a
+record that exists.
+
+That is a change from the design this replaced, where a start document
+became a Run that AROC had never heard of. Three things went with it: the
+plan map, the external-reference lookup that found a run again after a
+restart, and the startup check over both. What replaces them is a pair of
+ids on the delivery.
+
+**A document with no AROC reference is skipped.** It is a scan somebody
+ran by hand, it is real work, and there is nothing here to record it
+against. Quiet rather than loud, because the alternative fires on every
+document of every hand-run scan and teaches whoever is watching to ignore
+the channel. Nothing is destroyed and a reported shape could be added
+later.
 
 Two consequences worth stating, because both look like accidents:
 
@@ -40,16 +58,17 @@ rather than one this paragraph makes.
    reads one engine            the vocabulary          talks to AROC
    ----------------            --------------          -------------
    sources.py                                          client.py
-     a live 0MQ stream                                   report_run
-     or a capture                                        move_run
-        |                                                find_run
-        v                                                plan_exists
+     a live 0MQ stream                                   report_step_run
+     or a capture                                        register_dataset
+        |
+        v
    translate.py  ---------->  intents.py  <----------  session.py
-     start        ---->         ReportRun    ---->       POST /runs
-     event(pause) ---->         Transition   ---->       POST /runs/{id}/pause
-     stop         ---->         Transition   ---->       POST /runs/{id}/complete
-     descriptor   ---->         Ignored                (nothing is sent)
-     exit_status? ---->         Unmappable             (nothing is sent, loudly)
+     start        ---->      ReportStepRun    ---->     POST .../run Started
+     event(pause) ---->      ReportStepRun    ---->     POST .../run Paused
+     stop         ---->      ReportStepRun    ---->     POST .../run Completed
+     descriptor   ---->      Ignored                  (nothing is sent)
+     no reference ---->      Ignored                  (nothing is sent)
+     exit_status? ---->      Unmappable               (nothing is sent, loudly)
                                                           |
                                              stores.py <--+  on an ending
                                                locate(uid)
@@ -57,12 +76,17 @@ rather than one this paragraph makes.
                                                   +---->    POST /datasets
                                                           |
                                outcomes.py  <-------------+
-                                 Recorded Moved Kept
+                                 Relayed Kept
                                  Unchanged Skipped Held
 
                     wire.py   documents_into(session)
                               the only module that names both halves
 ```
+
+The one path is `POST /executions/{id}/steps/{id}/run`, with the verb in
+the body. That is AROC's choice made for this caller: a reporter turns
+each document into whichever of six reports it is, so a path per verb
+would make it build a URL by lookup.
 
 `stores.py` is the third outside system and sits on neither side. The two
 outward halves differ in direction: an engine pushes, so its translator is
@@ -83,32 +107,33 @@ was a function signature.
 
 ## Two bounded contexts, one process
 
-A stop means two things now: the run finished, and the data it produced
-exists somewhere. So an ending asks the store where, and reports both.
+A stop means two things: the engine's run finished, and the data that
+acquisition produced exists somewhere. So an ending asks the store where,
+and reports both.
 
 ```
    engine  --+
-             +-->  [ this reporter ]  -->  Execution   POST /runs/{id}/complete
+             +-->  [ this reporter ]  -->  Execution   POST .../run Completed
    store   --+                        -->  Custody     POST /datasets
 ```
 
-One process rather than two, because the two are joined by an id. A
-dataset cites a run by AROC's id for it, and resolving the engine's uid to
-that id is what this reporter already does for a transition. Split them
-and the second process is racing the first for the record it needs.
+One process rather than two, because the two name the same step. A
+dataset cites the acquisition that produced it, which is the acquisition
+the report is about, so the delivery that ends a run is the delivery that
+knows where to ask about its data.
 
 **The dataset leg is optional.** No `[store]` table means no lookup, no
 `POST /datasets`, and everything else exactly as before. That is a
 deployment rather than a degraded one: a facility whose engine writes
 somewhere this cannot see should record runs and say nothing about data.
 
-**`Kept` replaces `Moved` for an ending** rather than arriving beside it,
-because one intent gets one outcome. The cost is worth knowing before
-reading a tally: when the run moves and the dataset cannot be registered,
-the single outcome has to be `Held`, so a session run against a store that
-is down reports no `Moved` at all even though every run moved. The moves
-are in AROC either way and `Held` names the store as it happens. It is the
-summary that misleads, not the record.
+**`Kept` replaces `Relayed` for an ending** rather than arriving beside
+it, because one intent gets one outcome. The cost is worth knowing before
+reading a tally: when the report lands and the dataset cannot be
+registered, the single outcome has to be `Held`, so a session run against
+a store that is down reports no `Relayed` at all even though every report
+landed. The reports are in AROC either way and `Held` names the store as
+it happens. It is the summary that misleads, not the record.
 
 **Subscribe the writer first.** Both callbacks run on the engine's thread
 in the order they were subscribed, so a reporter subscribed after the
@@ -119,22 +144,37 @@ in-process only: over a message bus this really is a race.
 
 ## Why the translator holds state
 
+Two maps, and the second is the one that matters more.
+
 An `event` document does not name its run. It names a descriptor, and only
 the `descriptor` document carries `run_start`:
 
 ```
-   start       uid ------------------+
-   descriptor  uid, run_start -------+--> descriptor uid -> run uid
-   event       descriptor -----------+
+   start       uid, aroc_execution_id, aroc_step_id  --+
+   descriptor  uid, run_start -------------------------+-> descriptor -> run
+   event       descriptor -----------------------------+-> run -> the step
    stop        run_start
 ```
 
-So `Translator` keeps a descriptor index and forgets a run's entries when
-its `stop` arrives. It is still a pure core: what it holds is knowledge
-the stream already delivered, not anything read from outside.
+And only the `start` carries the AROC reference, so what the start said
+has to be remembered until the stop. That includes a start that said
+nothing: the map records `None` for a run that is not this system's,
+because otherwise the pause and the stop of a hand-run scan would each
+produce an alert while the start was quiet.
+
+So `Translator` keeps both and forgets a run's entries when its `stop`
+arrives. It is still a pure core: what it holds is knowledge the stream
+already delivered, not anything read from outside.
 
 The spike this replaces tracked "the run we are currently walking"
 instead, which held only because it replayed one scenario at a time.
+
+**Restarting mid-scan loses the runs in flight.** The old design
+recovered from AROC, because a run could be found by its external
+reference. A step cannot: AROC publishes no lookup from what an engine
+calls a run to the step that opened it. So the remaining documents of
+that scan are `Held`, loudly, and closing it needs a query AROC does not
+have.
 
 ## The two fixtures
 
@@ -234,10 +274,6 @@ claim is that it is not the engine.
 [aroc]
 base_url = "https://aroc.example"
 token = "..."
-external_ref_scheme = "engine-run-uid"
-
-[plans]
-count = "01a0ba64-8f95-7ad1-a7a7-44124ff3afd5"
 
 [store]
 base_url = "https://store.example"
@@ -245,16 +281,15 @@ root = "raw"
 external_ref_scheme = "tiled-node-path"
 ```
 
-The plan map is the interesting part, and it is here rather than in AROC
-on purpose. AROC identifies a plan by id; a document carries only a name;
-and two AROC plans may legitimately answer to one name, so turning a name
-into an id depends on which installation this reporter serves. AROC does
-not know that and nothing on the two records would tell them apart.
+Two settings and an optional table, where there used to be four and two
+tables. The plan map and the engine's reference scheme both went with the
+run record they served: the ids arrive on the delivery now, so there is
+no deployment fact left for this file to carry about them. An operator
+authoring a new plan no longer has to remember this file exists.
 
-The cost is real: an operator who authors a new plan must add it here too,
-and until they do, runs of it are refused. That is loud, which is the
-trade against AROC guessing by recency and recording runs against whatever
-it picked.
+A file with a `[plans]` table still in it loads. Nothing reads it, and
+refusing it would turn an upgrade into an outage over a setting that does
+nothing.
 
 `[store]` is the optional table and leaving it out switches the dataset
 leg off. Three things about it are worth knowing.
@@ -265,21 +300,27 @@ a run by uid without already knowing where to look. A misconfigured root
 finds nothing rather than finding the wrong thing, which is the better
 failure.
 
-`external_ref_scheme` is a second one and not the same as the one above.
-That one names the vocabulary an engine's run ids belong to; this one
-names the vocabulary a store's addresses belong to. Setting them to one
-string would be claiming two kinds of reference are interchangeable.
+`external_ref_scheme` is the only scheme left. It names the vocabulary a
+store's addresses belong to, and it sits on the store table because it
+describes the store: a deployment that changes where its data is kept
+changes both together. The engine's own run id still travels, as a step's
+`engine_reference`, but AROC holds that as a plain string rather than as
+a scheme-and-value pair.
 
 There is no token for the store. Nothing has needed one, and adding the
 field before something asks would be inventing an auth scheme on a store's
 behalf.
 
-Everything is checked at load. A malformed plan id, a base URL that is not
-one, a blank token, a `[store]` table that is present and wrong: all
-refuse to start rather than failing on the first run of that plan at
-whatever hour that is. A configured store is also reached for once before
-the first document moves, because a reporter that records every run and
-quietly files no data is worse than one that will not start.
+Everything is checked at load. A base URL that is not one, a blank token,
+a `[store]` table that is present and wrong: all refuse to start rather
+than failing on the first scan of the day. A configured store is also
+reached for once before the first document moves, because a reporter that
+relays every report and quietly files no data is worse than one that will
+not start.
+
+There is no longer a startup check against AROC. The reference arrives
+per document rather than from configuration, so an execution or step AROC
+does not hold surfaces as a 404 on that document and is `Held`.
 
 ## Running it
 
@@ -300,7 +341,8 @@ Or from the repository root, where `make lint`, `make typecheck` and
 | Durability | A transport that keeps a log. Documents live in the relay's queue and nowhere else, and 0MQ publish and subscribe has nothing behind it to ask again, so a document published while this is down was never published as far as this is concerned. At-most-once, known rather than accidental. |
 | The checkpoint | The same thing. There is nothing to check point against: an offset is only meaningful over a transport that can be rewound to one. A broker in between gives both at once, and this becomes one of its consumers. |
 | Anything other than AROC wanting these documents | Which is the question that decides the two rows above. If something else wants them, a broker is already justified and durability arrives with it. If not, this is the deployment and the gap is a cost somebody has to accept out loud. |
-| An identity to run as | A deployment. It is an actor in Access, and the two spikes each record the grants their half needs: `spikes/bluesky_adapter/FINDINGS.md` section 5 for the runs, `spikes/tiled_adapter/FINDINGS.md` section 7 for the datasets. A process carrying both legs runs as one actor holding the union. It must **not** be granted `DefinePlan`: an adapter cannot honestly author a plan, and withholding the grant makes that a refusal at the boundary rather than a sentence in a document. |
+| Something writing the reference | The conductor. `AROC_METADATA_KEYS` in `translate.py` is this side of a contract whose other side is not built: nothing in this repository puts `aroc_execution_id` and `aroc_step_id` into an engine's metadata yet, so against a live engine today every document is skipped as a hand-run scan. The keys are stated here so the conductor's recording adapter is written against them rather than beside them. |
+| An identity to run as | A deployment. It is an actor in Access, and the two spikes each record the grants their half needs: `spikes/bluesky_adapter/FINDINGS.md` section 5, `spikes/tiled_adapter/FINDINGS.md` section 7 for the datasets. A process carrying both legs runs as one actor holding the union. It must **not** be granted `DefinePlan` or `DefineProcedure`: an adapter cannot honestly author either, and withholding the grants makes that a refusal at the boundary rather than a sentence in a document. |
 | A token for the store | Something asking for one. The lookup sends no credential, so this works against a store that does not want one and nothing else. |
 
 Redelivery is safe, whatever the transport turns out to be, because both

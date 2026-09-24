@@ -1,20 +1,26 @@
 """Everything this reporter has to be told, and nothing it can work out.
 
-Four facts about AROC, an optional fifth group about a store, and the
-interesting one is `plan_ids`.
+Two facts about AROC, and an optional group about a store.
 
-AROC identifies a plan by id. What an engine sends carries only a name, and
-two AROC plans may legitimately answer to one name, so turning a name into
-an id is a choice somebody has to make. It is made here rather than by
-asking AROC, because the answer depends on which installation this
-reporter serves and AROC does not know that. Nothing on the two records
-would tell it apart if it tried.
+## What used to be here, and why it is not
 
-So the map is a deployment fact, written down where the deployment is. The
-cost is real and worth stating: an operator who defines a new plan must
-also add it here, and until they do, runs of it are refused. That failure
-is loud, which is the trade against the alternative, where AROC guesses by
-recency and records runs against whichever plan it happened to pick.
+Two settings are gone, and both for one reason. `plan_ids` mapped an
+engine's plan names onto AROC plan ids, because a run was a record this
+reporter brought into existence and the id was not derivable from
+anything on a document. `external_ref_scheme` named the vocabulary an
+engine's run ids belonged to, because that reference was stored on the
+run and later used to find it again.
+
+AROC composes the work now. The execution and step ids arrive in the
+engine's own metadata, so nothing is resolved, nothing is created, and
+the deployment fact those two settings carried is not a fact this
+reporter needs. An operator authoring a new plan no longer has to
+remember to add it here, which removes the one failure mode this file
+previously argued was worth its cost.
+
+The engine's own run id still travels, as a step's `engine_reference`. It
+is a plain string over there rather than a scheme-and-value pair, so
+there is nothing to configure about it.
 
 ## The store table, and why its absence is a setting
 
@@ -30,11 +36,10 @@ Its `root` is where the writer points. A search does not descend, so a
 reporter cannot discover its own scope, and a misconfigured root finds
 nothing rather than finding the wrong thing.
 
-Its `external_ref_scheme` is a second one and not the one above. That one
-names the vocabulary an engine's run ids belong to, this one names the
-vocabulary a store's addresses belong to, and a deployment that set them
-to the same string would be saying two different kinds of reference are
-interchangeable.
+Its `external_ref_scheme` is the one scheme left. It names the vocabulary
+a store's addresses belong to, and it is on the store table rather than
+beside the AROC settings because it describes the store: a deployment
+that changes where its data is kept changes both together.
 """
 
 import tomllib
@@ -42,14 +47,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
-from uuid import UUID
 
 
 class ConfigError(ValueError):
     """The configuration cannot be used, with the reason a person can fix.
 
     Raised at load rather than at first use. A reporter that starts with a
-    malformed plan map and discovers it on the first run of the day has
+    malformed store table and discovers it on the first run of the day has
     turned a typo into an outage; one that refuses to start has turned it
     into a message.
     """
@@ -66,32 +70,24 @@ class StoreConfig:
 
 @dataclass(frozen=True)
 class ReporterConfig:
-    """Where AROC is, who this reporter is, and what its plan names mean."""
+    """Where AROC is, who this reporter is, and where the data is kept."""
 
     base_url: str
     token: str
-    plan_ids: Mapping[str, UUID]
-    external_ref_scheme: str
     store: StoreConfig | None = None
-
-    def plan_id_for(self, plan_name: str) -> UUID | None:
-        """The plan this installation means by that name, if it has one.
-
-        `None` is not an error here and is a refusal upstream: a run whose
-        plan this reporter does not recognise must not be reported against
-        a guess. An adapter cannot honestly author a plan either, which is
-        why there is no fallback that creates one.
-        """
-        return self.plan_ids.get(plan_name)
 
 
 def load(path: Path) -> ReporterConfig:
     """Read a configuration file, or say exactly what is wrong with it.
 
-    TOML because the plan map is a table of strings to ids, which is
-    miserable in environment variables and obvious in a file, and because
-    `tomllib` is in the standard library so reading one costs no
-    dependency.
+    TOML because the store settings are a table, which is clumsy in
+    environment variables and obvious in a file, and because `tomllib` is
+    in the standard library so reading one costs no dependency.
+
+    Two required settings is few enough to argue for environment
+    variables, and the store table is what keeps a file worth having. A
+    deployment that runs without a store has a two-line file, which is
+    not a burden.
 
     The token is read from the file like everything else. A deployment
     that would rather inject it another way substitutes its own loader;
@@ -117,7 +113,6 @@ def from_mapping(settings: Mapping[str, Any], *, source: str = "configuration") 
     aroc: Mapping[str, Any] = settings.get("aroc") or {}
     base_url = _required_string(aroc, "base_url", source)
     token = _required_string(aroc, "token", source)
-    scheme = _required_string(aroc, "external_ref_scheme", source)
 
     if not base_url.startswith(("http://", "https://")):
         raise ConfigError(f"{source}: aroc.base_url must be an http or https URL, got {base_url!r}")
@@ -125,8 +120,6 @@ def from_mapping(settings: Mapping[str, Any], *, source: str = "configuration") 
     return ReporterConfig(
         base_url=base_url.rstrip("/"),
         token=token,
-        plan_ids=_plan_ids(settings.get("plans") or {}, source),
-        external_ref_scheme=scheme,
         store=_store(settings.get("store"), source),
     )
 
@@ -135,9 +128,8 @@ def _store(table: Any, source: str) -> StoreConfig | None:
     """Parse the store table, or say there is none.
 
     A missing table is not an error and switches the dataset leg off. A
-    table that is present and wrong is an error, for the same reason a
-    malformed plan id is: it would otherwise fail on the first run that
-    ended, at whatever hour that is.
+    table that is present and wrong is an error, because it would
+    otherwise fail on the first run that ended, at whatever hour that is.
 
     `root` is the one field allowed to be empty, because a store serving
     its runs from the top level is a legitimate arrangement and an empty
@@ -177,25 +169,6 @@ def _required_string(
             f"{source}: {table_name}.{key} is required and must be a non-empty string"
         )
     return value.strip()
-
-
-def _plan_ids(table: Mapping[str, Any], source: str) -> dict[str, UUID]:
-    """Parse the name-to-id map, refusing anything that is not an id.
-
-    An empty map is allowed and means every run is refused, which is a
-    legitimate state for a reporter being stood up before its plans are
-    authored. A malformed id is not: it would fail on the first run of
-    that plan and nowhere earlier.
-    """
-    plan_ids: dict[str, UUID] = {}
-    for name, value in table.items():
-        if not isinstance(value, str):
-            raise ConfigError(f"{source}: plans.{name} must be a plan id as a string")
-        try:
-            plan_ids[str(name)] = UUID(value)
-        except ValueError as exc:
-            raise ConfigError(f"{source}: plans.{name} is not a valid id: {value!r}") from exc
-    return plan_ids
 
 
 __all__ = ["ConfigError", "ReporterConfig", "StoreConfig", "from_mapping", "load"]

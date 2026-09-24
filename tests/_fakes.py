@@ -76,21 +76,31 @@ class Recorder:
 class Routed:
     """Answers by which call was made, not by how many have been.
 
-    The four slots are the four calls `ArocClient` makes once a store is
+    The two slots are the two calls `ArocClient` makes once a store is
     configured. Each holds a list consumed in order and reused once
     exhausted, so a scenario of any length needs one entry, and a test
-    wanting the second transition refused supplies two.
+    wanting the second report refused supplies two.
+
+    It held four before. The two that went were a run's genesis and the
+    lookup that found a run again, and both went for the same reason:
+    AROC dispatches the work, so there is nothing for this reporter to
+    create and nothing for it to resolve.
     """
 
-    report: list[Answer]
-    move: list[Answer]
-    find: list[Answer] = field(default_factory=list["Answer"])
+    report: list[Answer] = field(default_factory=list["Answer"])
     register: list[Answer] = field(default_factory=list["Answer"])
     sent: list[Sent] = field(default_factory=list["Sent"])
 
     def get(self, url: str, *, params: Mapping[str, str] | None = None) -> Answer:
+        """Recorded and then refused, because nothing should call it.
+
+        This reporter makes no GET against AROC any more. Keeping the
+        method on the fake is what makes that assertable: a test can show
+        the client satisfies the `HttpClient` protocol and still never
+        reads.
+        """
         self.sent.append(Sent("GET", url, params=params))
-        return self._next(self.find)
+        raise AssertionError(f"This reporter does not read from AROC, and something asked {url}.")
 
     def post(
         self,
@@ -100,12 +110,10 @@ class Routed:
         headers: Mapping[str, str] | None = None,
     ) -> Answer:
         self.sent.append(Sent("POST", url, json=json, headers=headers))
-        # A report posts to /runs, a registration to /datasets, and a
-        # transition to /runs/<id>/<verb>, which is neither.
+        # A registration posts to /datasets and an engine report to
+        # /executions/<id>/steps/<id>/run, which is not that.
         trimmed = url.rstrip("/")
-        if trimmed.endswith("/datasets"):
-            return self._next(self.register)
-        return self._next(self.report if trimmed.endswith("/runs") else self.move)
+        return self._next(self.register if trimmed.endswith("/datasets") else self.report)
 
     def calls(self, method: str, *, containing: str = "") -> list[Sent]:
         """Every recorded call matching a method, and optionally a path."""

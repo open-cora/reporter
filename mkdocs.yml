@@ -1,0 +1,59 @@
+site_name: Reporter
+site_description: Reports what an acquisition engine did.
+repo_url: https://github.com/open-cora/reporter
+repo_name: open-cora/reporter
+edit_uri: ""
+
+theme:
+  name: material
+  custom_dir: overrides
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - toc.follow
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+extra_css:
+  - stylesheets/theme.css
+
+extra_javascript:
+  - javascripts/hero-fade.js
+
+extra:
+  hero:
+    masthead: Reporter
+    tagline: Iris, messenger of the gods
+    image: assets/hero-reporter.webp
+    image_small: assets/hero-reporter-1200.webp
+    image_alt: >-
+      Iris Carrying the Water of the River Styx, by Guy Head, about 1793: a winged figure in flight holding a golden ewer aloft.
+    strip_label: CORA
+    strip_text: keeper
+    strip_url: https://github.com/open-cora/keeper
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md

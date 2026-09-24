@@ -1,0 +1,38 @@
+{#
+  Landing-page hero. One file, identical in all four repositories; everything
+  that differs per repo is read from `extra.hero` in mkdocs.yml.
+#}
+{% extends "main.html" %}
+{% set hero = config.extra.hero %}
+
+{% block extrahead %}
+  {{ super() }}
+  <link rel="preload" as="image" fetchpriority="high"
+        href="{{ hero.image | url }}"
+        imagesrcset="{{ hero.image_small | url }} 1200w, {{ hero.image | url }} 2400w"
+        imagesizes="100vw">
+{% endblock %}
+
+{% block tabs %}
+  {{ super() }}
+  <div class="hero" data-name="{{ hero.masthead | lower }}">
+    <img class="hero__image" fetchpriority="high" alt="{{ hero.image_alt }}"
+         src="{{ hero.image | url }}"
+         srcset="{{ hero.image_small | url }} 1200w, {{ hero.image | url }} 2400w"
+         sizes="100vw">
+    <div class="hero__layer">
+      <div class="md-grid hero__inner">
+        <p class="hero__kicker">CORA</p>
+        <h1 class="hero__masthead">{{ hero.masthead }}</h1>
+        <p class="hero__tagline">{{ hero.tagline }}</p>
+      </div>
+      <nav class="hero__strip" aria-label="{{ hero.strip_label }}">
+        <div class="md-grid hero__strip-inner">
+          <span class="hero__strip-label">{{ hero.strip_label }}</span>
+          <span aria-hidden="true">&middot;</span>
+          <a href="{{ hero.strip_url }}">{{ hero.strip_text }} &rarr;</a>
+        </div>
+      </nav>
+    </div>
+  </div>
+{% endblock %}

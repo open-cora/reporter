@@ -1,0 +1,13 @@
+/* Material palette, tuned to the hero plate so the header does not fight it. */
+:root > * {
+  --md-primary-fg-color:        #2b1018;
+  --md-primary-fg-color--light: #4a1f2c;
+  --md-primary-fg-color--dark:  #190a0f;
+  --md-accent-fg-color:         #b4914e;
+  --md-accent-fg-color--transparent: rgba(180, 145, 78, 0.1);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #14100e;
+  --md-typeset-a-color:  #c9a96b;
+}

@@ -45,9 +45,6 @@ extra:
     srcset: "assets/hero-reporter-1200.webp 1200w, assets/hero-reporter-2000.webp 2000w, assets/hero-reporter-2758.webp 2758w"
     image_alt: >-
       Iris Carrying the Water of the River Styx, by Guy Head, about 1793: a winged figure in flight holding a golden ewer aloft.
-    strip_label: CORA
-    strip_text: keeper
-    strip_url: https://github.com/open-cora/keeper
 
 markdown_extensions:
   - admonition

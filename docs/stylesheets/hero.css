@@ -8,7 +8,7 @@
      edge to fill the space behind the header and the Home tab, and hidden
      would clip that sliver away. */
   overflow: visible;
-  background: #1a0b10;
+  background: var(--md-default-bg-color);
   /* 45vw is exactly 20:9, the aspect the plates are cut to, so `cover` throws
      nothing away between roughly 850px and 2300px of viewport. The old fixed
      660px cap meant a 1920px screen saw only 68 percent of the plate height
@@ -32,9 +32,10 @@
   display: block;
 }
 
-/* Two washes. The first carries the masthead on the left edge; the second
-   seats the link strip at the foot. Both sit above the image and below the
-   type, so the source file is served unmodified. */
+/* Three layers, all above the image and below the type so the source file
+   is served unmodified: a side wash for the masthead, a footer blend that
+   dissolves the plate into the page's own background colour instead of
+   ending on a hard edge, and a cap behind the header (further down). */
 .hero__layer {
   position: absolute;
   /* Co-extensive with .hero__image: the wash has to darken the same strip
@@ -52,8 +53,8 @@
       rgba(20, 7, 12, 0.12) 66%,
       rgba(20, 7, 12, 0) 100%),
     linear-gradient(to top,
-      rgba(12, 6, 9, 0.88) 0%,
-      rgba(12, 6, 9, 0) 34%),
+      var(--md-default-bg-color) 0%,
+      transparent 30%),
     /* Caps the strip behind the header and tabs, which the side wash barely
        reaches at the far edge (the repo link, the right end of the search
        field). Tapers out around where the tabs bar ends so it reads as a
@@ -114,40 +115,6 @@
   margin: 0;
 }
 
-.hero__strip {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding-block: 0.85rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-}
-
-.hero__strip-inner {
-  display: flex;
-  gap: 0.6rem;
-  align-items: center;
-  flex-wrap: wrap;
-  padding-inline: clamp(1.25rem, 3.5vw, 2.75rem);
-  font-family: "Inter", system-ui, sans-serif;
-  font-size: 0.7rem;
-  font-weight: 500;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.72);
-}
-
-.hero__strip-label { color: #fff; font-weight: 600; }
-
-.hero__strip a {
-  color: rgba(255, 255, 255, 0.86);
-  text-decoration: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-}
-.hero__strip a:hover,
-.hero__strip a:focus-visible { color: #fff; border-bottom-color: #fff; }
-.hero__strip a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-
 @media (prefers-reduced-motion: reduce) {
   .hero__layer { opacity: 1 !important; }
 }
@@ -163,8 +130,8 @@
       rgba(20, 7, 12, 0.12) 66%,
       rgba(20, 7, 12, 0) 100%),
     linear-gradient(to top,
-      rgba(12, 6, 9, 0.88) 0%,
-      rgba(12, 6, 9, 0) 34%),
+      var(--md-default-bg-color) 0%,
+      transparent 30%),
     linear-gradient(to bottom,
       rgba(12, 6, 9, 0.85) 0%,
       rgba(12, 6, 9, 0.35) 12%,
@@ -172,7 +139,6 @@
 }
 .hero[data-align="right"] .hero__inner { text-align: right; }
 .hero[data-align="right"] .hero__tagline { margin-left: auto; }
-.hero[data-align="right"] .hero__strip-inner { justify-content: flex-end; }
 
 /* The header bar (logo, search, repo link) and the Home tab float over the
    plate instead of sitting on a block of colour above it, so the painting

@@ -1,0 +1,15 @@
+/* Material palette for reporter, drawn from its own plate: slate blue, the cold sky.
+   Matte on purpose. The header should read as the same surface as the
+   painting below it, not as a band of product colour sitting on top. */
+:root > * {
+  --md-primary-fg-color:        #161b27;
+  --md-primary-fg-color--light: #272e3f;
+  --md-primary-fg-color--dark:  #0e111a;
+  --md-accent-fg-color:         #6f80a7;
+  --md-accent-fg-color--transparent: #6f80a71a;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #0d0e11;
+  --md-typeset-a-color:  #6f80a7;
+}

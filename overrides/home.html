@@ -1,0 +1,40 @@
+{#
+  Landing-page hero. One file, identical in all four repositories; everything
+  that differs per repo is read from `extra.hero` in mkdocs.yml.
+#}
+{% extends "main.html" %}
+{% set hero = config.extra.hero %}
+
+{% block extrahead %}
+  {{ super() }}
+  <link rel="preload" as="image" fetchpriority="high"
+        href="{{ hero.image | url }}"
+        imagesrcset="{{ hero.srcset }}"
+        imagesizes="100vw">
+{% endblock %}
+
+{% block tabs %}
+  {{ super() }}
+  <div class="hero" data-name="{{ hero.masthead | lower }}" data-align="{{ hero.align | default('left') }}">
+    <img class="hero__image" fetchpriority="high" alt="{{ hero.image_alt }}"
+         src="{{ hero.image | url }}"
+         srcset="{{ hero.srcset }}"
+         sizes="100vw">
+    <div class="hero__layer">
+      <div class="md-grid hero__inner">
+        <p class="hero__kicker">CORA</p>
+        <h1 class="hero__masthead">{{ hero.masthead }}</h1>
+        <p class="hero__tagline">{{ hero.tagline }}</p>
+      </div>
+      {% if hero.credit %}
+        <p class="hero__credit">
+          {% if hero.credit_url %}
+            <a href="{{ hero.credit_url }}" target="_blank" rel="noopener noreferrer">{{ hero.credit }}</a>
+          {% else %}
+            {{ hero.credit }}
+          {% endif %}
+        </p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

@@ -1,5 +1,7 @@
 # Reporter
 
+*Iris, messenger of the gods*
+
 Relays one engine's document stream to the keeper as reports about the steps
 the keeper dispatched, and says where the data those steps produced is being
 kept.
@@ -463,3 +465,16 @@ seven runs rather than fourteen:
 Which is the redelivery gap closed, demonstrated rather than argued. A
 wrong plan id in the config exits 2 before anything is sent, and so does a
 publisher this cannot decode.
+
+## The four
+
+| Repo | Does |
+| --- | --- |
+| [keeper](https://github.com/open-cora/keeper) | Records what was proposed, run and produced |
+| [conductor](https://github.com/open-cora/conductor) | Conducts a procedure across a beamline, one step at a time |
+| [reporter](https://github.com/open-cora/reporter) | Reports what an acquisition engine did |
+| [thinker](https://github.com/open-cora/thinker) | Proposes what to run next |
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).

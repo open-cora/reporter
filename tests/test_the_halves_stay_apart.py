@@ -77,7 +77,7 @@ not the engine. This one is about a measurement. The spike read one node
 both through the store's client and off its raw HTTP surface and got the
 same address four times out of four, so the client would buy insulation
 from an envelope that two fields are read out of, and cost a dependency.
-`spikes/tiled_adapter/FINDINGS.md` section 1 is the evidence.
+A spike is the evidence.
 
 Separate from the set below rather than merged into it, because the two
 bans would be lifted for different reasons and a merged set would hide

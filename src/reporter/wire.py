@@ -16,7 +16,7 @@ it is one named function that a reader can find.
 
 A second engine writes its own translator, composes it here or beside
 here, and reuses everything under `intents` unchanged. What that costs is
-measured in `spikes/tomoscan_adapter/FINDINGS.md`, against an engine whose
+measured in a spike, against an engine whose
 stream has no documents in it at all.
 """
 

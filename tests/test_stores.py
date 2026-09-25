@@ -253,7 +253,7 @@ def test_store_instant_declines_anything_that_is_not_a_number(unusable: Any) -> 
 # Nothing below exercises this package. Each one asserts a claim about the
 # store that something here was built on, so that re-running the collector
 # against a newer store turns a changed claim into a red test naming it
-# rather than into a diff nobody reads. `spikes/tiled_adapter/FINDINGS.md`
+# rather than into a diff nobody reads. A spike
 # is where each came from; the section is on the test.
 
 

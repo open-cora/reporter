@@ -38,7 +38,7 @@ only thing coupling this module to the first engine was the signature.
 
 Everything below the translator is the same for both, so the translator is
 the caller's to own. A reporter for another engine writes one and reuses
-this unchanged. `spikes/tomoscan_adapter/FINDINGS.md` is where that came
+this unchanged. A spike is where that came
 from.
 
 ## Shaped for either subscription

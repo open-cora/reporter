@@ -18,7 +18,7 @@ and nothing downstream can tell. So `node_path` is not tidying applied to
 an address, it is part of the definition of the address, and it is written
 once here rather than at every place that builds or checks one.
 
-`spikes/tiled_adapter/FINDINGS.md` section 1 is where that came from, and
+A spike is where that came from, and
 `tests/nodes.json` is the capture it came out of.
 
 ## No client library, and the reason is measured rather than argued

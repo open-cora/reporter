@@ -1,0 +1,23 @@
+# Gitleaks configuration for the reporter.
+#
+# Inherit the default rule set; only add path-scoped allowlists for files
+# whose normal content shape trips the entropy-based "generic-api-key"
+# detector.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist recorded fixtures whose ids look like high-entropy secrets."
+# The captures hold run ids and node keys recorded from a real engine and a
+# real store. They are UUIDs, which an entropy detector cannot tell from a
+# credential: a scan of this tree's whole history reported sixteen findings in
+# nodes.json and every one of them was a run id.
+#
+# Without this, re-recording the captures and committing them fails the hook
+# for no reason, and a hook that fails for no reason is one people learn to
+# pass with --no-verify. That is the cost being avoided here, not the noise.
+paths = [
+    '''tests/nodes\.json''',
+    '''tests/documents\.json''',
+]

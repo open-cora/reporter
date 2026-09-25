@@ -263,4 +263,3 @@ test_post_things_with_three_parts_in_order_b_a_c   # describes inputs
 test_handler_3                                      # opaque
 test_register_thing_works                           # outcome too vague
 ```
-

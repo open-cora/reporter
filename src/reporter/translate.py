@@ -3,12 +3,12 @@
 The functional core. No network, no clock, no configuration: documents in,
 `Intent` values out. That is what lets every result the spike obtained by
 driving a real engine be re-asserted here against the captured file, with
-no engine and no AROC running.
+no engine and no keeper running.
 
-## Where the AROC reference comes from
+## Where the keeper reference comes from
 
 Whatever drives an execution hands one acquisition step to an engine and
-carries that step's AROC ids into the engine's own metadata. A start
+carries that step's keeper ids into the engine's own metadata. A start
 document is where they arrive, under `KEEPER_METADATA_KEYS` below, and this
 is the only place in the reporter that knows the spelling.
 
@@ -31,9 +31,9 @@ A capture taken before that landed carries neither key and produces
 `Ignored` for every document in it, which is the behaviour the section
 below describes rather than a failure.
 
-## Work AROC never dispatched is quiet
+## Work the keeper never dispatched is quiet
 
-A document carrying no AROC reference belongs to something somebody ran
+A document carrying no keeper reference belongs to something somebody ran
 by hand at the beamline. It is real work and this system has nothing to
 record it against: there is no execution, no step, and no way to make one
 from a document. So it is `Ignored` rather than `Unmappable`.
@@ -61,7 +61,7 @@ walking", which held only because it replayed one scenario at a time. A
 live stream makes no such promise.
 
 There is now a second map, and it is the one that matters more. Only the
-start carries the AROC reference, and every later document about that run
+start carries the keeper reference, and every later document about that run
 carries the engine's uid instead, so what the start said has to be
 remembered from the start to the stop. It records `None` for a run that
 is not this system's, because that answer has to last the run too.
@@ -70,11 +70,11 @@ Both maps are bounded: a run's descriptors and whatever its start said
 are forgotten when its `stop` arrives.
 
 **Restarting loses the references for runs in flight.** The old design
-recovered from AROC, because a run could be found by its external
-reference; a step cannot, because AROC publishes no lookup from an
+recovered from the keeper, because a run could be found by its external
+reference; a step cannot, because the keeper publishes no lookup from an
 engine's reference to the step that opened it. So a reporter restarted
 mid-scan reports nothing further about that scan, and says so as `Held`
-on each document rather than silently. Closing it needs a query AROC does
+on each document rather than silently. Closing it needs a query the keeper does
 not have, and is not worth building before something is actually driving
 these streams.
 
@@ -82,7 +82,7 @@ these streams.
 
 A reporter that starts mid-run sees documents for a run whose start it
 never saw, so it has no entry for them at all. That used to be quiet,
-because the run could be resolved from AROC afterwards. It cannot be now,
+because the run could be resolved from the keeper afterwards. It cannot be now,
 so an interruption or an ending for a run this stream never introduced is
 `Unmappable`: it may be a report this system asked for and will not get.
 
@@ -144,14 +144,14 @@ _INTERRUPTION_KEY: Final = "interruption"
 
 
 def engine_instant(document: Mapping[str, Any]) -> datetime | None:
-    """A document's own `time`, as an instant AROC will accept.
+    """A document's own `time`, as an instant the keeper will accept.
 
-    Documents are stamped in UNIX seconds. AROC refuses a timestamp with
+    Documents are stamped in UNIX seconds. The keeper refuses a timestamp with
     no offset, so UTC is named rather than left to whatever zone the
     reporter happens to run in.
 
     `None` when the document carries no usable time, which the report
-    command accepts: AROC then stamps the moment it was told, and the
+    command accepts: the keeper then stamps the moment it was told, and the
     record says so rather than inventing a moment it was not there for.
     """
     seconds = document.get("time")
@@ -206,7 +206,7 @@ class Translator:
         Order matters for two reasons now. An `event` needs its
         descriptor to have arrived, and everything after a start needs
         that start, because the start is the only document carrying the
-        AROC reference.
+        the keeper reference.
         """
         if name == "start":
             return self._start(document)
@@ -227,7 +227,7 @@ class Translator:
         self._reference_by_run[uid] = reference
         if reference is None:
             return Ignored(
-                f"run {uid} carries no AROC reference, so it is work this system did not dispatch"
+                f"run {uid} carries no keeper reference, so it is work this system did not dispatch"
             )
 
         execution_id, step_id = reference
@@ -246,7 +246,7 @@ class Translator:
         This is the only reason descriptors are read at all, and it is why
         a translator that skips them cannot attribute a pause.
 
-        Indexed whether or not the run is one AROC dispatched, because
+        Indexed whether or not the run is one the keeper dispatched, because
         deciding that means a lookup this arm would have to do on every
         descriptor to save a dictionary entry on some of them.
         """
@@ -310,15 +310,15 @@ class Translator:
         """
         if run_uid not in self._reference_by_run:
             return Unmappable(
-                f"run {run_uid} has no AROC reference on this stream, so its "
+                f"run {run_uid} has no keeper reference on this stream, so its "
                 f"{reported.lower()} cannot be reported: this reporter joined "
-                "after its start, or the run is not one AROC dispatched",
+                "after its start, or the run is not one the keeper dispatched",
                 origin,
             )
         reference = self._reference_by_run[run_uid]
         if reference is None:
             return Ignored(
-                f"run {run_uid} started without an AROC reference, so its "
+                f"run {run_uid} started without a keeper reference, so its "
                 f"{reported.lower()} is not this system's to record"
             )
         execution_id, step_id = reference

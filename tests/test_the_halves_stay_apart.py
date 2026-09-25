@@ -2,7 +2,7 @@
 
 A second engine was driven in a spike and the reporter came out of it
 split in two. `translate` and `sources` read one engine and know nothing
-about AROC. `client`, `config`, `session` and `relay` talk to AROC and
+about the keeper. `client`, `config`, `session` and `relay` talk to the keeper and
 know nothing about any engine. `intents` is the vocabulary between them,
 and `wire` is the one place they are joined.
 
@@ -10,7 +10,7 @@ That split is what makes a second engine a translator rather than a
 rewrite, and nothing about it is visible in a diff. It was already broken
 once, quietly: `client` imported a helper from `translate` because the
 helper had been filed on the wrong side, and the module that talks to
-AROC therefore imported the module that reads one engine's documents. No
+The keeper therefore imported the module that reads one engine's documents. No
 test failed, because there was no test.
 
 This is that test. It reads imports rather than running anything, which
@@ -36,15 +36,15 @@ ENGINE_SIDE = frozenset({"translate", "sources"})
 """Modules that read one engine, and would be replaced for a second one."""
 
 KEEPER_SIDE = frozenset({"client", "config", "session", "relay"})
-"""Modules that talk to AROC, and would be reused for a second engine."""
+"""Modules that talk to the keeper, and would be reused for a second engine."""
 
 STORE_SIDE = frozenset({"stores"})
 """Modules that read a store, and would be replaced for a different one.
 
 A third outside system, and neither set above fits it: it does not read an
-engine and it does not talk to AROC.
+engine and it does not talk to the keeper.
 
-The AROC side is allowed to name it, which looks like the rule below being
+The keeper side is allowed to name it, which looks like the rule below being
 bent and is not. The two outward halves differ in direction. An engine
 pushes, so its translator is called from `wire`, above the session, and
 the session never names it. A store is asked, so its lookup is called from
@@ -57,8 +57,8 @@ because there is nothing to call: documents arrive.
 CONTRACT = frozenset({"intents", "outcomes"})
 """The vocabulary both sides share, which is what makes the split possible.
 
-`outcomes` is here rather than on the AROC side because it says what a
-caller should do, not what AROC answered, and a second engine's reporter
+`outcomes` is here rather than on the keeper side because it says what a
+caller should do, not what the keeper answered, and a second engine's reporter
 reports the same five things.
 """
 
@@ -89,7 +89,7 @@ ENGINE_LIBRARIES = frozenset({"bluesky", "ophyd", "databroker", "epics", "caprot
 
 The wire formats this reads are small and are decoded by hand precisely
 so that a package whose claim is that it is not the engine does not
-depend on the engine. `apps/api` bans these names in prose; this bans
+depend on the engine. `apps/keeper` bans these names in prose; this bans
 them as imports, which is the failure that would actually matter.
 """
 
@@ -207,7 +207,7 @@ def test_a_module_that_talks_to_the_keeper_names_no_engine_module(name: str) -> 
     reached = imports_of(modules()[name]) & ENGINE_SIDE
 
     assert not reached, (
-        f"`{name}` talks to AROC and imports {sorted(reached)}, which reads one engine. "
+        f"`{name}` talks to the keeper and imports {sorted(reached)}, which reads one engine. "
         "Whatever it needs is either misfiled or belongs in `intents`."
     )
 

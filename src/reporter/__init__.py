@@ -1,25 +1,25 @@
-"""Relays one engine's document stream to AROC as step-run reports.
+"""Relays one engine's document stream to the keeper as step-run reports.
 
-A client of AROC, not a part of it. The dependency arrow points into
-AROC, and a thing that calls an HTTP API needs a URL and a token rather
-than a port declared for it. Nothing in `apps/api` imports this package
-and nothing here imports `aroc`.
+A client of the keeper, not a part of it. The dependency arrow points into
+The keeper, and a thing that calls an HTTP API needs a URL and a token rather
+than a port declared for it. Nothing in `apps/keeper` imports this package
+and nothing here imports `keeper`.
 
-**This reporter creates nothing.** AROC composes a procedure, dispatches
-an execution, and whatever drives that execution carries the step's AROC
+**This reporter creates nothing.** the keeper composes a procedure, dispatches
+an execution, and whatever drives that execution carries the step's the keeper
 ids into the engine's own metadata. What arrives here is an engine
 talking about work this system already wrote down, so every intent names
 a record that exists and none of them brings one into being. That is the
 whole of what changed when Execution stopped recording runs, and it is
 why there is no plan map, no external-reference lookup, and no command
-here that can be refused for naming something AROC has never heard of.
+here that can be refused for naming something the keeper has never heard of.
 
-A document with no AROC reference is a scan somebody ran by hand. It is
+A document with no keeper reference is a scan somebody ran by hand. It is
 skipped, and `translate` says why that is quiet rather than loud.
 
 Two halves that do not import each other. `Translator` turns one engine's
 documents into the intents in `intents`, and `Session` acts on an intent
-against AROC and says what came of it. Only the first half knows which
+against the keeper and says what came of it. Only the first half knows which
 engine this is, which is what a second engine having no documents in it
 taught us, and `documents_into` in `wire` is the one place they are
 joined. `Relay` puts a queue and a thread in front of both, so an engine

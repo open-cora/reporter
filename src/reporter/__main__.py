@@ -28,9 +28,9 @@ quietly files no data.
 
 There used to be a second check, looking up every configured plan id.
 It went with the plan map: this reporter resolves nothing now, so there
-is no configured reference left that AROC could fail to recognise. What
+is no configured reference left that the keeper could fail to recognise. What
 replaces it is not a startup check at all, because the reference arrives
-per document: an execution or step AROC does not hold comes back as a
+per document: an execution or step the keeper does not hold comes back as a
 404 on the report, and is `Held`.
 
 ## Durability, stated rather than discovered
@@ -42,7 +42,7 @@ was down. That is at-most-once, and closing it needs a transport that
 keeps a log rather than anything here.
 
 Restarting costs more than it used to, and the extra cost is in
-`translate`: the AROC reference for a run in flight lives in the
+`translate`: the keeper reference for a run in flight lives in the
 translator and cannot be recovered, so a scan that was running through a
 restart is reported on no further.
 """
@@ -72,7 +72,7 @@ from reporter.stores import (
 from reporter.wire import documents_into
 
 REQUEST_TIMEOUT_SECONDS = 10.0
-"""How long one call to AROC may take before it counts as not arriving.
+"""How long one call to the keeper may take before it counts as not arriving.
 
 Bounded because the relay retries, and an unbounded request cannot be
 retried: it occupies the worker until the socket gives up, which is the
@@ -181,7 +181,7 @@ def drive(documents: Iterator[Delivery], relay: Relay) -> str | None:
 def _parse(argv: Sequence[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="reporter",
-        description="Relay one engine's documents to AROC as step-run reports.",
+        description="Relay one engine's documents to the keeper as step-run reports.",
     )
     parser.add_argument("--config", type=Path, required=True, help="path to reporter.toml")
 
@@ -215,7 +215,7 @@ def store_lookup(http: StoreHttpClient, config: ReporterConfig) -> StoreLookup |
 
     `None` switches the dataset leg off, which is a configuration this
     reporter supports rather than a degraded one. One HTTP client serves
-    both AROC and the store, so timeouts and the connection pool are set
+    both the keeper and the store, so timeouts and the connection pool are set
     in a single place.
     """
     if config.store is None:

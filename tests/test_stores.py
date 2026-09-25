@@ -115,7 +115,7 @@ def test_node_path_agrees_with_every_address_the_store_reported() -> None:
         assert node_path(node["ancestors"], node["key"]) == node["normalised_path"], label
 
 
-def test_node_path_of_a_captured_run_fits_the_bound_aroc_puts_on_a_reference() -> None:
+def test_node_path_of_a_captured_run_fits_the_bound_keeper_puts_on_a_reference() -> None:
     identifier_value_max_length = 200
     for label, scenario in scenarios().items():
         node = scenario["node"]

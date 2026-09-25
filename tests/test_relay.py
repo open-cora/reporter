@@ -33,7 +33,7 @@ A_START = {
     _EXECUTION_KEY: str(AN_EXECUTION),
     _STEP_KEY: str(A_STEP),
 }
-"""A start as it arrives when AROC dispatched the work.
+"""A start as it arrives when the keeper dispatched the work.
 
 Carries the reference, because a start without one is skipped and a relay
 test that never sent anything would pass for the wrong reason.
@@ -65,7 +65,7 @@ def test_a_submitted_delivery_is_handled_on_the_relays_own_thread() -> None:
 
 def test_submitting_does_not_wait_for_the_previous_delivery() -> None:
     """The property the whole module exists for: the engine's thread hands
-    over and carries on while AROC is still being talked to.
+    over and carries on while the keeper is still being talked to.
 
     The handler is held open, so a `submit` that waited on the worker would
     not return. Done on a thread with a bounded wait, because a regression
@@ -112,7 +112,7 @@ def test_stopping_finishes_what_is_already_queued() -> None:
 
 
 def test_a_full_queue_refuses_rather_than_waiting() -> None:
-    """An unbounded queue turns an AROC outage into memory exhaustion on the
+    """An unbounded queue turns a keeper outage into memory exhaustion on the
     engine's own host, which is worse than what it was protecting against."""
     relay, seen, _ = relay_over(capacity=1)
     # Not started: nothing drains, so the queue fills and stays full.

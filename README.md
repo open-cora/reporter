@@ -1,33 +1,33 @@
 # Reporter
 
-Relays one engine's document stream to AROC as reports about the steps
-AROC dispatched, and says where the data those steps produced is being
+Relays one engine's document stream to the keeper as reports about the steps
+The keeper dispatched, and says where the data those steps produced is being
 kept.
 
 **Runs, against a live engine.** `python -m reporter --subscribe` reads
-documents off a real engine's 0MQ stream and reports to AROC, and it has.
+documents off a real engine's 0MQ stream and reports to the keeper, and it has.
 It also replays a capture, which is how it is tested without a beamline.
 What is still missing is durability: see
 [What is missing](#what-is-missing).
 
 ## What it is, and what it is not
 
-A client of AROC, not a part of it. It calls an HTTP API rather than
-sitting behind a port AROC declares.
+A client of the keeper, not a part of it. It calls an HTTP API rather than
+sitting behind a port the keeper declares.
 
-**It creates nothing.** AROC composes a Procedure, dispatches an
-Execution, and whatever drives that execution carries the step's AROC ids
+**It creates nothing.** the keeper composes a Procedure, dispatches an
+Execution, and whatever drives that execution carries the step's keeper ids
 into the engine's own metadata. What arrives here is an engine talking
 about work this system already wrote down, so every request names a
 record that exists.
 
 That is a change from the design this replaced, where a start document
-became a Run that AROC had never heard of. Three things went with it: the
+became a Run that the keeper had never heard of. Three things went with it: the
 plan map, the external-reference lookup that found a run again after a
 restart, and the startup check over both. What replaces them is a pair of
 ids on the delivery.
 
-**A document with no AROC reference is skipped.** It is a scan somebody
+**A document with no keeper reference is skipped.** It is a scan somebody
 ran by hand, it is real work, and there is nothing here to record it
 against. Quiet rather than loud, because the alternative fires on every
 document of every hand-run scan and teaches whoever is watching to ignore
@@ -36,14 +36,14 @@ later.
 
 Two consequences worth stating, because both look like accidents:
 
-- **Nothing here imports `aroc`, and nothing in `apps/api` imports this.**
+- **Nothing here imports `keeper`, and nothing in `apps/keeper` imports this.**
   Its own project and its own lockfile are what make that the
   interpreter's rule rather than a convention.
-- **It runs where the engine is.** AROC runs where the database is. Two
+- **It runs where the engine is.** the keeper runs where the database is. Two
   processes because two places.
 
 It also has to name a particular engine on most of its pages, which
-`apps/api` and `docs/` may not: which engine a deployment runs is a
+`apps/keeper` and `docs/` may not: which engine a deployment runs is a
 deployment's fact, and a rule stated for one reads as a rule derived from
 one. Being out here is how that stays true without an exception.
 
@@ -55,7 +55,7 @@ right, which is a claim `tests/test_the_halves_stay_apart.py` enforces
 rather than one this paragraph makes.
 
 ```
-   reads one engine            the vocabulary          talks to AROC
+   reads one engine            the vocabulary          talks to the keeper
    ----------------            --------------          -------------
    sources.py                                          client.py
      a live 0MQ stream                                   report_step_run
@@ -84,7 +84,7 @@ rather than one this paragraph makes.
 ```
 
 The one path is `POST /executions/{id}/steps/{id}/run`, with the verb in
-the body. That is AROC's choice made for this caller: a reporter turns
+the body. That is the keeper's choice made for this caller: a reporter turns
 each document into whichever of six reports it is, so a path per verb
 would make it build a URL by lookup.
 
@@ -132,14 +132,14 @@ it, because one intent gets one outcome. The cost is worth knowing before
 reading a tally: when the report lands and the dataset cannot be
 registered, the single outcome has to be `Held`, so a session run against
 a store that is down reports no `Relayed` at all even though every report
-landed. The reports are in AROC either way and `Held` names the store as
+landed. The reports are in the keeper either way and `Held` names the store as
 it happens. It is the summary that misleads, not the record.
 
 **Subscribe the writer first.** Both callbacks run on the engine's thread
 in the order they were subscribed, so a reporter subscribed after the
 writer sees a finished node every time, with no retry and no sleep.
 Subscribed before it, the node exists without its ending, the registration
-still happens, and AROC stamps the arrival instead. That guarantee is
+still happens, and the keeper stamps the arrival instead. That guarantee is
 in-process only: over a message bus this really is a race.
 
 ## Why the translator holds state
@@ -156,7 +156,7 @@ the `descriptor` document carries `run_start`:
    stop        run_start
 ```
 
-And only the `start` carries the AROC reference, so what the start said
+And only the `start` carries the keeper reference, so what the start said
 has to be remembered until the stop. That includes a start that said
 nothing: the map records `None` for a run that is not this system's,
 because otherwise the pause and the stop of a hand-run scan would each
@@ -170,10 +170,10 @@ The spike this replaces tracked "the run we are currently walking"
 instead, which held only because it replayed one scenario at a time.
 
 **Restarting mid-scan loses the runs in flight.** The old design
-recovered from AROC, because a run could be found by its external
-reference. A step cannot: AROC publishes no lookup from what an engine
+recovered from the keeper, because a run could be found by its external
+reference. A step cannot: the keeper publishes no lookup from what an engine
 calls a run to the step that opened it. So the remaining documents of
-that scan are `Held`, loudly, and closing it needs a query AROC does not
+that scan are `Held`, loudly, and closing it needs a query the keeper does not
 have.
 
 ## The two fixtures
@@ -213,7 +213,7 @@ to a 0MQ proxy, this connects to the other side of it, and the two know
 nothing about each other beyond an address.
 
 ```
-   engine  ---->  0MQ proxy  ---->  python -m reporter --subscribe  ---->  AROC
+   engine  ---->  0MQ proxy  ---->  python -m reporter --subscribe  ---->  the keeper
                       |
                       +---->  whatever else wants the documents
 ```
@@ -241,9 +241,9 @@ RE.subscribe(relay.submit)
 
 That is the whole integration. `documents_into` is the only line that
 names an engine: it puts this engine's translator in front of a `Session`
-that knows nothing but AROC. A different engine composes its own
+that knows nothing but the keeper. A different engine composes its own
 translator the same way and reuses everything under it. `submit` queues and returns in microseconds
-and a worker thread does the talking, so a scan never waits on AROC even
+and a worker thread does the talking, so a scan never waits on the keeper even
 though this is running inside it.
 
 **What both have in common** is that a publisher drops what it sends while
@@ -310,7 +310,7 @@ failure.
 store's addresses belong to, and it sits on the store table because it
 describes the store: a deployment that changes where its data is kept
 changes both together. The engine's own run id still travels, as a step's
-`engine_reference`, but AROC holds that as a plain string rather than as
+`engine_reference`, but the keeper holds that as a plain string rather than as
 a scheme-and-value pair.
 
 There is no token for the store. Nothing has needed one, and adding the
@@ -324,8 +324,8 @@ reached for once before the first document moves, because a reporter that
 relays every report and quietly files no data is worse than one that will
 not start.
 
-There is no longer a startup check against AROC. The reference arrives
-per document rather than from configuration, so an execution or step AROC
+There is no longer a startup check against the keeper. The reference arrives
+per document rather than from configuration, so an execution or step the keeper
 does not hold surfaces as a 404 on that document and is `Held`.
 
 ## Running it
@@ -338,7 +338,7 @@ uv run pyright src tests
 ```
 
 Or from the repository root, where `make lint`, `make typecheck` and
-`make test` cover this project and `apps/api` together.
+`make test` cover this project and `apps/keeper` together.
 
 ## What is missing
 
@@ -346,7 +346,7 @@ Or from the repository root, where `make lint`, `make typecheck` and
 | --- | --- |
 | Durability | A transport that keeps a log. Documents live in the relay's queue and nowhere else, and 0MQ publish and subscribe has nothing behind it to ask again, so a document published while this is down was never published as far as this is concerned. At-most-once, known rather than accidental. |
 | The checkpoint | The same thing. There is nothing to check point against: an offset is only meaningful over a transport that can be rewound to one. A broker in between gives both at once, and this becomes one of its consumers. |
-| Anything other than AROC wanting these documents | Which is the question that decides the two rows above. If something else wants them, a broker is already justified and durability arrives with it. If not, this is the deployment and the gap is a cost somebody has to accept out loud. |
+| Anything other than the keeper wanting these documents | Which is the question that decides the two rows above. If something else wants them, a broker is already justified and durability arrives with it. If not, this is the deployment and the gap is a cost somebody has to accept out loud. |
 | A reporter run against a live conducted scan | A sitting with a beamline. `conductor.adapters.bluesky_acquisition` now writes `keeper_execution_id` and `keeper_step_id` into every start document it opens under a dispatch, and both sides pin the spelling, so the contract this half states is performed. What has not happened is the two running against one engine at once. |
 | An identity to run as | A deployment. It is an actor in Access, and the two spikes each record the grants their half needs: a spike, a spike for the datasets. A process carrying both legs runs as one actor holding the union. It must **not** be granted `DefinePlan` or `DefineProcedure`: an adapter cannot honestly author either, and withholding the grants makes that a refusal at the boundary rather than a sentence in a document. |
 | A token for the store | Something asking for one. The lookup sends no credential, so this works against a store that does not want one and nothing else. |
@@ -362,15 +362,15 @@ names the run, because a start is identified by the run it began.
 identified by where the data is. They are the same string today and they
 part company the day a run produces two datasets: keyed on the run, both
 registrations would carry one note and the second would come back holding
-the first one's id, silently. AROC refused to derive a dataset's identity
+the first one's id, silently. The keeper refused to derive a dataset's identity
 from its run for exactly that reason, and a key naming the run would put
 the constraint back somewhere no migration announces.
 
 One gap is open and worth naming, because the tests do not close it. They
-assert the requests the client builds, not that AROC's routes accept them:
-reading AROC's OpenAPI document would mean importing `aroc` here, which
+assert the requests the client builds, not that the keeper's routes accept them:
+reading the keeper's OpenAPI document would mean importing `keeper` here, which
 would put the model in this project's environment and end the separation
-above. So a route rename fails in `apps/api`'s own path pin, and whoever
+above. So a route rename fails in `apps/keeper`'s own path pin, and whoever
 does it has to look for callers. What closes it is the run below, which
 needs no test double at any point.
 
@@ -395,8 +395,8 @@ under it.
 Four processes, and every one of them real:
 
 ```sh
-# 1. an AROC with no database
-cd apps/api && APP_ENV=test uv run uvicorn keeper.api.main:app --port 8077
+# 1. a keeper with no database
+cd apps/keeper && APP_ENV=test uv run uvicorn keeper.api.main:app --port 8077
 
 # 2. author the plans, as an operator would. the reporter cannot: it is
 #    not granted DefinePlan, and could not derive a correct schema from
@@ -451,7 +451,7 @@ captured scenarios:
    Skipped      10
 ```
 
-Run it a second time and it prints this instead, with AROC still holding
+Run it a second time and it prints this instead, with the keeper still holding
 seven runs rather than fourteen:
 
 ```

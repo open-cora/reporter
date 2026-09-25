@@ -51,7 +51,7 @@ def tallied(*outcomes: Outcome) -> int:
 
 def test_a_run_with_nothing_held_succeeds() -> None:
     """The other four outcomes are the reporter working, including
-    Unchanged, which is what replaying documents AROC has seen looks like."""
+    Unchanged, which is what replaying documents the keeper has seen looks like."""
     assert (
         tallied(
             Relayed(AN_EXECUTION, A_STEP, "Started"),

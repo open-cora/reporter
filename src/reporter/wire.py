@@ -1,7 +1,7 @@
 """How the two halves are joined, which is the only place they meet.
 
-`translate` reads one engine's documents and knows nothing about AROC.
-`session` acts against AROC and knows nothing about any engine. Neither
+`translate` reads one engine's documents and knows nothing about the keeper.
+`session` acts against the keeper and knows nothing about any engine. Neither
 imports the other, and `intents` is the vocabulary between them.
 
 Something has to put them together, and that something belongs above both
@@ -9,10 +9,10 @@ rather than inside either. This module is it, and it is deliberately the
 smallest file in the package: a boundary is easiest to keep when crossing
 it is one named function that a reader can find.
 
-    sources ---> relay ---> documents_into ---> AROC
+    sources ---> relay ---> documents_into ---> the keeper
                               |
                               +-- translate.Translator   engine-shaped
-                              +-- session.Session        AROC-shaped
+                              +-- session.Session        the keeper-shaped
 
 A second engine writes its own translator, composes it here or beside
 here, and reuses everything under `intents` unchanged. What that costs is

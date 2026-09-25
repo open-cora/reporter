@@ -1,7 +1,7 @@
 """Every call this reporter makes, asserted on the request it builds.
 
 Driven through a transport that records instead of sending, so the body,
-the path and the headers are all checked without an AROC to talk to and
+the path and the headers are all checked without a keeper to talk to and
 without this package growing an HTTP library.
 
 Two calls where there were five, and the three that went were the ones
@@ -10,11 +10,11 @@ to a dispatched execution took away from this side: the ids arrive with
 the delivery, so there is nothing here to resolve.
 
 **What this does not prove.** That the routes exist and take these
-parameters. Nothing readable from here says so: AROC's OpenAPI document is
-generated on demand rather than committed, and importing `apps/api` to ask
-it would put `aroc` in this project's environment and dissolve the
+parameters. Nothing readable from here says so: the keeper's OpenAPI document is
+generated on demand rather than committed, and importing `apps/keeper` to ask
+it would put `keeper` in this project's environment and dissolve the
 boundary that makes the reporter a separate deployable. So a rename on
-AROC's side fails there, loudly, in its own path pin, and the person doing
+The keeper's side fails there, loudly, in its own path pin, and the person doing
 it has to look for callers.
 """
 
@@ -79,7 +79,7 @@ def test_a_report_posts_to_the_step_the_intent_names() -> None:
 
 
 def test_a_report_puts_the_verb_in_the_body_rather_than_the_path() -> None:
-    """One endpoint for six reports, which is AROC's choice made for this
+    """One endpoint for six reports, which is the keeper's choice made for this
     caller: a reporter turns each document into whichever of six it is, so
     a path per verb would make it build a URL by lookup."""
     client, recorder = client_answering(Answer(204), Answer(204))
@@ -92,7 +92,7 @@ def test_a_report_puts_the_verb_in_the_body_rather_than_the_path() -> None:
 
 
 def test_a_report_carries_the_engines_own_id_on_every_one_of_them() -> None:
-    """AROC records it on a start and ignores it elsewhere, which is stated
+    """The keeper records it on a start and ignores it elsewhere, which is stated
     on that route. Sending it always is what lets the store be asked about
     the same run on the delivery that ends it."""
     client, recorder = client_answering(Answer(204))
@@ -103,7 +103,7 @@ def test_a_report_carries_the_engines_own_id_on_every_one_of_them() -> None:
 
 
 def test_a_report_with_no_time_sends_a_null_rather_than_dropping_the_field() -> None:
-    """Sending null says the delivery carried no time, and AROC stamps the
+    """Sending null says the delivery carried no time, and the keeper stamps the
     moment it was told. Omitting the field says the same thing less clearly."""
     client, recorder = client_answering(Answer(204))
     client.report_step_run(a_report(occurred_at=None))
@@ -147,7 +147,7 @@ def test_a_report_refuses_on_anything_but_a_204(status: int) -> None:
 
 
 # Registering a dataset. The store half is `tests/test_stores.py`; these
-# check only what this package sends to AROC once it has a location.
+# check only what this package sends to the keeper once it has a location.
 
 A_DATASET = UUID("01a0ba66-1c41-7f02-9e48-5b7a0c6d2e19")
 A_PATH = f"raw/{A_UID}"

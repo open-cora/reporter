@@ -6,9 +6,9 @@ and the split is by what the caller should do rather than by what
 occurred, because a subscription loop has exactly two decisions to make:
 whether to advance its checkpoint, and whether to wake somebody.
 
-    Relayed      AROC now holds what the engine said about a step
+    Relayed      the keeper now holds what the engine said about a step
     Kept         a step's run ended, and what it produced is recorded too
-    Unchanged    AROC declined, because the step is not where the
+    Unchanged    the keeper declined, because the step is not where the
                  delivery expects it to be
     Skipped      the delivery said nothing this system asked for
     Held         it said something and could not be acted on
@@ -18,12 +18,12 @@ the same delivery again produces the same outcome, so there is nothing to
 come back for. Only `Held` is worth waking somebody, and only some of them
 urgently.
 
-`Recorded` used to be here, for a start that became a run AROC did not
+`Recorded` used to be here, for a start that became a run the keeper did not
 previously hold. It is gone because this reporter no longer brings
-anything into existence: every record it touches was created by AROC
+anything into existence: every record it touches was created by the keeper
 before the engine was asked to do anything.
 
-What is NOT here is a retry. A request that never arrived, or one AROC
+What is NOT here is a retry. A request that never arrived, or one the keeper
 refused with a 429 or a 5xx, raises out of `Session.act` instead, so a
 caller that swallows outcomes cannot swallow those too. The distinction is
 the one that matters for a checkpoint: an outcome means "this delivery is
@@ -38,7 +38,7 @@ from reporter.intents import Report
 
 @dataclass(frozen=True)
 class Relayed:
-    """AROC accepted what the engine said about one step's run."""
+    """The keeper accepted what the engine said about one step's run."""
 
     execution_id: UUID
     step_id: UUID
@@ -47,13 +47,13 @@ class Relayed:
 
 @dataclass(frozen=True)
 class Unchanged:
-    """AROC declined the report, and its record is as it was.
+    """The keeper declined the report, and its record is as it was.
 
     Named for the effect rather than the cause, because a 409 covers two
     situations this cannot tell apart on its own: the step's run is
     already past the state the delivery asks for, which is what a
     redelivery looks like, or the engine went somewhere else entirely and
-    this is the wrong report for it. `detail` carries what AROC said,
+    this is the wrong report for it. `detail` carries what the keeper said,
     which names the state the run is actually in, and that is what
     separates a harmless replay from a reporter talking about the wrong
     step.
@@ -87,7 +87,7 @@ class Kept:
     registered, the one outcome has to be `Held`, because somebody needs
     waking. So a session run against a store that is down reports no
     `Relayed` at all even though every report landed. The reports are in
-    AROC either way and `Held` names the store as it happens; it is the
+    the keeper either way and `Held` names the store as it happens; it is the
     summary that misleads, not the record.
 
     `reported` is `None` when no engine report arrived with the
@@ -98,7 +98,7 @@ class Kept:
     earlier.
 
     `external_ref_value` is the address the store gave, carried so a
-    caller can print what it filed without asking AROC back.
+    caller can print what it filed without asking the keeper back.
     """
 
     execution_id: UUID
@@ -114,7 +114,7 @@ class Skipped:
 
     Most of a stream. The parts that describe what is about to be read, or
     carry the readings themselves, rather than saying anything happened,
-    and everything belonging to work AROC never dispatched.
+    and everything belonging to work the keeper never dispatched.
     """
 
     reason: str
@@ -128,13 +128,13 @@ class Held:
 
         a delivery that cannot be       a bug here, or an engine that
         mapped                          grew an ending nobody knows
-        a step AROC does not hold       the reference in the engine's
+        a step the keeper does not hold       the reference in the engine's
                                         metadata names nothing, which
-                                        means whatever wrote it and AROC
+                                        means whatever wrote it and the keeper
                                         disagree
         the store holds nothing for     the data is late, or the writer
         a run that ended                is pointed somewhere else
-        AROC refused, terminally        a grant is missing
+        the keeper refused, terminally        a grant is missing
 
     The first entry that used to be here, a plan name with no configured
     id, is gone with the plan map.

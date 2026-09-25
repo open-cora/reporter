@@ -1,12 +1,12 @@
 """Take a delivery from the engine and let it go, immediately.
 
 The one thing between this reporter and a stalled scan. A subscriber that
-talks to AROC inside the engine's own thread makes every scan wait on a
+talks to the keeper inside the engine's own thread makes every scan wait on a
 network round trip, and at a facility where beamtime is the scarce thing
 that is the property that gets a reporter removed.
 
 So `submit` puts the payload on a queue and returns in microseconds, and
-a worker thread does the talking. The engine's thread never waits on AROC,
+a worker thread does the talking. The engine's thread never waits on the keeper,
 never waits on a retry, and never waits on a timeout.
 
 What is on the other side of the queue is a function, not a `Session`.
@@ -33,7 +33,7 @@ is the difference between a limitation and a bug.
 
 ## Full is louder than slow
 
-The queue is bounded. An unbounded one turns an AROC outage into memory
+The queue is bounded. An unbounded one turns a keeper outage into memory
 exhaustion, which takes the engine's host down with it, which is worse
 than anything it was protecting against. When it is full `submit` refuses
 rather than blocking, and the refusal is reported as `Held` like any other
@@ -62,7 +62,7 @@ whatever a real stream's burst rate says.
 DEFAULT_RETRY_DELAYS: Final[tuple[float, ...]] = (0.5, 2.0, 5.0, 15.0)
 """How long to wait between attempts, and how many attempts there are.
 
-Only failures worth retrying get here: a 429 or a 5xx from AROC or from a
+Only failures worth retrying get here: a 429 or a 5xx from the keeper or from a
 store, or a request that never arrived. Everything else is already an
 outcome by the time the worker sees it.
 
@@ -80,14 +80,14 @@ Handle = Callable[[str, Mapping[str, Any]], Outcome]
 """What the worker calls, once per delivery.
 
 An outcome means the delivery is finished with. Raising means the
-opposite, and only a refusal from AROC, a refusal from a store, or a
+opposite, and only a refusal from the keeper, a refusal from a store, or a
 request that did not arrive are retried, which is the contract
 `Session.act` is written to.
 """
 
 
 class Relay:
-    """A queue and one worker, between an engine's thread and AROC."""
+    """A queue and one worker, between an engine's thread and the keeper."""
 
     def __init__(
         self,

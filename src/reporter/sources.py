@@ -6,7 +6,7 @@ opinion about the origin, so everything engine-shaped about getting hold
 of a document stops here.
 
 There are two. `from_capture` reads a file, which is how this gets tested
-against a real AROC without a beamline. `from_subscription` reads a live
+against a real the keeper without a beamline. `from_subscription` reads a live
 engine publishing over 0MQ, which is the one that makes this a reporter
 rather than a replay tool.
 

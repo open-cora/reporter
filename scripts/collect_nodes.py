@@ -61,10 +61,10 @@ is the finding.
 """
 
 IDENTIFIER_VALUE_MAX_LENGTH = 200
-"""AROC's bound on the value half of an external reference.
+"""The keeper's bound on the value half of an external reference.
 
 Copied rather than imported, because importing it would mean
-`--project apps/api` and that is the environment this half cannot have.
+`--project apps/keeper` and that is the environment this half cannot have.
 resolve.py imports the real one and checks this copy against it, so the
 duplication cannot drift silently.
 """

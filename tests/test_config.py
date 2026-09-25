@@ -1,12 +1,12 @@
 """Configuration is refused at load, not discovered at 3am.
 
 Every check here is a failure a reporter would otherwise hit on the first
-scan of the day, hours after starting, with a message pointing at AROC
+scan of the day, hours after starting, with a message pointing at the keeper
 rather than at the file that is wrong.
 
 There is much less to get wrong than there was. The plan map and the
-engine's reference scheme are gone, because AROC dispatches the work and
-the ids arrive with the delivery, so what remains is where AROC is, who
+engine's reference scheme are gone, because the keeper dispatches the work and
+the ids arrive with the delivery, so what remains is where the keeper is, who
 this reporter is, and an optional store.
 """
 
@@ -151,7 +151,7 @@ def test_the_only_reference_scheme_left_is_the_stores() -> None:
     """There were two, and the engine's went with the run record it was on.
 
     An engine's run id still travels, as the `engine_reference` on a
-    step, but AROC holds it as a plain string rather than as a
+    step, but the keeper holds it as a plain string rather than as a
     scheme-and-value pair, so there is nothing to configure about it.
     """
     config = from_mapping(WITH_STORE)

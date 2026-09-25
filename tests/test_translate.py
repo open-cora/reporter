@@ -14,7 +14,7 @@ a prior reading of it.
 
 ## The capture is a hand-run scan, and is used both ways
 
-Nothing in it carries an AROC reference, because it was taken by driving
+Nothing in it carries a keeper reference, because it was taken by driving
 an engine directly and no conductor was involved. That is not a gap in
 the fixture: it is exactly what work this system did not dispatch looks
 like, so the untouched capture is what proves the quiet path.
@@ -52,18 +52,18 @@ STATUS_BY_ENDING = {
     "Aborted": "Aborted",
     "Failed": "Failed",
 }
-"""The ending reports onto the status AROC's fold produces for each.
+"""The ending reports onto the status the keeper's fold produces for each.
 
 Now an identity map, and kept rather than deleted because what it asserts
 is that the two vocabularies agree. They did not before: this reporter
-sent lowercase verbs in a path and AROC derived a status word from them,
-so the mapping was real. AROC takes the word itself now, and a check that
+sent lowercase verbs in a path and the keeper derived a status word from them,
+so the mapping was real. The keeper takes the word itself now, and a check that
 the two still line up costs one dictionary.
 
 Declared here rather than imported, because importing it would mean this
 package depends on the model it reports to and the whole point is that it
 does not. A drift between the two is caught by the contract tier in
-apps/api, which exercises the real deciders.
+apps/keeper, which exercises the real deciders.
 """
 
 
@@ -97,7 +97,7 @@ def dispatched(
     execution_id: UUID = _EXECUTION_ID,
     step_id: UUID = _STEP_ID,
 ) -> list[Delivery]:
-    """The same documents, as they arrive when AROC dispatched the work.
+    """The same documents, as they arrive when the keeper dispatched the work.
 
     Only the start is touched, because only the start carries the
     reference. That asymmetry is the reason the translator holds a map at
@@ -339,7 +339,7 @@ def test_an_ending_for_a_dispatched_run_whose_start_was_missed_is_unmappable() -
 
     A reporter restarted mid-scan holds no reference for a run in
     flight, and unlike the design this replaced there is no lookup that
-    would recover it: AROC publishes no way to find a step by what an
+    would recover it: the keeper publishes no way to find a step by what an
     engine calls the run it opened. So the ending is lost, and it is lost
     loudly.
     """
@@ -382,7 +382,7 @@ def test_a_run_is_forgotten_once_it_has_ended() -> None:
 def test_a_second_stop_for_a_forgotten_run_is_unmappable() -> None:
     """Forgetting the reference is what makes a redelivered stop visible here.
 
-    It does not reach AROC, so AROC's own 409 never fires for it. That is
+    It does not reach the keeper, so the keeper's own 409 never fires for it. That is
     a difference from the design this replaced, where the reference could
     be re-resolved, and it is the reason the forgetting happens after the
     intent is built rather than before.
@@ -404,7 +404,7 @@ def test_every_ending_the_engine_can_record_maps_to_a_report() -> None:
 
 
 def test_a_start_carries_the_engines_own_id_as_the_reference() -> None:
-    """AROC records it on the step, and the store is asked about it by name."""
+    """The keeper records it on the step, and the store is asked about it by name."""
     intents = translate_all("completes")
     first = intents[0]
 
@@ -460,12 +460,12 @@ def test_the_translator_never_produces_a_dataset_registration() -> None:
 
 
 def test_a_documents_time_becomes_an_instant_with_an_offset() -> None:
-    """AROC refuses a timestamp with no offset, and the engine sends seconds."""
+    """The keeper refuses a timestamp with no offset, and the engine sends seconds."""
     assert engine_instant({"time": 1789812131.0}) == datetime(2026, 9, 19, 10, 2, 11, tzinfo=UTC)
 
 
 def test_a_document_with_no_usable_time_yields_none() -> None:
-    """AROC then stamps the moment it was told, which is the honest record."""
+    """The keeper then stamps the moment it was told, which is the honest record."""
     assert engine_instant({}) is None
     assert engine_instant({"time": None}) is None
     assert engine_instant({"time": "yesterday"}) is None

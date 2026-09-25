@@ -1,4 +1,4 @@
-"""One intent at a time, acted on against AROC.
+"""One intent at a time, acted on against the keeper.
 
 Where the two halves meet: something upstream says what happened, in the
 vocabulary of `intents`, and this sends it and decides what to do with a
@@ -18,7 +18,7 @@ the delivery that knows where to ask about its data.
 
 ## It remembers nothing
 
-This module used to hold a map from an engine's run uid to AROC's run id,
+This module used to hold a map from an engine's run uid to the keeper's run id,
 with a lookup behind it for what a restart had forgotten. Both are gone.
 The ids are on the intent, because whatever dispatched the work carried
 them into the engine's own metadata and the translator reads them back
@@ -73,12 +73,12 @@ from reporter.stores import StoreLookup, StoreRefusedError
 ENDINGS: Final[frozenset[Report]] = frozenset({"Completed", "Aborted", "Failed"})
 """The reports after which an engine has nothing further to say about a run.
 
-Used to ask a store for the data rather than to refuse a report: AROC
+Used to ask a store for the data rather than to refuse a report: the keeper
 decides what may follow what, and a reporter second-guessing it would
 withhold a report the domain would have accepted.
 
 Written out rather than derived from one engine's exit statuses, which is
-what it used to be. Which reports are terminal is AROC's fact, and
+what it used to be. Which reports are terminal is the keeper's fact, and
 reading it off a translator made it look like the engine's.
 """
 
@@ -89,7 +89,7 @@ _TOO_MANY: Final = 429
 def is_worth_retrying(status: int) -> bool:
     """Whether sending the same request again could plausibly work.
 
-    A 5xx is AROC or something in front of it having a bad moment, and a
+    A 5xx is the keeper or something in front of it having a bad moment, and a
     429 is being asked to slow down; both change on their own. Every
     other refusal is about the request, and the request will be identical
     next time.
@@ -121,7 +121,7 @@ class Session:
     def act(self, intent: Intent) -> Outcome:
         """Do whatever one intent asks for, and say what came of it.
 
-        Raises `RequestRefusedError` when AROC's answer was worth
+        Raises `RequestRefusedError` when the keeper's answer was worth
         retrying, and the caller should not advance past the intent. Any
         transport failure raises out of the HTTP client unchanged, for
         the same reason.
@@ -163,7 +163,7 @@ class Session:
         It runs after a declined report as well as an accepted one, and
         that is not an oversight. A 409 is what a redelivery looks like,
         and the delivery it repeats may have recorded the ending and died
-        before recording the data. Re-registering an address AROC already
+        before recording the data. Re-registering an address the keeper already
         holds costs one request and returns the same id, because the retry
         key is derived from that address.
 

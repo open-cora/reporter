@@ -1,37 +1,37 @@
 """What translating one delivery produces, before anything is sent.
 
 Four outcomes, in two groups. `ReportStepRun` and `RegisterDataset` each
-name a command AROC publishes and carry everything that command needs.
+name a command the keeper publishes and carry everything that command needs.
 `Ignored` and `Unmappable` both mean nothing will be sent, and they are
 separate because the reasons are opposite: one is the design working and
 the other is the design out of date.
 
 The first two cover two bounded contexts, and that is deliberate. This
-file is the description of everything the reporter can ask AROC for, so a
+file is the description of everything the reporter can ask the keeper for, so a
 command missing from it is a command nobody reading this knows about.
 
-## Every intent carries AROC's own ids, and none carries a name
+## Every intent carries the keeper's own ids, and none carries a name
 
 This used to be the other way round. A `ReportRun` carried a plan NAME
-and whatever sent it had to turn that into an AROC plan id from a
+and whatever sent it had to turn that into a keeper plan id from a
 configured map, because a run was a record this reporter brought into
-existence and AROC had never heard of the work before the report arrived.
+existence and the keeper had never heard of the work before the report arrived.
 
-AROC now composes the work itself. It writes a Procedure, dispatches an
+The keeper now composes the work itself. It writes a Procedure, dispatches an
 Execution, and whatever drives that execution carries the execution and
 step ids into the engine's own metadata. So the reference is on the
 delivery, this reporter creates nothing, and the plan map is gone along
 with every refusal that depended on it.
 
-That is a smaller job and a stricter one. A document carrying no AROC
+That is a smaller job and a stricter one. A document carrying no keeper
 reference describes work this system never asked for, and there is
 nothing to record it against: see `translate` for why that is `Ignored`
 rather than an alert.
 
 Nothing here carries parameters either, and the omission is the same
 fact. A `ReportRun` had to carry what the engine was called with, because
-AROC's record of the run was being made from it, and the reporter had to
-drop every argument that was a device repr rather than a value. AROC now
+The keeper's record of the run was being made from it, and the reporter had to
+drop every argument that was a device repr rather than a value. The keeper now
 holds those values on the procedure it composed, so what the engine says
 it was called with is at best a second copy and at worst a disagreement
 this system cannot adjudicate.
@@ -56,7 +56,7 @@ from uuid import UUID
 Report = Literal["Started", "Paused", "Resumed", "Completed", "Aborted", "Failed"]
 """The six things an engine can be reported to have done to one run.
 
-Spelled exactly as AROC's `EngineReport` spells them, because these go
+Spelled exactly as the keeper's `EngineReport` spells them, because these go
 into a request body as they are. A `Literal` rather than an enum because
 they are wire strings and the only thing worth checking is that a typo
 cannot reach a request.
@@ -72,7 +72,7 @@ is the first of six reports about it and carries no more than the others.
 class ReportStepRun:
     """An engine did something to the run one acquisition step opened.
 
-    One intent for all six reports, because AROC takes them on one
+    One intent for all six reports, because the keeper takes them on one
     endpoint with the verb in the body. That is itself a decision made
     for this caller: a reporter turns each document into whichever of six
     it is, so a path per verb would make it build a URL by lookup.
@@ -82,7 +82,7 @@ class ReportStepRun:
     guessed or looked up, which is the whole difference from the run
     reference this replaced.
 
-    `engine_reference` is the engine's own id for the run. AROC records
+    `engine_reference` is the engine's own id for the run. The keeper records
     it on a start and ignores it on the others, and this carries it every
     time because the store leg below asks a store about it by that name.
     """
@@ -114,7 +114,7 @@ class RegisterDataset:
     not on the intent.
 
     `occurred_at` is when whatever wrote the data finished, as the store
-    reports it. `None` when the store holds no ending yet, and AROC then
+    reports it. `None` when the store holds no ending yet, and the keeper then
     stamps the moment it was told, which is honest and less precise.
     """
 
@@ -127,11 +127,11 @@ class RegisterDataset:
 
 @dataclass(frozen=True)
 class Ignored:
-    """A delivery with nothing in it for AROC, which is expected.
+    """A delivery with nothing in it for the keeper, which is expected.
 
     Most of a stream is this: the parts that describe what is about to be
     read, or carry the readings themselves, rather than saying anything
-    about a run's life. A document from work AROC never dispatched is
+    about a run's life. A document from work the keeper never dispatched is
     this too. `reason` is filled in so a caller can count what it is
     skipping without the skip being an event.
     """

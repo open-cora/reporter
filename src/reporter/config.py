@@ -1,17 +1,17 @@
 """Everything this reporter has to be told, and nothing it can work out.
 
-Two facts about AROC, and an optional group about a store.
+Two facts about the keeper, and an optional group about a store.
 
 ## What used to be here, and why it is not
 
 Two settings are gone, and both for one reason. `plan_ids` mapped an
-engine's plan names onto AROC plan ids, because a run was a record this
+engine's plan names onto the keeper plan ids, because a run was a record this
 reporter brought into existence and the id was not derivable from
 anything on a document. `external_ref_scheme` named the vocabulary an
 engine's run ids belonged to, because that reference was stored on the
 run and later used to find it again.
 
-AROC composes the work now. The execution and step ids arrive in the
+The keeper composes the work now. The execution and step ids arrive in the
 engine's own metadata, so nothing is resolved, nothing is created, and
 the deployment fact those two settings carried is not a fact this
 reporter needs. An operator authoring a new plan no longer has to
@@ -38,7 +38,7 @@ nothing rather than finding the wrong thing.
 
 Its `external_ref_scheme` is the one scheme left. It names the vocabulary
 a store's addresses belong to, and it is on the store table rather than
-beside the AROC settings because it describes the store: a deployment
+beside the keeper settings because it describes the store: a deployment
 that changes where its data is kept changes both together.
 """
 
@@ -70,7 +70,7 @@ class StoreConfig:
 
 @dataclass(frozen=True)
 class ReporterConfig:
-    """Where AROC is, who this reporter is, and where the data is kept."""
+    """Where the keeper is, who this reporter is, and where the data is kept."""
 
     base_url: str
     token: str

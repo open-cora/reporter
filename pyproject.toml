@@ -1,7 +1,7 @@
 [project]
 name = "reporter"
 version = "0.1.0"
-description = "Turns one engine's document stream into AROC's run commands"
+description = "Turns one engine's document stream into the keeper's run commands"
 readme = "README.md"
 requires-python = ">=3.13"
 authors = [{ name = "Doga Gursoy" }]
@@ -23,7 +23,7 @@ dependencies = [
     "msgpack>=1.1,<2",
 ]
 
-# Pinned to the same ranges as apps/api. Two projects linting under two ruff
+# Pinned to the same ranges as apps/keeper. Two projects linting under two ruff
 # versions is a drift source with no upside, and the pre-commit hook that
 # covers both trees runs one binary over both.
 [dependency-groups]
@@ -40,10 +40,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/reporter"]
 
-# Lint and type configuration is copied from apps/api rather than shared.
+# Lint and type configuration is copied from apps/keeper rather than shared.
 # Two projects that build and ship separately should not fail each other's
 # CI over a style bump, and the two configurations already differ in three
-# places: no `aroc` first-party, no tach, and no parked-slice exclusion.
+# places: no `keeper` first-party, no tach, and no parked-slice exclusion.
 [tool.ruff]
 line-length = 100
 target-version = "py313"

@@ -10,7 +10,7 @@ entrypoint uses, so these exercise the wiring as well as the parts.
 
 ## The capture is decorated, and that is the point
 
-Nothing a real engine emitted carries an AROC reference, because the
+Nothing a real engine emitted carries a keeper reference, because the
 capture was taken by driving an engine directly. `dispatched` puts the
 two keys a driver will write onto each scenario's start, which is the one
 thing invented here and the only thing a driver invents either.
@@ -62,7 +62,7 @@ def raw_deliveries(scenario: str) -> list[tuple[str, dict[str, Any]]]:
 
 
 def deliveries(scenario: str) -> list[tuple[str, dict[str, Any]]]:
-    """One scenario's documents, as they arrive when AROC dispatched it."""
+    """One scenario's documents, as they arrive when the keeper dispatched it."""
     execution_key, step_key = KEEPER_METADATA_KEYS
     return [
         (name, {**document, execution_key: str(AN_EXECUTION), step_key: str(A_STEP)})
@@ -113,7 +113,7 @@ def test_a_scenario_sends_one_post_per_thing_that_happened(scenario: str) -> Non
 
 
 @pytest.mark.parametrize("scenario", scenarios())
-def test_a_scenario_aroc_never_dispatched_sends_nothing_at_all(scenario: str) -> None:
+def test_a_scenario_keeper_never_dispatched_sends_nothing_at_all(scenario: str) -> None:
     """The undecorated capture, which is a scan somebody ran by hand.
 
     Every document is skipped, nothing is held, and no request is built.
@@ -157,7 +157,7 @@ def test_a_descriptor_sends_nothing() -> None:
     assert routed.sent == []
 
 
-def test_a_start_with_no_aroc_reference_is_skipped_and_not_held() -> None:
+def test_a_start_with_no_keeper_reference_is_skipped_and_not_held() -> None:
     """Work this system did not dispatch. There is no execution to record
     it against and no way to make one from a document."""
     handle, routed = session_over()
@@ -170,7 +170,7 @@ def test_a_start_with_no_aroc_reference_is_skipped_and_not_held() -> None:
 
 def test_an_ending_for_a_run_this_stream_never_introduced_is_held() -> None:
     """What a reporter joining mid-run finds. Unlike the design this
-    replaced there is no lookup behind it: AROC publishes no way to find a
+    replaced there is no lookup behind it: the keeper publishes no way to find a
     step by what an engine calls the run it opened, so the report is lost
     and says so."""
     handle, routed = session_over()
@@ -182,7 +182,7 @@ def test_an_ending_for_a_run_this_stream_never_introduced_is_held() -> None:
     assert routed.sent == []
 
 
-def test_nothing_in_a_whole_scenario_reads_from_aroc() -> None:
+def test_nothing_in_a_whole_scenario_reads_from_the_keeper() -> None:
     """The lookup is gone, and this is what says so.
 
     The fake raises on any GET, so a session that resolved anything would
@@ -195,7 +195,7 @@ def test_nothing_in_a_whole_scenario_reads_from_aroc() -> None:
 
 
 def test_a_redelivered_ending_leaves_the_record_unchanged() -> None:
-    """The shape of a replay. AROC's 409 names the engine state it holds,
+    """The shape of a replay. The keeper's 409 names the engine state it holds,
     and that is a settled answer rather than something to alert on."""
     handle, _ = session_over(
         report=[Answer(204), Answer(409, text="has Completed from its engine")]
@@ -218,8 +218,8 @@ def test_a_refusal_the_reporter_cannot_fix_is_held_rather_than_raised() -> None:
     assert "403" in outcome.reason
 
 
-def test_a_step_aroc_does_not_hold_is_held_and_names_the_path() -> None:
-    """The reference in the engine's metadata and AROC disagreeing.
+def test_a_step_keeper_does_not_hold_is_held_and_names_the_path() -> None:
+    """The reference in the engine's metadata and the keeper disagreeing.
 
     There is no startup check that could have caught it, because the
     reference arrives per document rather than from configuration. This
@@ -269,7 +269,7 @@ def test_an_unmappable_document_is_held_and_names_the_document() -> None:
 
 def test_every_ending_names_a_report_that_exists() -> None:
     """`ENDINGS` used to be derived from one engine's exit statuses, which
-    made an AROC fact look like the engine's. Written out, it can drift, so
+    made a keeper fact look like the engine's. Written out, it can drift, so
     this is what stops a typo becoming a run whose data is never asked
     for."""
     assert set(get_args(Report)) >= ENDINGS
@@ -420,7 +420,7 @@ def test_the_registration_is_keyed_on_the_address_rather_than_the_step() -> None
     assert str(A_STEP) not in key
 
 
-def test_a_store_holding_no_ending_still_registers_and_lets_aroc_stamp_it() -> None:
+def test_a_store_holding_no_ending_still_registers_and_lets_keeper_stamp_it() -> None:
     """A node without its stop is a reporter that subscribed before the
     writer. Less true than it could be, and better than nothing."""
     handle, routed = session_with_store(store_holding("completes", occurred_at=None))
@@ -464,7 +464,7 @@ def test_a_store_having_a_bad_moment_raises_so_the_caller_waits() -> None:
         drive("completes", handle)
 
 
-def test_aroc_refusing_the_registration_is_held_after_the_report_landed() -> None:
+def test_keeper_refusing_the_registration_is_held_after_the_report_landed() -> None:
     """The cost of one outcome per intent, pinned rather than left to be
     discovered: the report landed and the summary will not say so."""
     handle, routed = session_with_store(
@@ -551,7 +551,7 @@ def test_a_dataset_found_on_its_own_carries_no_report() -> None:
 def test_a_dataset_found_on_its_own_resolves_nothing() -> None:
     """The lookup the slow path used to depend on entirely is gone. A
     caller that cannot name the acquisition has nothing to file against,
-    so it names one, and this asks AROC nothing before posting."""
+    so it names one, and this asks the keeper nothing before posting."""
     session, routed = a_session_with_store(store_holding("completes"))
 
     session.act(a_found_dataset())
@@ -561,7 +561,7 @@ def test_a_dataset_found_on_its_own_resolves_nothing() -> None:
 
 
 def test_both_ways_in_send_the_same_request() -> None:
-    """The point of the symmetry. Whatever found the data, AROC is asked
+    """The point of the symmetry. Whatever found the data, the keeper is asked
     the same thing, with the same key, so the two paths cannot make two
     records of one body of data."""
     uid = uid_of("completes")

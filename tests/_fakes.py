@@ -7,7 +7,7 @@ test feeding a whole captured scenario wants, since the number of requests
 then depends on the documents rather than on the test.
 
 `Store` is the third, and it stands in for the other outside system rather
-than for AROC.
+than for the keeper.
 
 None of them models what it replaces. They return what they were told to
 return, so a test that wants a 409 has to say so. A fake that decided for
@@ -83,7 +83,7 @@ class Routed:
 
     It held four before. The two that went were a run's genesis and the
     lookup that found a run again, and both went for the same reason:
-    AROC dispatches the work, so there is nothing for this reporter to
+    the keeper dispatches the work, so there is nothing for this reporter to
     create and nothing for it to resolve.
     """
 
@@ -94,13 +94,15 @@ class Routed:
     def get(self, url: str, *, params: Mapping[str, str] | None = None) -> Answer:
         """Recorded and then refused, because nothing should call it.
 
-        This reporter makes no GET against AROC any more. Keeping the
+        This reporter makes no GET against the keeper any more. Keeping the
         method on the fake is what makes that assertable: a test can show
         the client satisfies the `HttpClient` protocol and still never
         reads.
         """
         self.sent.append(Sent("GET", url, params=params))
-        raise AssertionError(f"This reporter does not read from AROC, and something asked {url}.")
+        raise AssertionError(
+            f"This reporter does not read from the keeper, and something asked {url}."
+        )
 
     def post(
         self,

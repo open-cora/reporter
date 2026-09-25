@@ -29,7 +29,7 @@ the same address, byte for byte. The spike checks both ways against each
 other on four runs and they agree on all four.
 
 That leaves one dependency where there would have been two, and it is the
-one this reporter already has for AROC. It is the same reasoning that
+one this reporter already has for the keeper. It is the same reasoning that
 keeps the engine's library out of `sources`, arrived at from the other
 direction: there the wire was simple enough, here the client turned out to
 be thin enough.
@@ -78,10 +78,10 @@ class StoreHttpClient(Protocol):
     """The one verb a store is read with.
 
     Declared here rather than imported from `client`, which has a wider
-    pair of the same shape. That module talks to AROC and this one may not
+    pair of the same shape. That module talks to the keeper and this one may not
     name it, which is the rule `tests/test_the_halves_stay_apart.py` keeps
     and the reason a different store is an adapter swap. The duplication
-    is six lines and it buys a lookup that cannot reach AROC by accident.
+    is six lines and it buys a lookup that cannot reach the keeper by accident.
     """
 
     def get(self, url: str) -> StoreResponse: ...
@@ -95,7 +95,7 @@ class Location:
     and that is worth reading as a signal rather than as a missing field.
     A store that has the node but not its ending is a store the reporter
     got to first, which in one process means it subscribed before the
-    writer rather than after it. AROC then stamps the moment it was told,
+    writer rather than after it. The keeper then stamps the moment it was told,
     so nothing is lost but the record is less true than it could be.
     """
 
@@ -120,7 +120,7 @@ class StoreLookup(Protocol):
 class StoreRefusedError(Exception):
     """The store answered, and the answer was not a node.
 
-    Carries the status for the same reason AROC's refusal does: waiting
+    Carries the status for the same reason the keeper's refusal does: waiting
     helps for some of them and not for others, and only the caller can
     decide. A run the store does not hold is not this. That is a 404 and
     it comes back as `None`, because "no data for this run" is an answer
@@ -182,7 +182,7 @@ def _as_location(body: Mapping[str, Any]) -> Location:
 
 
 def store_instant(seconds: Any) -> datetime | None:
-    """A store's timestamp, as an instant AROC will accept.
+    """A store's timestamp, as an instant the keeper will accept.
 
     The store keeps the engine's own `time` fields verbatim, to the last
     digit, so this is the same conversion `engine_instant` makes and it is

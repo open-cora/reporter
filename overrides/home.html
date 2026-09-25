@@ -26,6 +26,15 @@
         <h1 class="hero__masthead">{{ hero.masthead }}</h1>
         <p class="hero__tagline">{{ hero.tagline }}</p>
       </div>
+      {% if hero.credit %}
+        <p class="hero__credit">
+          {% if hero.credit_url %}
+            <a href="{{ hero.credit_url }}" target="_blank" rel="noopener noreferrer">{{ hero.credit }}</a>
+          {% else %}
+            {{ hero.credit }}
+          {% endif %}
+        </p>
+      {% endif %}
     </div>
   </div>
 {% endblock %}

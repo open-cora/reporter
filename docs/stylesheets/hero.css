@@ -125,6 +125,41 @@
   margin: 0;
 }
 
+/* Artwork reference sits diagonally opposite the masthead: present when
+   looked for, but quiet enough not to become a second focal point. */
+.hero__credit {
+  position: absolute;
+  right: clamp(1.25rem, 3.5vw, 2.75rem);
+  bottom: clamp(2.65rem, 5.5vw, 4.75rem);
+  max-width: min(70vw, 34rem);
+  margin: 0;
+  padding: 0.28rem 0.46rem;
+  text-align: right;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: clamp(0.56rem, 0.62vw, 0.64rem);
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: 0.045em;
+  color: rgba(255, 255, 255, 0.76);
+  background: rgba(12, 6, 9, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.25rem;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(2px);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.72);
+}
+
+.hero__credit a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.hero__credit a:hover,
+.hero__credit a:focus-visible {
+  color: rgba(255, 255, 255, 0.88);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero__layer { opacity: 1 !important; }
 }
@@ -151,6 +186,11 @@
 }
 .hero[data-align="right"] .hero__inner { text-align: right; }
 .hero[data-align="right"] .hero__tagline { margin-left: auto; }
+.hero[data-align="right"] .hero__credit {
+  left: clamp(1.25rem, 3.5vw, 2.75rem);
+  right: auto;
+  text-align: left;
+}
 
 /* The header bar (logo, search, repo link) and the Home tab float over the
    plate instead of sitting on a block of colour above it, so the painting

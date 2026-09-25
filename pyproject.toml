@@ -48,6 +48,13 @@ packages = ["src/reporter"]
 line-length = 100
 target-version = "py313"
 src = ["src", "tests"]
+# `scripts/` is deliberately outside every lane. The two collectors there import
+# an acquisition engine and a store, neither of which is a dependency of this
+# project, so pyright cannot resolve them and ruff would be checking code that
+# no environment here can run. They are operator tooling invoked by
+# `make refresh-captures` with `--no-project`, and the fixtures they write are
+# committed, so nothing in a test run reaches them.
+extend-exclude = ["scripts"]
 
 [tool.ruff.lint]
 select = [

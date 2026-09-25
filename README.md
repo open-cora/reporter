@@ -184,14 +184,20 @@ one plan with real arguments. `tests/nodes.json` is the same idea against a
 real store: four scenarios written by the writer a deployment would use,
 then interrogated from outside the way this package has to.
 
-Neither is written by hand and neither can be regenerated from here. The
-two collectors live in `spikes/`, because they import an engine and a store
-and this package depends on neither:
+Neither is written by hand. The two collectors are in `scripts/`, outside
+every lane, because they import an engine and a store and this package
+depends on neither:
 
 ```
-   spikes/bluesky_adapter/collect.py  ---->  tests/documents.json
-   spikes/tiled_adapter/collect.py    ---->  tests/nodes.json
+   scripts/collect_documents.py  ---->  tests/documents.json
+   scripts/collect_nodes.py      ---->  tests/nodes.json
 ```
+
+`make refresh-captures` runs both with `--no-project`, which is forced
+rather than tidy: the store's client drives its own server through
+`starlette.testclient` and finds the second httpx the api pins beside the
+first. That is also why `scripts/` is excluded from ruff and pyright, since
+neither the engine nor the store is a dependency here.
 
 Re-running either overwrites its capture, which is deliberate and is the
 closest thing here to a test of the real thing. Ids and timestamps change

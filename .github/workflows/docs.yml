@@ -24,7 +24,10 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - run: pip install mkdocs-material
+      # Pinned, and the pin has to match the Makefile's. An unpinned install
+      # means the site a reader sees is built by a different theme version
+      # from the one `make docs-serve` renders.
+      - run: pip install mkdocs-material==9.7.7
       - run: mkdocs build --strict
       - uses: actions/upload-pages-artifact@v4
         with:

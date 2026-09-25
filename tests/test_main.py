@@ -39,7 +39,7 @@ CAPTURED = Path(__file__).parent / "documents.json"
 
 
 def a_config() -> ReporterConfig:
-    return from_mapping({"aroc": {"base_url": "https://keeper.example", "token": "a-token"}})
+    return from_mapping({"keeper": {"base_url": "https://keeper.example", "token": "a-token"}})
 
 
 def tallied(*outcomes: Outcome) -> int:
@@ -114,7 +114,7 @@ def test_a_missing_configuration_file_stops_before_any_call(tmp_path: Path) -> N
 
 def test_a_malformed_configuration_stops_before_any_call(tmp_path: Path) -> None:
     path = tmp_path / "reporter.toml"
-    path.write_text('[aroc]\nbase_url = "not-a-url"\n', encoding="utf-8")
+    path.write_text('[keeper]\nbase_url = "not-a-url"\n', encoding="utf-8")
 
     assert main(["--config", str(path), "--replay", str(CAPTURED)]) == 2
 
@@ -206,7 +206,7 @@ def test_a_stream_that_simply_ends_is_not_a_problem() -> None:
 def a_store_config(**overrides: str) -> ReporterConfig:
     return from_mapping(
         {
-            "aroc": {"base_url": "https://keeper.example", "token": "a-token"},
+            "keeper": {"base_url": "https://keeper.example", "token": "a-token"},
             "store": {
                 "base_url": "https://store.example",
                 "root": "raw",

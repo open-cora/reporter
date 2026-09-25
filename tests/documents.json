@@ -1,6 +1,6 @@
 {
   "completes": {
-    "expected_aroc_status": "Completed",
+    "expected_keeper_status": "Completed",
     "documents": [
       {
         "name": "start",
@@ -63,7 +63,7 @@
     ]
   },
   "pause_resume_complete": {
-    "expected_aroc_status": "Completed",
+    "expected_keeper_status": "Completed",
     "state_while_paused": "paused",
     "interruption_message": "\nYour RunEngine is entering a paused state. These are your options for changing\nthe state of the RunEngine:\n\nRE.resume()    Resume the plan.\nRE.abort()     Perform cleanup, then kill plan. Mark exit_stats='aborted'.\nRE.stop()      Perform cleanup, then kill plan. Mark exit_status='success'.\nRE.halt()      Emergency Stop: Do not perform cleanup --- just stop.\n",
     "documents": [
@@ -172,7 +172,7 @@
     ]
   },
   "stop_from_pause": {
-    "expected_aroc_status": "Completed",
+    "expected_keeper_status": "Completed",
     "left_pause_with": "RE.stop()",
     "raised_on_leaving": null,
     "state_after": "idle",
@@ -266,7 +266,7 @@
     ]
   },
   "abort_from_pause": {
-    "expected_aroc_status": "Aborted",
+    "expected_keeper_status": "Aborted",
     "left_pause_with": "RE.abort()",
     "raised_on_leaving": null,
     "state_after": "idle",
@@ -360,7 +360,7 @@
     ]
   },
   "halt_from_pause": {
-    "expected_aroc_status": "unknown",
+    "expected_keeper_status": "unknown",
     "left_pause_with": "RE.halt()",
     "raised_on_leaving": null,
     "state_after": "idle",
@@ -454,7 +454,7 @@
     ]
   },
   "plan_raises": {
-    "expected_aroc_status": "Failed",
+    "expected_keeper_status": "Failed",
     "raised_out_of_the_engine": "RuntimeError: the spike broke this run on purpose",
     "documents": [
       {
@@ -518,7 +518,7 @@
     ]
   },
   "real_plan": {
-    "expected_aroc_status": "Completed",
+    "expected_keeper_status": "Completed",
     "documents": [
       {
         "name": "start",

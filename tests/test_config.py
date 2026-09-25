@@ -18,7 +18,7 @@ import pytest
 from reporter.config import ConfigError, ReporterConfig, from_mapping, load
 
 WELL_FORMED = {
-    "aroc": {
+    "keeper": {
         "base_url": "https://keeper.example/",
         "token": "a-token",
     },
@@ -52,33 +52,33 @@ def test_a_table_this_file_no_longer_knows_about_is_ignored() -> None:
 
 @pytest.mark.parametrize("key", ["base_url", "token"])
 def test_a_missing_required_setting_is_refused_by_name(key: str) -> None:
-    keeper = {k: v for k, v in WELL_FORMED["aroc"].items() if k != key}
+    keeper = {k: v for k, v in WELL_FORMED["keeper"].items() if k != key}
 
     with pytest.raises(ConfigError, match=key):
-        from_mapping({"aroc": keeper})
+        from_mapping({"keeper": keeper})
 
 
 @pytest.mark.parametrize("empty", ["", "   "])
 def test_a_blank_required_setting_is_refused(empty: str) -> None:
     """A present-but-empty token is the shape an unset environment variable
     takes after substitution, and it authenticates as nobody."""
-    keeper = {**WELL_FORMED["aroc"], "token": empty}
+    keeper = {**WELL_FORMED["keeper"], "token": empty}
 
     with pytest.raises(ConfigError, match="token"):
-        from_mapping({"aroc": keeper})
+        from_mapping({"keeper": keeper})
 
 
 def test_a_base_url_that_is_not_a_url_is_refused() -> None:
-    keeper = {**WELL_FORMED["aroc"], "base_url": "keeper.example"}
+    keeper = {**WELL_FORMED["keeper"], "base_url": "keeper.example"}
 
     with pytest.raises(ConfigError, match="http"):
-        from_mapping({"aroc": keeper})
+        from_mapping({"keeper": keeper})
 
 
 def test_a_file_is_read_and_parsed(tmp_path: Path) -> None:
     path = tmp_path / "reporter.toml"
     path.write_text(
-        '[aroc]\nbase_url = "https://keeper.example"\ntoken = "a-token"\n',
+        '[keeper]\nbase_url = "https://keeper.example"\ntoken = "a-token"\n',
         encoding="utf-8",
     )
 

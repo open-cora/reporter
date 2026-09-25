@@ -64,11 +64,11 @@ from reporter.stores import (
     StoreRefusedError,
     node_path,
 )
-from reporter.translate import AROC_METADATA_KEYS, Translator, engine_instant, keeper_reference
+from reporter.translate import KEEPER_METADATA_KEYS, Translator, engine_instant, keeper_reference
 from reporter.wire import documents_into
 
 __all__ = [
-    "AROC_METADATA_KEYS",
+    "KEEPER_METADATA_KEYS",
     "ConfigError",
     "DecodeError",
     "Delivery",

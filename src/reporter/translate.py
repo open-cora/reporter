@@ -9,7 +9,7 @@ no engine and no AROC running.
 
 Whatever drives an execution hands one acquisition step to an engine and
 carries that step's AROC ids into the engine's own metadata. A start
-document is where they arrive, under `AROC_METADATA_KEYS` below, and this
+document is where they arrive, under `KEEPER_METADATA_KEYS` below, and this
 is the only place in the reporter that knows the spelling.
 
 That is an outward-facing identifier in somebody else's records, which is
@@ -102,7 +102,7 @@ from uuid import UUID
 
 from reporter.intents import Ignored, Intent, Report, ReportStepRun, Unmappable
 
-AROC_METADATA_KEYS: Final[tuple[str, str]] = ("aroc_execution_id", "aroc_step_id")
+KEEPER_METADATA_KEYS: Final[tuple[str, str]] = ("keeper_execution_id", "keeper_step_id")
 """The two keys a driver writes into an engine's metadata, in order.
 
 Prefixed, because they sit in a namespace this system does not own and a
@@ -175,7 +175,7 @@ def keeper_reference(document: Mapping[str, Any]) -> tuple[UUID, UUID] | None:
     direction; the loud one cannot be taken back once it has trained
     somebody to ignore the channel.
     """
-    execution_key, step_key = AROC_METADATA_KEYS
+    execution_key, step_key = KEEPER_METADATA_KEYS
     raw_execution = document.get(execution_key)
     raw_step = document.get(step_key)
     if not isinstance(raw_execution, str) or not isinstance(raw_step, str):
@@ -345,8 +345,8 @@ class Translator:
 
 
 __all__ = [
-    "AROC_METADATA_KEYS",
     "ENDING_BY_EXIT_STATUS",
+    "KEEPER_METADATA_KEYS",
     "REPORT_BY_INTERRUPTION",
     "Translator",
     "engine_instant",

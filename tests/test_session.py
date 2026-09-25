@@ -34,7 +34,7 @@ from reporter.outcomes import Held, Kept, Outcome, Relayed, Skipped, Unchanged
 from reporter.relay import Handle
 from reporter.session import ENDINGS, Session, is_worth_retrying
 from reporter.stores import Location, StoreRefusedError
-from reporter.translate import AROC_METADATA_KEYS
+from reporter.translate import KEEPER_METADATA_KEYS
 from reporter.wire import documents_into
 from tests._fakes import Answer, Routed, Store
 
@@ -43,7 +43,7 @@ CAPTURED = Path(__file__).parent / "documents.json"
 AN_EXECUTION = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
 A_STEP = UUID("01a0ba65-df83-7501-aa5d-3e2318ef956c")
 
-CONFIG = from_mapping({"aroc": {"base_url": "https://keeper.example", "token": "a-token"}})
+CONFIG = from_mapping({"keeper": {"base_url": "https://keeper.example", "token": "a-token"}})
 
 RUN_PATH = f"/executions/{AN_EXECUTION}/steps/{A_STEP}/run"
 
@@ -63,7 +63,7 @@ def raw_deliveries(scenario: str) -> list[tuple[str, dict[str, Any]]]:
 
 def deliveries(scenario: str) -> list[tuple[str, dict[str, Any]]]:
     """One scenario's documents, as they arrive when AROC dispatched it."""
-    execution_key, step_key = AROC_METADATA_KEYS
+    execution_key, step_key = KEEPER_METADATA_KEYS
     return [
         (name, {**document, execution_key: str(AN_EXECUTION), step_key: str(A_STEP)})
         if name == "start"
@@ -289,7 +289,7 @@ A_DATASET = UUID("01a0ba66-1c41-7f02-9e48-5b7a0c6d2e19")
 
 STORE_CONFIG = from_mapping(
     {
-        "aroc": {"base_url": "https://keeper.example", "token": "a-token"},
+        "keeper": {"base_url": "https://keeper.example", "token": "a-token"},
         "store": {
             "base_url": "https://store.example",
             "root": "raw",

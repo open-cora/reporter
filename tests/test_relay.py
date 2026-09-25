@@ -16,16 +16,16 @@ from reporter.config import from_mapping
 from reporter.outcomes import Held, Outcome, Relayed, Skipped
 from reporter.relay import DEFAULT_RETRY_DELAYS, Relay
 from reporter.session import Session
-from reporter.translate import AROC_METADATA_KEYS
+from reporter.translate import KEEPER_METADATA_KEYS
 from reporter.wire import documents_into
 from tests._fakes import Answer, Routed
 
 AN_EXECUTION = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
 A_STEP = UUID("01a0ba65-df83-7501-aa5d-3e2318ef956c")
 
-CONFIG = from_mapping({"aroc": {"base_url": "https://keeper.example", "token": "a-token"}})
+CONFIG = from_mapping({"keeper": {"base_url": "https://keeper.example", "token": "a-token"}})
 
-_EXECUTION_KEY, _STEP_KEY = AROC_METADATA_KEYS
+_EXECUTION_KEY, _STEP_KEY = KEEPER_METADATA_KEYS
 A_START = {
     "uid": "r1",
     "plan_name": "count",

@@ -110,12 +110,14 @@ def from_mapping(settings: Mapping[str, Any], *, source: str = "configuration") 
     so a deployment holding its settings somewhere else has one function
     to call rather than a format to imitate.
     """
-    keeper: Mapping[str, Any] = settings.get("aroc") or {}
+    keeper: Mapping[str, Any] = settings.get("keeper") or {}
     base_url = _required_string(keeper, "base_url", source)
     token = _required_string(keeper, "token", source)
 
     if not base_url.startswith(("http://", "https://")):
-        raise ConfigError(f"{source}: aroc.base_url must be an http or https URL, got {base_url!r}")
+        raise ConfigError(
+            f"{source}: keeper.base_url must be an http or https URL, got {base_url!r}"
+        )
 
     return ReporterConfig(
         base_url=base_url.rstrip("/"),
@@ -161,7 +163,7 @@ def _store(table: Any, source: str) -> StoreConfig | None:
 
 
 def _required_string(
-    table: Mapping[str, Any], key: str, source: str, *, table_name: str = "aroc"
+    table: Mapping[str, Any], key: str, source: str, *, table_name: str = "keeper"
 ) -> str:
     value = table.get(key)
     if not isinstance(value, str) or not value.strip():

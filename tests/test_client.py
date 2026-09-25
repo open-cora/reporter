@@ -34,7 +34,7 @@ A_STEP = UUID("01a0ba65-df83-7501-aa5d-3e2318ef956c")
 A_UID = "5b4f40e7-1b2c-4d3e-8f90-abcdef012345"
 AN_INSTANT = datetime(2026, 9, 19, 10, 2, 11, tzinfo=UTC)
 
-CONFIG = from_mapping({"aroc": {"base_url": "https://keeper.example", "token": "a-token"}})
+CONFIG = from_mapping({"keeper": {"base_url": "https://keeper.example", "token": "a-token"}})
 
 RUN_PATH = f"/executions/{AN_EXECUTION}/steps/{A_STEP}/run"
 

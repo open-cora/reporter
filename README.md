@@ -150,7 +150,7 @@ An `event` document does not name its run. It names a descriptor, and only
 the `descriptor` document carries `run_start`:
 
 ```
-   start       uid, aroc_execution_id, aroc_step_id  --+
+   start       uid, keeper_execution_id, keeper_step_id  --+
    descriptor  uid, run_start -------------------------+-> descriptor -> run
    event       descriptor -----------------------------+-> run -> the step
    stop        run_start
@@ -277,7 +277,7 @@ claim is that it is not the engine.
 ## Configuring it
 
 ```toml
-[aroc]
+[keeper]
 base_url = "https://keeper.example"
 token = "..."
 
@@ -347,7 +347,7 @@ Or from the repository root, where `make lint`, `make typecheck` and
 | Durability | A transport that keeps a log. Documents live in the relay's queue and nowhere else, and 0MQ publish and subscribe has nothing behind it to ask again, so a document published while this is down was never published as far as this is concerned. At-most-once, known rather than accidental. |
 | The checkpoint | The same thing. There is nothing to check point against: an offset is only meaningful over a transport that can be rewound to one. A broker in between gives both at once, and this becomes one of its consumers. |
 | Anything other than AROC wanting these documents | Which is the question that decides the two rows above. If something else wants them, a broker is already justified and durability arrives with it. If not, this is the deployment and the gap is a cost somebody has to accept out loud. |
-| A reporter run against a live conducted scan | A sitting with a beamline. `conductor.adapters.bluesky_acquisition` now writes `aroc_execution_id` and `aroc_step_id` into every start document it opens under a dispatch, and both sides pin the spelling, so the contract this half states is performed. What has not happened is the two running against one engine at once. |
+| A reporter run against a live conducted scan | A sitting with a beamline. `conductor.adapters.bluesky_acquisition` now writes `keeper_execution_id` and `keeper_step_id` into every start document it opens under a dispatch, and both sides pin the spelling, so the contract this half states is performed. What has not happened is the two running against one engine at once. |
 | An identity to run as | A deployment. It is an actor in Access, and the two spikes each record the grants their half needs: a spike, a spike for the datasets. A process carrying both legs runs as one actor holding the union. It must **not** be granted `DefinePlan` or `DefineProcedure`: an adapter cannot honestly author either, and withholding the grants makes that a refusal at the boundary rather than a sentence in a document. |
 | A token for the store | Something asking for one. The lookup sends no credential, so this works against a store that does not want one and nothing else. |
 

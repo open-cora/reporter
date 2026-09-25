@@ -7,7 +7,7 @@ findings by printing a table and reading it. Here they are assertions, so
 a change that breaks one fails a run instead of changing a report nobody
 re-reads.
 
-Each scenario also carries `expected_aroc_status`, which is the status the
+Each scenario also carries `expected_keeper_status`, which is the status the
 engine's own transitions say the run reached. Checking the last intent
 against it is what ties this file to the engine's behaviour rather than to
 a prior reading of it.
@@ -35,8 +35,8 @@ import pytest
 
 from reporter.intents import Ignored, Intent, RegisterDataset, ReportStepRun, Unmappable
 from reporter.translate import (
-    AROC_METADATA_KEYS,
     ENDING_BY_EXIT_STATUS,
+    KEEPER_METADATA_KEYS,
     Translator,
     engine_instant,
     keeper_reference,
@@ -104,7 +104,7 @@ def dispatched(
     all, so a helper that decorated every document would hide the thing
     most worth testing.
     """
-    execution_key, step_key = AROC_METADATA_KEYS
+    execution_key, step_key = KEEPER_METADATA_KEYS
     return [
         (name, {**document, execution_key: str(execution_id), step_key: str(step_id)})
         if name == "start"
@@ -128,13 +128,13 @@ def test_the_two_keys_are_spelled_the_way_the_conductor_writes_them() -> None:
 
     `conductor.adapters.bluesky_acquisition` holds the same pair, and
     `docs/reference/client-contract.md` holds the agreement. Every other
-    test here reads the keys through `AROC_METADATA_KEYS`, which proves
+    test here reads the keys through `KEEPER_METADATA_KEYS`, which proves
     one name is used consistently and would survive a change to what
     that name means. This is the line that would not: a reporter reading
     keys the conductor stopped writing skips every run at the beamline
     and reports it as work somebody did by hand.
     """
-    assert AROC_METADATA_KEYS == ("aroc_execution_id", "aroc_step_id")
+    assert KEEPER_METADATA_KEYS == ("keeper_execution_id", "keeper_step_id")
 
 
 def test_the_capture_holds_scenarios_to_range_over() -> None:
@@ -192,9 +192,9 @@ def test_a_scenario_ends_where_the_engine_says_it_ended(scenario: str) -> None:
     ]
 
     assert len(endings) == 1, f"{scenario} produced {len(endings)} endings, not one."
-    if recorded["expected_aroc_status"] == UNPREDICTED:
+    if recorded["expected_keeper_status"] == UNPREDICTED:
         pytest.skip(f"{scenario} records no expected status; see UNPREDICTED")
-    assert STATUS_BY_ENDING[endings[0].reported] == recorded["expected_aroc_status"]
+    assert STATUS_BY_ENDING[endings[0].reported] == recorded["expected_keeper_status"]
 
 
 @pytest.mark.parametrize("scenario", scenarios())
@@ -432,7 +432,7 @@ def test_a_reference_that_is_not_a_pair_of_ids_reads_as_no_reference() -> None:
     something else, and the loud reading cannot be taken back once it has
     trained somebody to ignore the channel.
     """
-    execution_key, step_key = AROC_METADATA_KEYS
+    execution_key, step_key = KEEPER_METADATA_KEYS
 
     assert keeper_reference({execution_key: str(uuid4())}) is None
     assert keeper_reference({execution_key: "not-an-id", step_key: str(uuid4())}) is None
@@ -440,7 +440,7 @@ def test_a_reference_that_is_not_a_pair_of_ids_reads_as_no_reference() -> None:
 
 
 def test_a_reference_both_keys_carry_reads_back_as_the_pair() -> None:
-    execution_key, step_key = AROC_METADATA_KEYS
+    execution_key, step_key = KEEPER_METADATA_KEYS
 
     found = keeper_reference({execution_key: str(_EXECUTION_ID), step_key: str(_STEP_ID)})
 

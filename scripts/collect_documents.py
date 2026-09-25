@@ -127,7 +127,7 @@ def _run_to_pause(run_engine: RunEngine, plan: Any) -> str | None:
 def scenario_completes() -> dict[str, Any]:
     run_engine, recorder = engine()
     run_engine(_plain_plan())
-    return {"expected_aroc_status": "Completed", **recorder.as_json()}
+    return {"expected_keeper_status": "Completed", **recorder.as_json()}
 
 
 def scenario_pause_resume_complete() -> dict[str, Any]:
@@ -136,7 +136,7 @@ def scenario_pause_resume_complete() -> dict[str, Any]:
     paused_state = run_engine.state
     run_engine.resume()
     return {
-        "expected_aroc_status": "Completed",
+        "expected_keeper_status": "Completed",
         "state_while_paused": paused_state,
         "interruption_message": interruption,
         **recorder.as_json(),
@@ -159,7 +159,7 @@ def _scenario_ending_from_pause(method: str, expected: str) -> dict[str, Any]:
     except Exception as raised:  # noqa: BLE001 - a spike records, it does not judge
         error = f"{type(raised).__name__}: {raised}"
     return {
-        "expected_aroc_status": expected,
+        "expected_keeper_status": expected,
         "left_pause_with": f"RE.{method}()",
         "raised_on_leaving": error,
         "state_after": run_engine.state,
@@ -187,7 +187,7 @@ def scenario_plan_raises() -> dict[str, Any]:
     except Exception as raised:  # noqa: BLE001 - the break is the scenario
         error = f"{type(raised).__name__}: {raised}"
     return {
-        "expected_aroc_status": "Failed",
+        "expected_keeper_status": "Failed",
         "raised_out_of_the_engine": error,
         **recorder.as_json(),
     }
@@ -209,7 +209,7 @@ def scenario_real_plan() -> dict[str, Any]:
         from ophyd.sim import det
     except ImportError as missing:
         return {
-            "expected_aroc_status": "Completed",
+            "expected_keeper_status": "Completed",
             "skipped": f"needs ophyd: {missing}",
             "documents": [],
             "transitions": [],
@@ -217,7 +217,7 @@ def scenario_real_plan() -> dict[str, Any]:
 
     run_engine, recorder = engine()
     run_engine(count([det], num=2))
-    return {"expected_aroc_status": "Completed", **recorder.as_json()}
+    return {"expected_keeper_status": "Completed", **recorder.as_json()}
 
 
 SCENARIOS = {

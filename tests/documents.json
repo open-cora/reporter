@@ -1,0 +1,719 @@
+{
+  "completes": {
+    "expected_keeper_status": "Completed",
+    "documents": [
+      {
+        "name": "start",
+        "doc": {
+          "uid": "dfc635f8-0a4d-4cdb-9f02-3ccedc945389",
+          "time": 1789945385.019201,
+          "versions": {
+            "ophyd": "1.11.2",
+            "bluesky": "1.15.1",
+            "event_model": "1.24.0"
+          },
+          "scan_id": 1,
+          "plan_type": "generator",
+          "plan_name": "_plain_plan"
+        }
+      },
+      {
+        "name": "descriptor",
+        "doc": {
+          "configuration": {},
+          "data_keys": {
+            "interruption": {
+              "dtype": "string",
+              "shape": [],
+              "source": "RunEngine"
+            }
+          },
+          "name": "interruptions",
+          "object_keys": {},
+          "run_start": "dfc635f8-0a4d-4cdb-9f02-3ccedc945389",
+          "time": 1789945385.0194728,
+          "uid": "53012524-d948-4e0b-bcf1-62ef06b9aaa7",
+          "object_classes": {},
+          "hints": {}
+        }
+      },
+      {
+        "name": "stop",
+        "doc": {
+          "uid": "04198e25-6505-46a3-ad41-6ebb5436268e",
+          "time": 1789945385.042548,
+          "run_start": "dfc635f8-0a4d-4cdb-9f02-3ccedc945389",
+          "exit_status": "success",
+          "reason": "",
+          "num_events": {
+            "interruptions": 0
+          }
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "from": "idle",
+        "to": "running"
+      },
+      {
+        "from": "running",
+        "to": "idle"
+      }
+    ]
+  },
+  "pause_resume_complete": {
+    "expected_keeper_status": "Completed",
+    "state_while_paused": "paused",
+    "interruption_message": "\nYour RunEngine is entering a paused state. These are your options for changing\nthe state of the RunEngine:\n\nRE.resume()    Resume the plan.\nRE.abort()     Perform cleanup, then kill plan. Mark exit_stats='aborted'.\nRE.stop()      Perform cleanup, then kill plan. Mark exit_status='success'.\nRE.halt()      Emergency Stop: Do not perform cleanup --- just stop.\n",
+    "documents": [
+      {
+        "name": "start",
+        "doc": {
+          "uid": "5d9311fa-1742-4fb1-ae08-4cdd8b50c3fc",
+          "time": 1789945385.043401,
+          "versions": {
+            "ophyd": "1.11.2",
+            "bluesky": "1.15.1",
+            "event_model": "1.24.0"
+          },
+          "scan_id": 1,
+          "plan_type": "generator",
+          "plan_name": "_pausing_plan"
+        }
+      },
+      {
+        "name": "descriptor",
+        "doc": {
+          "configuration": {},
+          "data_keys": {
+            "interruption": {
+              "dtype": "string",
+              "shape": [],
+              "source": "RunEngine"
+            }
+          },
+          "name": "interruptions",
+          "object_keys": {},
+          "run_start": "5d9311fa-1742-4fb1-ae08-4cdd8b50c3fc",
+          "time": 1789945385.043539,
+          "uid": "7a53812a-2acb-4b5c-bb64-08caafd0272c",
+          "object_classes": {},
+          "hints": {}
+        }
+      },
+      {
+        "name": "event",
+        "doc": {
+          "uid": "3df233f4-772f-4010-846a-f79fcaa7a87d",
+          "time": 1789945385.055211,
+          "data": {
+            "interruption": "pause"
+          },
+          "timestamps": {
+            "interruption": 1789945385.055198
+          },
+          "seq_num": 1,
+          "filled": {},
+          "descriptor": "7a53812a-2acb-4b5c-bb64-08caafd0272c"
+        }
+      },
+      {
+        "name": "event",
+        "doc": {
+          "uid": "18aac6af-56b4-4d29-882f-eab4a75d5f7b",
+          "time": 1789945385.055507,
+          "data": {
+            "interruption": "resume"
+          },
+          "timestamps": {
+            "interruption": 1789945385.055495
+          },
+          "seq_num": 2,
+          "filled": {},
+          "descriptor": "7a53812a-2acb-4b5c-bb64-08caafd0272c"
+        }
+      },
+      {
+        "name": "stop",
+        "doc": {
+          "uid": "929e7108-7a7b-4d1d-a790-3b6a8919706d",
+          "time": 1789945385.0784051,
+          "run_start": "5d9311fa-1742-4fb1-ae08-4cdd8b50c3fc",
+          "exit_status": "success",
+          "reason": "",
+          "num_events": {
+            "interruptions": 0
+          }
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "from": "idle",
+        "to": "running"
+      },
+      {
+        "from": "running",
+        "to": "pausing"
+      },
+      {
+        "from": "pausing",
+        "to": "paused"
+      },
+      {
+        "from": "paused",
+        "to": "running"
+      },
+      {
+        "from": "running",
+        "to": "idle"
+      }
+    ]
+  },
+  "stop_from_pause": {
+    "expected_keeper_status": "Completed",
+    "left_pause_with": "RE.stop()",
+    "raised_on_leaving": null,
+    "state_after": "idle",
+    "documents": [
+      {
+        "name": "start",
+        "doc": {
+          "uid": "2bf73925-3441-42a9-bbd4-a69dc90ffedd",
+          "time": 1789945385.079337,
+          "versions": {
+            "ophyd": "1.11.2",
+            "bluesky": "1.15.1",
+            "event_model": "1.24.0"
+          },
+          "scan_id": 1,
+          "plan_type": "generator",
+          "plan_name": "_pausing_plan"
+        }
+      },
+      {
+        "name": "descriptor",
+        "doc": {
+          "configuration": {},
+          "data_keys": {
+            "interruption": {
+              "dtype": "string",
+              "shape": [],
+              "source": "RunEngine"
+            }
+          },
+          "name": "interruptions",
+          "object_keys": {},
+          "run_start": "2bf73925-3441-42a9-bbd4-a69dc90ffedd",
+          "time": 1789945385.079493,
+          "uid": "cdc2fcac-f4b3-4b15-8396-a243bb00553f",
+          "object_classes": {},
+          "hints": {}
+        }
+      },
+      {
+        "name": "event",
+        "doc": {
+          "uid": "9cc2dd66-f267-4be1-b162-4ea965daa578",
+          "time": 1789945385.090334,
+          "data": {
+            "interruption": "pause"
+          },
+          "timestamps": {
+            "interruption": 1789945385.0903199
+          },
+          "seq_num": 1,
+          "filled": {},
+          "descriptor": "cdc2fcac-f4b3-4b15-8396-a243bb00553f"
+        }
+      },
+      {
+        "name": "stop",
+        "doc": {
+          "uid": "2e50cc0f-5b0b-4596-8b50-5f2abca94abf",
+          "time": 1789945385.090948,
+          "run_start": "2bf73925-3441-42a9-bbd4-a69dc90ffedd",
+          "exit_status": "success",
+          "reason": "",
+          "num_events": {
+            "interruptions": 1
+          }
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "from": "idle",
+        "to": "running"
+      },
+      {
+        "from": "running",
+        "to": "pausing"
+      },
+      {
+        "from": "pausing",
+        "to": "paused"
+      },
+      {
+        "from": "paused",
+        "to": "stopping"
+      },
+      {
+        "from": "stopping",
+        "to": "idle"
+      }
+    ]
+  },
+  "abort_from_pause": {
+    "expected_keeper_status": "Aborted",
+    "left_pause_with": "RE.abort()",
+    "raised_on_leaving": null,
+    "state_after": "idle",
+    "documents": [
+      {
+        "name": "start",
+        "doc": {
+          "uid": "104d9517-2a45-4a35-9f2a-83c8b4c24bb9",
+          "time": 1789945385.091771,
+          "versions": {
+            "ophyd": "1.11.2",
+            "bluesky": "1.15.1",
+            "event_model": "1.24.0"
+          },
+          "scan_id": 1,
+          "plan_type": "generator",
+          "plan_name": "_pausing_plan"
+        }
+      },
+      {
+        "name": "descriptor",
+        "doc": {
+          "configuration": {},
+          "data_keys": {
+            "interruption": {
+              "dtype": "string",
+              "shape": [],
+              "source": "RunEngine"
+            }
+          },
+          "name": "interruptions",
+          "object_keys": {},
+          "run_start": "104d9517-2a45-4a35-9f2a-83c8b4c24bb9",
+          "time": 1789945385.0919209,
+          "uid": "305b0506-a7b9-4b64-b621-b4c655ce9144",
+          "object_classes": {},
+          "hints": {}
+        }
+      },
+      {
+        "name": "event",
+        "doc": {
+          "uid": "c75dcff2-9843-4964-9bbe-e368a85492f9",
+          "time": 1789945385.103756,
+          "data": {
+            "interruption": "pause"
+          },
+          "timestamps": {
+            "interruption": 1789945385.103737
+          },
+          "seq_num": 1,
+          "filled": {},
+          "descriptor": "305b0506-a7b9-4b64-b621-b4c655ce9144"
+        }
+      },
+      {
+        "name": "stop",
+        "doc": {
+          "uid": "a72b6cb4-0247-4bf9-bf16-c19b7e66e5f8",
+          "time": 1789945385.104631,
+          "run_start": "104d9517-2a45-4a35-9f2a-83c8b4c24bb9",
+          "exit_status": "abort",
+          "reason": "",
+          "num_events": {
+            "interruptions": 1
+          }
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "from": "idle",
+        "to": "running"
+      },
+      {
+        "from": "running",
+        "to": "pausing"
+      },
+      {
+        "from": "pausing",
+        "to": "paused"
+      },
+      {
+        "from": "paused",
+        "to": "aborting"
+      },
+      {
+        "from": "aborting",
+        "to": "idle"
+      }
+    ]
+  },
+  "halt_from_pause": {
+    "expected_keeper_status": "unknown",
+    "left_pause_with": "RE.halt()",
+    "raised_on_leaving": null,
+    "state_after": "idle",
+    "documents": [
+      {
+        "name": "start",
+        "doc": {
+          "uid": "8548ee7b-f66f-4766-8f24-34de1e910742",
+          "time": 1789945385.108274,
+          "versions": {
+            "ophyd": "1.11.2",
+            "bluesky": "1.15.1",
+            "event_model": "1.24.0"
+          },
+          "scan_id": 1,
+          "plan_type": "generator",
+          "plan_name": "_pausing_plan"
+        }
+      },
+      {
+        "name": "descriptor",
+        "doc": {
+          "configuration": {},
+          "data_keys": {
+            "interruption": {
+              "dtype": "string",
+              "shape": [],
+              "source": "RunEngine"
+            }
+          },
+          "name": "interruptions",
+          "object_keys": {},
+          "run_start": "8548ee7b-f66f-4766-8f24-34de1e910742",
+          "time": 1789945385.108442,
+          "uid": "979e514b-b867-4c84-b258-7d756e7b1ff5",
+          "object_classes": {},
+          "hints": {}
+        }
+      },
+      {
+        "name": "event",
+        "doc": {
+          "uid": "7361a872-b103-4cb0-b2c1-581385aee870",
+          "time": 1789945385.1201742,
+          "data": {
+            "interruption": "pause"
+          },
+          "timestamps": {
+            "interruption": 1789945385.120098
+          },
+          "seq_num": 1,
+          "filled": {},
+          "descriptor": "979e514b-b867-4c84-b258-7d756e7b1ff5"
+        }
+      },
+      {
+        "name": "stop",
+        "doc": {
+          "uid": "59717825-8c5c-4c3a-9aa5-63271d9bbc4e",
+          "time": 1789945385.122001,
+          "run_start": "8548ee7b-f66f-4766-8f24-34de1e910742",
+          "exit_status": "abort",
+          "reason": "",
+          "num_events": {
+            "interruptions": 1
+          }
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "from": "idle",
+        "to": "running"
+      },
+      {
+        "from": "running",
+        "to": "pausing"
+      },
+      {
+        "from": "pausing",
+        "to": "paused"
+      },
+      {
+        "from": "paused",
+        "to": "halting"
+      },
+      {
+        "from": "halting",
+        "to": "idle"
+      }
+    ]
+  },
+  "plan_raises": {
+    "expected_keeper_status": "Failed",
+    "raised_out_of_the_engine": "RuntimeError: the spike broke this run on purpose",
+    "documents": [
+      {
+        "name": "start",
+        "doc": {
+          "uid": "72516ff9-5230-4356-9931-7e4e51328965",
+          "time": 1789945385.12389,
+          "versions": {
+            "ophyd": "1.11.2",
+            "bluesky": "1.15.1",
+            "event_model": "1.24.0"
+          },
+          "scan_id": 1,
+          "plan_type": "generator",
+          "plan_name": "_failing_plan"
+        }
+      },
+      {
+        "name": "descriptor",
+        "doc": {
+          "configuration": {},
+          "data_keys": {
+            "interruption": {
+              "dtype": "string",
+              "shape": [],
+              "source": "RunEngine"
+            }
+          },
+          "name": "interruptions",
+          "object_keys": {},
+          "run_start": "72516ff9-5230-4356-9931-7e4e51328965",
+          "time": 1789945385.1240692,
+          "uid": "157be24a-4fb8-4e63-9726-2b16404bc593",
+          "object_classes": {},
+          "hints": {}
+        }
+      },
+      {
+        "name": "stop",
+        "doc": {
+          "uid": "583ec7fb-2590-4fa6-82eb-c0b7c7eaf18a",
+          "time": 1789945385.1361542,
+          "run_start": "72516ff9-5230-4356-9931-7e4e51328965",
+          "exit_status": "fail",
+          "reason": "the spike broke this run on purpose",
+          "num_events": {
+            "interruptions": 0
+          }
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "from": "idle",
+        "to": "running"
+      },
+      {
+        "from": "running",
+        "to": "idle"
+      }
+    ]
+  },
+  "real_plan": {
+    "expected_keeper_status": "Completed",
+    "documents": [
+      {
+        "name": "start",
+        "doc": {
+          "uid": "38a7d1ed-e3f8-48df-9f15-0446bf579c0d",
+          "time": 1789945385.198808,
+          "versions": {
+            "ophyd": "1.11.2",
+            "bluesky": "1.15.1",
+            "event_model": "1.24.0"
+          },
+          "scan_id": 1,
+          "plan_type": "generator",
+          "plan_name": "count",
+          "detectors": [
+            "det"
+          ],
+          "num_points": 2,
+          "num_intervals": 1,
+          "plan_args": {
+            "detectors": [
+              "SynGauss(prefix='', name='det', read_attrs=['val'], configuration_attrs=['Imax', 'center', 'sigma', 'noise', 'noise_multiplier'])"
+            ],
+            "num": 2,
+            "delay": 0.0
+          },
+          "hints": {
+            "dimensions": [
+              [
+                [
+                  "time"
+                ],
+                "primary"
+              ]
+            ]
+          }
+        }
+      },
+      {
+        "name": "descriptor",
+        "doc": {
+          "configuration": {},
+          "data_keys": {
+            "interruption": {
+              "dtype": "string",
+              "shape": [],
+              "source": "RunEngine"
+            }
+          },
+          "name": "interruptions",
+          "object_keys": {},
+          "run_start": "38a7d1ed-e3f8-48df-9f15-0446bf579c0d",
+          "time": 1789945385.199245,
+          "uid": "bfa72c4d-3feb-4fd1-8df3-2ec019de2a9a",
+          "object_classes": {},
+          "hints": {}
+        }
+      },
+      {
+        "name": "descriptor",
+        "doc": {
+          "configuration": {
+            "det": {
+              "data": {
+                "det_Imax": 1,
+                "det_center": 0,
+                "det_sigma": 1,
+                "det_noise": "none",
+                "det_noise_multiplier": 1
+              },
+              "timestamps": {
+                "det_Imax": 1789945385.191308,
+                "det_center": 1789945385.191305,
+                "det_sigma": 1789945385.1913128,
+                "det_noise": 1789945385.191288,
+                "det_noise_multiplier": 1789945385.1913002
+              },
+              "data_keys": {
+                "det_Imax": {
+                  "source": "SIM:det_Imax",
+                  "dtype": "integer",
+                  "shape": []
+                },
+                "det_center": {
+                  "source": "SIM:det_center",
+                  "dtype": "integer",
+                  "shape": []
+                },
+                "det_sigma": {
+                  "source": "SIM:det_sigma",
+                  "dtype": "integer",
+                  "shape": []
+                },
+                "det_noise": {
+                  "source": "SIM:det_noise",
+                  "dtype": "integer",
+                  "shape": [],
+                  "enum_strs": [
+                    "none",
+                    "poisson",
+                    "uniform"
+                  ]
+                },
+                "det_noise_multiplier": {
+                  "source": "SIM:det_noise_multiplier",
+                  "dtype": "integer",
+                  "shape": []
+                }
+              }
+            }
+          },
+          "data_keys": {
+            "det": {
+              "source": "SIM:det",
+              "dtype": "number",
+              "shape": [],
+              "precision": 3,
+              "object_name": "det"
+            }
+          },
+          "name": "primary",
+          "object_keys": {
+            "det": [
+              "det"
+            ]
+          },
+          "run_start": "38a7d1ed-e3f8-48df-9f15-0446bf579c0d",
+          "time": 1789945385.2018619,
+          "uid": "461e5bf9-19d8-4f88-89d6-1fe8938013c3",
+          "object_classes": {},
+          "hints": {
+            "det": {
+              "fields": [
+                "det"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "event",
+        "doc": {
+          "uid": "8b71893f-c8c3-4e10-a421-760488353353",
+          "time": 1789945385.202677,
+          "data": {
+            "det": 1.0
+          },
+          "timestamps": {
+            "det": 1789945385.200309
+          },
+          "seq_num": 1,
+          "filled": {},
+          "descriptor": "461e5bf9-19d8-4f88-89d6-1fe8938013c3"
+        }
+      },
+      {
+        "name": "event",
+        "doc": {
+          "uid": "e97b887f-ed29-4e86-b047-aaa75b50feda",
+          "time": 1789945385.20437,
+          "data": {
+            "det": 1.0
+          },
+          "timestamps": {
+            "det": 1789945385.203385
+          },
+          "seq_num": 2,
+          "filled": {},
+          "descriptor": "461e5bf9-19d8-4f88-89d6-1fe8938013c3"
+        }
+      },
+      {
+        "name": "stop",
+        "doc": {
+          "uid": "bac6e6e6-e146-43c5-aa89-1afc815b55fe",
+          "time": 1789945385.204654,
+          "run_start": "38a7d1ed-e3f8-48df-9f15-0446bf579c0d",
+          "exit_status": "success",
+          "reason": "",
+          "num_events": {
+            "interruptions": 0,
+            "primary": 2
+          }
+        }
+      }
+    ],
+    "transitions": [
+      {
+        "from": "idle",
+        "to": "running"
+      },
+      {
+        "from": "running",
+        "to": "idle"
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+title: "Reporter: relaying an acquisition engine to a system of record"
+message: "If you use the reporter in your research, please cite it using these metadata."
+type: software
+authors:
+  - family-names: Gursoy
+    given-names: Doga
+    affiliation: Argonne National Laboratory
+    orcid: "https://orcid.org/0000-0002-0080-8101"
+repository-code: "https://github.com/open-cora/reporter"
+license: Apache-2.0
+version: 0.1.0
+date-released: "2026-09-25"
+keywords:
+  - beamline-automation
+  - synchrotron
+  - data-provenance
+  - hexagonal-architecture
+  - experiment-orchestration
+abstract: >-
+  The reporter relays one acquisition engine's document stream to a system of
+  record, as reports about the steps that record dispatched, and says where
+  the data those steps produced is being kept. It creates nothing: a report
+  naming no dispatched step is refused at the far end. The package is split in
+  two halves, one that reads an engine and one that talks to the record, so a
+  second engine is a translator rather than a rewrite. It is a client of the
+  keeper, a separate deployable bound to it by prose and two metadata keys
+  rather than by a shared package.

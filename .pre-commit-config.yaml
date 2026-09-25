@@ -1,0 +1,79 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        # Syntax-only parse so mkdocs.yml's !!python/name tags do not fail
+        # the safe loader. Does not execute constructors.
+        args: [--unsafe]
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.1
+    hooks:
+      # Order matters: check (with --fix) before format.
+      #
+      # The pattern names every linted directory, and it is load-bearing
+      # rather than tidy: a `files:` pattern that matches nothing is
+      # indistinguishable from a clean tree, so it reports success on every
+      # commit. Renaming a directory means editing this line in the same
+      # commit.
+      - id: ruff-check
+        args: [--fix]
+        files: ^(src|tests|typings)/
+      - id: ruff-format
+        files: ^(src|tests|typings)/
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  # Local hooks so each tool runs against this project's uv venv and sees the
+  # same dependencies and source tree pytest does.
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: bash -c 'uv run pyright src tests'
+        language: system
+        pass_filenames: false
+        files: ^(src|tests|typings)/.+\.pyi?$
+
+      # The whole suite, which is the structural rules, the prose rules and
+      # everything else. Under a second, so there is nothing to select.
+      #
+      # Deliberately not a `-k` selector naming the rule files. A selector
+      # goes stale the first time one is renamed, and a selector that matches
+      # a smaller set than intended still reports green.
+      - id: suite
+        name: suite
+        entry: bash -c 'uv run pytest -q'
+        language: system
+        pass_filenames: false
+        files: ^(src|tests|docs)/.+|^README\.md$
+
+      # ----------------------------------------------------------------
+      # Pre-push only: the whole gate CI runs.
+      #
+      # The ruff hooks above run against STAGED files only, so unstaged drift
+      # can slip past pre-commit and trip CI on push. This runs against the
+      # whole tree at push time so the same violations are caught one
+      # round-trip earlier. The suite is under a second, so there is nothing
+      # to leave out.
+      #
+      # Install with: pre-commit install --hook-type pre-push
+      # (one-shot per clone; idempotent if already installed).
+      # ----------------------------------------------------------------
+      - id: gate-all
+        name: lint, typecheck and test (matches CI)
+        entry: bash -c 'uv run ruff check src tests typings && uv run ruff format --check src tests typings && uv run pyright src tests && uv run pytest -q'
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+        always_run: true

@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Two lanes. The suite is one project with no database and no service
+# container, so splitting the gate further would cost more in runner startup
+# than it saves. Re-split when a lane's wall-clock starts to matter.
+jobs:
+  gate:
+    name: Lint, typecheck, test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup
+
+      - name: Lint (ruff check)
+        run: uv run ruff check src tests typings
+
+      - name: Format check (ruff format)
+        run: uv run ruff format --check src tests typings
+
+      - name: Typecheck (pyright strict)
+        run: uv run pyright src tests
+
+      # No database, no engine and no network: the suite reads recorded
+      # captures and a faked transport, and runs in under a second.
+      - name: Test
+        run: uv run pytest
+
+  docs:
+    # `--strict` is the only thing that fails a build on a broken cross-link.
+    name: Docs (strict)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup
+
+      - name: Build the site, strict
+        run: make docs-build
+
+  ci-gate:
+    # One aggregate context for branch protection. Protection matches job
+    # names by exact string, so requiring individual lanes means editing the
+    # rule whenever a lane is renamed. Worse, GitHub treats a SKIPPED required
+    # check as satisfied, so a lane that is skipped rather than failed would
+    # silently satisfy protection. This job reports on every run and is green
+    # only if every lane actually succeeded.
+    name: CI gate
+    # Without `always()` this job would itself be skipped when an upstream
+    # lane fails, which is exactly the hole it exists to close.
+    if: always()
+    needs: [gate, docs]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Every upstream lane must have succeeded
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          echo "Upstream lane results: $results"
+          for r in $results; do
+            if [ "$r" != "success" ]; then
+              echo "::error::A CI lane did not succeed (results: $results)." >&2
+              exit 1
+            fi
+          done
+          echo "OK: every CI lane succeeded."

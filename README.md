@@ -36,14 +36,14 @@ later.
 
 Two consequences worth stating, because both look like accidents:
 
-- **Nothing here imports `keeper`, and nothing in `apps/keeper` imports this.**
+- **Nothing here imports `keeper`, and nothing in the keeper imports this.**
   Its own project and its own lockfile are what make that the
   interpreter's rule rather than a convention.
 - **It runs where the engine is.** The keeper runs where the database is. Two
   processes because two places.
 
 It also has to name a particular engine on most of its pages, which
-`apps/keeper` and `docs/` may not: which engine a deployment runs is a
+the keeper and its pages may not: which engine a deployment runs is a
 deployment's fact, and a rule stated for one reads as a rule derived from
 one. Being out here is how that stays true without an exception.
 
@@ -338,7 +338,7 @@ uv run pyright src tests
 ```
 
 Or from the repository root, where `make lint`, `make typecheck` and
-`make test` cover this project and `apps/keeper` together.
+`make test` cover this project and the keeper together.
 
 ## What is missing
 
@@ -370,7 +370,7 @@ One gap is open and worth naming, because the tests do not close it. They
 assert the requests the client builds, not that the keeper's routes accept them:
 reading the keeper's OpenAPI document would mean importing `keeper` here, which
 would put the model in this project's environment and end the separation
-above. So a route rename fails in `apps/keeper`'s own path pin, and whoever
+above. So a route rename fails in the keeper's own path pin, and whoever
 does it has to look for callers. What closes it is the run below, which
 needs no test double at any point.
 
@@ -396,7 +396,7 @@ Four processes, and every one of them real:
 
 ```sh
 # 1. a keeper with no database
-cd apps/keeper && APP_ENV=test uv run uvicorn keeper.api.main:app --port 8077
+APP_ENV=test uv run uvicorn keeper.api.main:app --port 8077   # in the keeper's checkout
 
 # 2. author the plans, as an operator would. the reporter cannot: it is
 #    not granted DefinePlan, and could not derive a correct schema from
@@ -409,7 +409,7 @@ python -c "from bluesky.callbacks.zmq import Proxy; Proxy(5567, 5568).start()"
 
 # 4. the reporter, before the engine, because a publisher drops what it
 #    sends while nothing is listening
-cd apps/reporter && uv run python -m reporter \
+uv run python -m reporter \
   --config reporter.toml --subscribe tcp://127.0.0.1:5568
 ```
 

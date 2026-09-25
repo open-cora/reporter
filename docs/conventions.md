@@ -76,7 +76,7 @@ they drift. The split:
 
 | | Owns | Example |
 | --- | --- | --- |
-| `docs/reference/` | The RULE. What the convention is, why it exists in general, what the anti-patterns are. | "A port is a Protocol, and its adapters are named for the technology behind them." |
+| `docs/` | The RULE. What the convention is, why it exists in general, what the anti-patterns are. | "A port is a Protocol, and its adapters are named for the technology behind them." |
 | A docstring | The SITE. Why THIS module implements the rule the way it does, and what is non-obvious here. | "This store is one instance per process, because more than one BC appends through it." |
 
 A docstring that restates the general rule is duplication. Link instead: open by
@@ -88,7 +88,7 @@ must see the contract without leaving the file. What must NOT appear twice is
 the reason for it: two explanations of one decision become two decisions the
 first time someone edits one.
 
-When they do conflict, `docs/reference/` wins and the docstring is the bug.
+When they do conflict, the page wins and the docstring is the bug.
 It is the page a reader consults before writing code, so a stale rule there
 misleads earlier and wider than a stale docstring does.
 

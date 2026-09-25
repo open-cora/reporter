@@ -54,6 +54,12 @@ markdown_extensions:
   - tables
   - toc:
       permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight
 
 nav:
   - Home: index.md
+  - Reference:
+      - Client contract: client-contract.md
+      - Conventions: conventions.md
+      - Glossary: glossary.md

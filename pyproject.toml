@@ -1,0 +1,107 @@
+[project]
+name = "reporter"
+version = "0.1.0"
+description = "Turns one engine's document stream into the keeper's run commands"
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [{ name = "Doga Gursoy" }]
+license = { text = "Apache-2.0" }
+
+# Three, and none of them is an engine. Every module below `__main__`
+# takes an HTTP client shaped like the two verbs it uses, so the library is
+# a choice a deployment makes rather than one this package embeds.
+#
+# The subscription reads a published document stream off a 0MQ socket, and
+# that needs the socket and the encoding and nothing else: the frame is a
+# prefix, a name and a msgpack payload separated by spaces. Reading it
+# through the engine's own library would buy that split and drag in the
+# engine, numpy included, which is a strange dependency for a package whose
+# claim is that it is not the engine. See `sources.py`.
+dependencies = [
+    "httpx>=0.28,<1",
+    "pyzmq>=27,<28",
+    "msgpack>=1.1,<2",
+]
+
+# Pinned to the same ranges as apps/keeper. Two projects linting under two ruff
+# versions is a drift source with no upside, and the pre-commit hook that
+# covers both trees runs one binary over both.
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1,<10",
+    "ruff>=0.16.1,<0.17",
+    "pyright>=1.1.411,<2",
+    "pre-commit>=4.6.1,<5",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/reporter"]
+
+# Lint and type configuration is copied from apps/keeper rather than shared.
+# Two projects that build and ship separately should not fail each other's
+# CI over a style bump, and the two configurations already differ in three
+# places: no `keeper` first-party, no tach, and no parked-slice exclusion.
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+# `scripts/` is deliberately outside every lane. The two collectors there import
+# an acquisition engine and a store, neither of which is a dependency of this
+# project, so pyright cannot resolve them and ruff would be checking code that
+# no environment here can run. They are operator tooling invoked by
+# `make refresh-captures` with `--no-project`, and the fixtures they write are
+# committed, so nothing in a test run reaches them.
+extend-exclude = ["scripts"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "RUF",  # ruff-specific
+    "SIM",  # flake8-simplify
+    "TC",   # flake8-type-checking
+    "N",    # pep8-naming
+    "ASYNC",
+    # Documentation guardrails (see docs/reference/conventions.md#documentation).
+    "D200",     # one-line docstring fits on one line
+    "D201",     # no blank lines before docstring
+    "D202",     # no blank lines after function docstring
+    "D210",     # no whitespace surrounding docstring text
+    "D211",     # no blank lines before class docstring
+    "D212",     # multi-line summary on the first line (vs D213)
+    "D300",     # triple double quotes
+    "D403",     # first word capitalized
+    "D404",     # first word not "This"
+    "D415",     # first line ends with .  ?  or !
+    # TODO hygiene: git log and the PR description carry context, not source.
+    "TD002",    # require TODO author
+    "TD003",    # require TODO issue link
+]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint.isort]
+known-first-party = ["reporter", "tests"]
+
+[tool.pyright]
+include = ["src", "tests"]
+exclude = ["**/__pycache__"]
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+useLibraryCodeForTypes = true
+reportMissingTypeStubs = false
+
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib", "--strict-markers"]
+testpaths = ["tests"]

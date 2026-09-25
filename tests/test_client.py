@@ -14,7 +14,7 @@ parameters. Nothing readable from here says so: the keeper's OpenAPI document is
 generated on demand rather than committed, and importing `apps/keeper` to ask
 it would put `keeper` in this project's environment and dissolve the
 boundary that makes the reporter a separate deployable. So a rename on
-The keeper's side fails there, loudly, in its own path pin, and the person doing
+the keeper's side fails there, loudly, in its own path pin, and the person doing
 it has to look for callers.
 """
 

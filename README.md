@@ -1,7 +1,7 @@
 # Reporter
 
 Relays one engine's document stream to the keeper as reports about the steps
-The keeper dispatched, and says where the data those steps produced is being
+the keeper dispatched, and says where the data those steps produced is being
 kept.
 
 **Runs, against a live engine.** `python -m reporter --subscribe` reads
@@ -15,7 +15,7 @@ What is still missing is durability: see
 A client of the keeper, not a part of it. It calls an HTTP API rather than
 sitting behind a port the keeper declares.
 
-**It creates nothing.** the keeper composes a Procedure, dispatches an
+**It creates nothing.** The keeper composes a Procedure, dispatches an
 Execution, and whatever drives that execution carries the step's keeper ids
 into the engine's own metadata. What arrives here is an engine talking
 about work this system already wrote down, so every request names a
@@ -39,7 +39,7 @@ Two consequences worth stating, because both look like accidents:
 - **Nothing here imports `keeper`, and nothing in `apps/keeper` imports this.**
   Its own project and its own lockfile are what make that the
   interpreter's rule rather than a convention.
-- **It runs where the engine is.** the keeper runs where the database is. Two
+- **It runs where the engine is.** The keeper runs where the database is. Two
   processes because two places.
 
 It also has to name a particular engine on most of its pages, which

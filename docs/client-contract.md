@@ -56,7 +56,7 @@ This section used to say the reporter sent the scheme with every run and that a 
 
 **The reference is a correlation hint, not a credential.** Nothing is granted, billed or gated on it. A wrong one costs a wrong lookup. The day something authorizes off an external reference, this design has to change before that ships.
 
-**External references are not unique.** the keeper does not enforce uniqueness across streams. A step's `engine_reference` is recorded as given and nothing compares it against any other step's, so two steps can name one engine run and neither is refused.
+**External references are not unique.** The keeper does not enforce uniqueness across streams. A step's `engine_reference` is recorded as given and nothing compares it against any other step's, so two steps can name one engine run and neither is refused.
 
 That used to be the sharper problem, because an outside reporter opened records and two of them could answer to one reference. It is smaller now: the keeper owns every genesis, so a duplicate reference is a relay mistake on records that already existed rather than a second record of one fact.
 

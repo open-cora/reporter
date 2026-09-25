@@ -138,26 +138,34 @@ Backticks mean "this is a symbol". A reader who cannot find a backticked
 name has no way to tell a name they have missed from a name that is not
 there, so every dangling reference costs a search that ends in nothing.
 
-Two fitness tests in `test_docstring_references_resolve.py` enforce this: a
-backticked CamelCase name must be defined somewhere in `src/` or `tests/`,
-and a cited file path must exist in the repository.
+Two fitness tests in `test_docstring_references_resolve.py` enforce this. A
+backticked name whose shape says it is code, meaning CamelCase, a
+screaming-snake constant, a leading-underscore private name or a snake_case
+name, must be bound somewhere in `src` or `tests`. A cited file path must
+exist in this project.
 
-The tests admit two declared exceptions, each a named frozenset:
+The scan is scoped to this project rather than to whatever tree surrounds
+it, and that is the half that earns its keep. A citation of a neighbouring
+directory resolves for exactly as long as the neighbour is next door.
+
+The tests admit three declared exceptions, each a named frozenset:
 
 | | For | Example |
 |---|---|---|
-| `EXTERNAL_NAMES` | Real, defined outside this repository | `PoolConnectionProxy` (asyncpg) |
-| `PROSPECTIVE_NAMES` | Real nowhere, deliberately | a name a future module should adopt |
+| `EXTERNAL_NAMES` | Real, defined outside this project | `EngineReport`, which the keeper defines |
+| `PROSPECTIVE_NAMES` | Real nowhere, deliberately | `ReportRun`, an intent this package removed |
+| `EXTERNAL_FILES` | A real file this project does not hold | `reporter.toml`, which an operator writes |
 
-`PROSPECTIVE_NAMES` exists because naming a thing before it exists is a
-legitimate move: telling a future author what to call something, standing
-in for a type inside a worked example, or rejecting an
-alternative by name. Each entry still costs a line, so adding one is a
-decision rather than a way past the check.
+`PROSPECTIVE_NAMES` exists because naming a thing before it exists, or
+after it stops existing, is a legitimate move: telling a future author what
+to call something, standing in for a type inside a worked example, or
+saying what a removal removed. Each entry still costs a line, so adding one
+is a decision rather than a way past the check.
 
 Neither test can see a wrong explanation of a real symbol. They catch the
-cheaper failure, which is prose that refers to nothing at all. This
-repository had 118 such references after the chassis was copied.
+cheaper failure, which is prose that refers to nothing at all. The first run over this
+project found five of them, and two citations of a file an operator
+writes.
 
 Use a word instead of a symbol when you mean a word: an `Adapter` suffix is
 a string, not a class, and the backticks claim otherwise.

@@ -30,7 +30,7 @@ rather than an alert.
 
 Nothing here carries parameters either, and the omission is the same
 fact. A `ReportRun` had to carry what the engine was called with, because
-The keeper's record of the run was being made from it, and the reporter had to
+the keeper's record of the run was being made from it, and the reporter had to
 drop every argument that was a device repr rather than a value. The keeper now
 holds those values on the procedure it composed, so what the engine says
 it was called with is at best a second copy and at worst a disagreement

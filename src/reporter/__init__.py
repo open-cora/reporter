@@ -1,7 +1,7 @@
 """Relays one engine's document stream to the keeper as step-run reports.
 
 A client of the keeper, not a part of it. The dependency arrow points into
-The keeper, and a thing that calls an HTTP API needs a URL and a token rather
+the keeper, and a thing that calls an HTTP API needs a URL and a token rather
 than a port declared for it. Nothing in `apps/keeper` imports this package
 and nothing here imports `keeper`.
 

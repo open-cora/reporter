@@ -10,7 +10,7 @@ That split is what makes a second engine a translator rather than a
 rewrite, and nothing about it is visible in a diff. It was already broken
 once, quietly: `client` imported a helper from `translate` because the
 helper had been filed on the wrong side, and the module that talks to
-The keeper therefore imported the module that reads one engine's documents. No
+the keeper therefore imported the module that reads one engine's documents. No
 test failed, because there was no test.
 
 This is that test. It reads imports rather than running anything, which

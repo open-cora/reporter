@@ -6,8 +6,8 @@ because it is soliciting contributions.
 
 ## Where the code is developed
 
-This repository is a published mirror. The work happens in
-[open-cora/cora](https://github.com/open-cora/cora), a development tree holding
+**This repository is what you deploy, install and cite.** Development happens
+in [open-cora/cora](https://github.com/open-cora/cora), a tree holding
 this project, the keeper it talks to and its sibling clients side by side,
 and this repository is extracted from `apps/reporter` with `git subtree`, so the
 history here is the real history rather than a squashed import.

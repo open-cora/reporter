@@ -475,6 +475,20 @@ publisher this cannot decode.
 | [reporter](https://github.com/open-cora/reporter) | Reports what an acquisition engine did |
 | [thinker](https://github.com/open-cora/thinker) | Proposes what to run next |
 
+## Where the code is developed
+
+**This repository is what you deploy, install and cite.** It is one deployable,
+versioned and released on its own, and it runs standalone: its own lockfile,
+its own suite, its own site.
+
+**Development happens in [open-cora/cora](https://github.com/open-cora/cora)**,
+a tree holding the four side by side, from which each is extracted with
+`git subtree` and its history intact. What is missing here is the other
+projects, and the end-to-end tests that need more than one of them at once.
+
+A change merged here would be overwritten by the next publish, so open an issue
+or fork. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).

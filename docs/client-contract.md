@@ -43,7 +43,7 @@ The engine's own uid still travels, in the other direction, as a step's `engine_
 
 The scheme is a word, and two deployments have to pick the same one.
 
-- The reporter reads `external_ref_scheme` from the `[store]` table of its TOML configuration and sends it with every dataset it registers. A spike recommends a word for the engine it drove, and what a given deployment settled on is written down in its descriptor under `beamlines/`.
+- The reporter reads `external_ref_scheme` from the `[store]` table of its TOML configuration and sends it with every dataset it registers. A spike recommends a word for the engine it drove, and what a given deployment settled on is written down in its beamline descriptor.
 - Anything that later resolves a dataset's address must read it under that same word.
 
 Nothing checks this. Two deployments configured differently file data under two vocabularies that look alike and are not, and nothing in the keeper can tell them apart, because the scheme names a vocabulary rather than an instance.

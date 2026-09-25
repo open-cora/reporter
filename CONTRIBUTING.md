@@ -4,13 +4,25 @@ The reporter is a personal research repository: it relays one
 acquisition engine's document stream to the keeper. It is public so the work can be read, cited, and learned from, not
 because it is soliciting contributions.
 
+## Where the code is developed
+
+This repository is a published mirror. The work happens in
+[open-cora/cora](https://github.com/open-cora/cora), a development tree holding
+this project, the keeper it talks to and its sibling clients side by side,
+and this repository is extracted from `apps/reporter` with `git subtree`, so the
+history here is the real history rather than a squashed import.
+
+That matters for one practical reason: a change merged here would be
+overwritten by the next publish. Open an issue, or fork, and say which of the
+two trees you read. Everything below applies to a change made in either place.
+
 ## What is welcome
 
 - **Questions and corrections.** If a document states something false, a
   convention contradicts the code, or a guarantee is claimed that nothing
   provides, please open an issue. That class of defect is the one this
   project most wants reported.
-- **A second engine..** `translate` and `sources` read one engine and nothing
+- **A second engine.** `translate` and `sources` read one engine and nothing
   else does, so a second engine should be a translator rather than a
   rewrite. If you try one and it does not fit, the split is wrong and that is
   worth an issue.

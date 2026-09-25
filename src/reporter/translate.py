@@ -21,11 +21,15 @@ mistake where two records answered to one reference. Under a dispatch the
 ids exist before the engine is asked for anything, so putting them in the
 metadata is the cheaper half of a trade that used to go the other way.
 
-**Nothing in this repository writes those keys yet.** The conductor's
-recording seam is the place they will be written and it is not built, so
-this side of the contract is stated here and unenforced. A capture taken
-before that lands produces `Ignored` for every document in it, which is
-the behaviour the section below describes rather than a failure.
+`conductor.adapters.bluesky_acquisition` is what writes them, into the
+start document of every run it opens under a dispatch. The two projects
+share no code and ship separately, so the spelling below is written out
+again over there and each side pins the two literals in a test that names
+the other.
+
+A capture taken before that landed carries neither key and produces
+`Ignored` for every document in it, which is the behaviour the section
+below describes rather than a failure.
 
 ## Work AROC never dispatched is quiet
 

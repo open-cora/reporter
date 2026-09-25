@@ -123,6 +123,20 @@ def translate_all(scenario: str) -> list[Intent]:
     return [translator.feed(name, document) for name, document in deliveries(scenario)]
 
 
+def test_the_two_keys_are_spelled_the_way_the_conductor_writes_them() -> None:
+    """A wire format written out in two projects that share no code.
+
+    `conductor.adapters.bluesky_acquisition` holds the same pair, and
+    `docs/reference/client-contract.md` holds the agreement. Every other
+    test here reads the keys through `AROC_METADATA_KEYS`, which proves
+    one name is used consistently and would survive a change to what
+    that name means. This is the line that would not: a reporter reading
+    keys the conductor stopped writing skips every run at the beamline
+    and reports it as work somebody did by hand.
+    """
+    assert AROC_METADATA_KEYS == ("aroc_execution_id", "aroc_step_id")
+
+
 def test_the_capture_holds_scenarios_to_range_over() -> None:
     """Guard the enumeration: an empty file makes every check below vacuous."""
     assert scenarios(), f"{CAPTURED} carries no scenarios, so nothing is asserted."

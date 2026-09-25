@@ -45,7 +45,7 @@ extra:
     srcset: "assets/hero-reporter-1200.webp 1200w, assets/hero-reporter-2000.webp 2000w, assets/hero-reporter-2758.webp 2758w"
     image_alt: >-
       Iris Carrying the Water of the River Styx, by Guy Head, about 1793: a winged figure in flight holding a golden ewer aloft.
-    credit: Guy Head · Iris Carrying the Water of the River Styx · public domain
+    credit: Guy Head · Iris Carrying the Water of the River Styx · Nelson-Atkins Museum of Art
     credit_url: https://art.nelson-atkins.org/objects/31991/iris-carrying-the-water-of-the-river-styx-to-olympus-for-the
 
 markdown_extensions:

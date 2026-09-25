@@ -125,18 +125,22 @@
   margin: 0;
 }
 
-/* Keep the artwork reference with the masthead rather than in the footer
-   blend, where its contrast would vary as the page background changes. */
+/* The artwork reference lives on the solid end of the footer blend. Using
+   the theme foreground colour keeps it legible on both the light and dark
+   page background without adding a badge over the painting. */
 .hero__credit {
-  max-width: 48ch;
-  margin: clamp(0.9rem, 1.5vw, 1.2rem) 0 0;
+  position: absolute;
+  right: clamp(1.25rem, 3.5vw, 2.75rem);
+  bottom: clamp(0.35rem, 0.9vw, 0.7rem);
+  max-width: min(78vw, 42rem);
+  margin: 0;
+  text-align: right;
   font-family: "Inter", system-ui, sans-serif;
-  font-size: clamp(0.52rem, 0.58vw, 0.62rem);
+  font-size: clamp(0.5rem, 0.56vw, 0.6rem);
   font-weight: 400;
-  line-height: 1.35;
+  line-height: 1.3;
   letter-spacing: 0.045em;
-  color: rgba(255, 255, 255, 0.62);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.72);
+  color: color-mix(in srgb, var(--md-default-fg-color) 58%, transparent);
 }
 
 .hero__credit a {
@@ -147,7 +151,7 @@
 
 .hero__credit a:hover,
 .hero__credit a:focus-visible {
-  color: rgba(255, 255, 255, 0.88);
+  color: color-mix(in srgb, var(--md-default-fg-color) 82%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -177,7 +181,9 @@
 .hero[data-align="right"] .hero__inner { text-align: right; }
 .hero[data-align="right"] .hero__tagline { margin-left: auto; }
 .hero[data-align="right"] .hero__credit {
-  margin-left: auto;
+  left: clamp(1.25rem, 3.5vw, 2.75rem);
+  right: auto;
+  text-align: left;
 }
 
 /* The header bar (logo, search, repo link) and the Home tab float over the

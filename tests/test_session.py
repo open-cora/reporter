@@ -2,7 +2,7 @@
 
 The closest thing to an end-to-end run this project has that needs no
 engine. Each test feeds documents a real engine emitted through a real
-`Translator` into a real `Session` over a real `ArocClient`, and asserts
+`Translator` into a real `Session` over a real `KeeperClient`, and asserts
 the outcomes. Only the socket is fake.
 
 The two are composed by `documents_into`, which is the composition the
@@ -27,7 +27,7 @@ from uuid import UUID
 
 import pytest
 
-from reporter.client import ArocClient, RequestRefusedError
+from reporter.client import KeeperClient, RequestRefusedError
 from reporter.config import from_mapping
 from reporter.intents import RegisterDataset, Report
 from reporter.outcomes import Held, Kept, Outcome, Relayed, Skipped, Unchanged
@@ -43,7 +43,7 @@ CAPTURED = Path(__file__).parent / "documents.json"
 AN_EXECUTION = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
 A_STEP = UUID("01a0ba65-df83-7501-aa5d-3e2318ef956c")
 
-CONFIG = from_mapping({"aroc": {"base_url": "https://aroc.example", "token": "a-token"}})
+CONFIG = from_mapping({"aroc": {"base_url": "https://keeper.example", "token": "a-token"}})
 
 RUN_PATH = f"/executions/{AN_EXECUTION}/steps/{A_STEP}/run"
 
@@ -79,7 +79,7 @@ def session_over(**answers: list[Answer]) -> tuple[Handle, Routed]:
     about.
     """
     routed = Routed(report=answers.get("report") or [Answer(204)])
-    return documents_into(Session(ArocClient(routed, CONFIG), CONFIG)), routed
+    return documents_into(Session(KeeperClient(routed, CONFIG), CONFIG)), routed
 
 
 def drive(scenario: str, handle: Handle) -> list[Outcome]:
@@ -146,7 +146,7 @@ def test_every_report_in_a_scenario_posts_to_the_same_step() -> None:
     handle, routed = session_over()
     drive("pause_resume_complete", handle)
 
-    assert {call.url for call in routed.calls("POST")} == {f"https://aroc.example{RUN_PATH}"}
+    assert {call.url for call in routed.calls("POST")} == {f"https://keeper.example{RUN_PATH}"}
 
 
 def test_a_descriptor_sends_nothing() -> None:
@@ -289,7 +289,7 @@ A_DATASET = UUID("01a0ba66-1c41-7f02-9e48-5b7a0c6d2e19")
 
 STORE_CONFIG = from_mapping(
     {
-        "aroc": {"base_url": "https://aroc.example", "token": "a-token"},
+        "aroc": {"base_url": "https://keeper.example", "token": "a-token"},
         "store": {
             "base_url": "https://store.example",
             "root": "raw",
@@ -311,7 +311,7 @@ def a_session_with_store(store: Store, **answers: list[Answer]) -> tuple[Session
         report=answers.get("report") or [Answer(204)],
         register=answers.get("register") or [Answer(201, {"dataset_id": str(A_DATASET)})],
     )
-    return Session(ArocClient(routed, STORE_CONFIG), STORE_CONFIG, store), routed
+    return Session(KeeperClient(routed, STORE_CONFIG), STORE_CONFIG, store), routed
 
 
 def session_with_store(store: Store, **answers: list[Answer]) -> tuple[Handle, Routed]:
@@ -508,7 +508,7 @@ def test_a_store_lookup_without_a_store_table_is_refused_at_construction() -> No
     """The two halves of the configuration cannot disagree, because one of
     them carries the scheme the other's addresses belong to."""
     with pytest.raises(ValueError, match="store"):
-        Session(ArocClient(Routed(), CONFIG), CONFIG, Store())
+        Session(KeeperClient(Routed(), CONFIG), CONFIG, Store())
 
 
 def a_found_dataset(step_id: UUID = A_STEP) -> RegisterDataset:

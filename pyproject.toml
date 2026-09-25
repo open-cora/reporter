@@ -1,5 +1,5 @@
 [project]
-name = "aroc-reporter"
+name = "reporter"
 version = "0.1.0"
 description = "Turns one engine's document stream into AROC's run commands"
 readme = "README.md"

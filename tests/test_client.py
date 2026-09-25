@@ -24,7 +24,7 @@ from uuid import UUID
 
 import pytest
 
-from reporter.client import ArocClient, RequestRefusedError, dataset_key_for
+from reporter.client import KeeperClient, RequestRefusedError, dataset_key_for
 from reporter.config import from_mapping
 from reporter.intents import RegisterDataset, Report, ReportStepRun
 from tests._fakes import Answer, Recorder
@@ -34,14 +34,14 @@ A_STEP = UUID("01a0ba65-df83-7501-aa5d-3e2318ef956c")
 A_UID = "5b4f40e7-1b2c-4d3e-8f90-abcdef012345"
 AN_INSTANT = datetime(2026, 9, 19, 10, 2, 11, tzinfo=UTC)
 
-CONFIG = from_mapping({"aroc": {"base_url": "https://aroc.example", "token": "a-token"}})
+CONFIG = from_mapping({"aroc": {"base_url": "https://keeper.example", "token": "a-token"}})
 
 RUN_PATH = f"/executions/{AN_EXECUTION}/steps/{A_STEP}/run"
 
 
-def client_answering(*answers: Answer) -> tuple[ArocClient, Recorder]:
+def client_answering(*answers: Answer) -> tuple[KeeperClient, Recorder]:
     recorder = Recorder(answers=list(answers))
-    return ArocClient(recorder, CONFIG), recorder
+    return KeeperClient(recorder, CONFIG), recorder
 
 
 def a_report(reported: Report = "Started", **overrides: Any) -> ReportStepRun:
@@ -75,7 +75,7 @@ def test_a_report_posts_to_the_step_the_intent_names() -> None:
 
     sent = recorder.sent[0]
     assert sent.method == "POST"
-    assert sent.url == f"https://aroc.example{RUN_PATH}"
+    assert sent.url == f"https://keeper.example{RUN_PATH}"
 
 
 def test_a_report_puts_the_verb_in_the_body_rather_than_the_path() -> None:
@@ -88,7 +88,7 @@ def test_a_report_puts_the_verb_in_the_body_rather_than_the_path() -> None:
     client.report_step_run(a_report("Completed", origin="stop"))
 
     assert [(s.json or {})["reported"] for s in recorder.sent] == ["Started", "Completed"]
-    assert {s.url for s in recorder.sent} == {f"https://aroc.example{RUN_PATH}"}
+    assert {s.url for s in recorder.sent} == {f"https://keeper.example{RUN_PATH}"}
 
 
 def test_a_report_carries_the_engines_own_id_on_every_one_of_them() -> None:
@@ -162,7 +162,7 @@ def test_register_dataset_posts_the_address_the_store_gave_and_returns_the_id() 
     assert registered == A_DATASET
     sent = recorder.sent[0]
     assert sent.method == "POST"
-    assert sent.url == "https://aroc.example/datasets"
+    assert sent.url == "https://keeper.example/datasets"
     assert sent.json == {
         "execution_id": str(AN_EXECUTION),
         "step_id": str(A_STEP),

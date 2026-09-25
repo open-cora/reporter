@@ -229,10 +229,10 @@ past the file below:
 ```python
 from pathlib import Path
 import httpx
-from reporter import ArocClient, Relay, Session, documents_into, load
+from reporter import KeeperClient, Relay, Session, documents_into, load
 
 config = load(Path("reporter.toml"))
-session = Session(ArocClient(httpx.Client(timeout=10), config), config)
+session = Session(KeeperClient(httpx.Client(timeout=10), config), config)
 relay = Relay(documents_into(session), print)
 relay.start()
 
@@ -278,7 +278,7 @@ claim is that it is not the engine.
 
 ```toml
 [aroc]
-base_url = "https://aroc.example"
+base_url = "https://keeper.example"
 token = "..."
 
 [store]
@@ -396,7 +396,7 @@ Four processes, and every one of them real:
 
 ```sh
 # 1. an AROC with no database
-cd apps/api && APP_ENV=test uv run uvicorn aroc.api.main:app --port 8077
+cd apps/api && APP_ENV=test uv run uvicorn keeper.api.main:app --port 8077
 
 # 2. author the plans, as an operator would. the reporter cannot: it is
 #    not granted DefinePlan, and could not derive a correct schema from

@@ -57,7 +57,7 @@ from types import FrameType
 
 import httpx
 
-from reporter.client import ArocClient
+from reporter.client import KeeperClient
 from reporter.config import ConfigError, ReporterConfig, load
 from reporter.outcomes import Held, Outcome
 from reporter.relay import Relay
@@ -125,7 +125,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     tally = Tally()
     unreadable: str | None = None
     with httpx.Client(timeout=REQUEST_TIMEOUT_SECONDS) as http:
-        client = ArocClient(http, config)
+        client = KeeperClient(http, config)
         store = store_lookup(http, config)
         unreachable = store_that_does_not_answer(store, config)
         if unreachable is not None:

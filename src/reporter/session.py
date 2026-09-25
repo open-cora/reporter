@@ -57,7 +57,7 @@ where a cursor lives is the other half of the subscription decision.
 
 from typing import Final
 
-from reporter.client import ArocClient, RequestRefusedError
+from reporter.client import KeeperClient, RequestRefusedError
 from reporter.config import ReporterConfig
 from reporter.intents import (
     Ignored,
@@ -105,7 +105,7 @@ class Session:
 
     def __init__(
         self,
-        client: ArocClient,
+        client: KeeperClient,
         config: ReporterConfig,
         store: StoreLookup | None = None,
     ) -> None:

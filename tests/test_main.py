@@ -23,7 +23,7 @@ from reporter.__main__ import (
     store_lookup,
     store_that_does_not_answer,
 )
-from reporter.client import ArocClient
+from reporter.client import KeeperClient
 from reporter.config import ReporterConfig, from_mapping
 from reporter.outcomes import Held, Outcome, Relayed, Skipped, Unchanged
 from reporter.relay import Relay
@@ -39,7 +39,7 @@ CAPTURED = Path(__file__).parent / "documents.json"
 
 
 def a_config() -> ReporterConfig:
-    return from_mapping({"aroc": {"base_url": "https://aroc.example", "token": "a-token"}})
+    return from_mapping({"aroc": {"base_url": "https://keeper.example", "token": "a-token"}})
 
 
 def tallied(*outcomes: Outcome) -> int:
@@ -179,7 +179,7 @@ def an_idle_relay() -> Relay:
     than about what happens to the documents in it.
     """
     config = a_config()
-    handle = documents_into(Session(ArocClient(Routed(), config), config))
+    handle = documents_into(Session(KeeperClient(Routed(), config), config))
     return Relay(handle, lambda _: None)
 
 
@@ -206,7 +206,7 @@ def test_a_stream_that_simply_ends_is_not_a_problem() -> None:
 def a_store_config(**overrides: str) -> ReporterConfig:
     return from_mapping(
         {
-            "aroc": {"base_url": "https://aroc.example", "token": "a-token"},
+            "aroc": {"base_url": "https://keeper.example", "token": "a-token"},
             "store": {
                 "base_url": "https://store.example",
                 "root": "raw",

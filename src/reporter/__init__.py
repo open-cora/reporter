@@ -38,8 +38,8 @@ published while this is down is a document lost. See the README.
 """
 
 from reporter.client import (
-    ArocClient,
     HttpClient,
+    KeeperClient,
     RequestRefusedError,
     Response,
     dataset_key_for,
@@ -64,12 +64,11 @@ from reporter.stores import (
     StoreRefusedError,
     node_path,
 )
-from reporter.translate import AROC_METADATA_KEYS, Translator, aroc_reference, engine_instant
+from reporter.translate import AROC_METADATA_KEYS, Translator, engine_instant, keeper_reference
 from reporter.wire import documents_into
 
 __all__ = [
     "AROC_METADATA_KEYS",
-    "ArocClient",
     "ConfigError",
     "DecodeError",
     "Delivery",
@@ -79,6 +78,7 @@ __all__ = [
     "HttpStoreLookup",
     "Ignored",
     "Intent",
+    "KeeperClient",
     "Kept",
     "Location",
     "Outcome",
@@ -98,7 +98,6 @@ __all__ = [
     "Translator",
     "Unchanged",
     "Unmappable",
-    "aroc_reference",
     "dataset_key_for",
     "documents_into",
     "engine_instant",
@@ -106,6 +105,7 @@ __all__ = [
     "from_mapping",
     "from_subscription",
     "is_worth_retrying",
+    "keeper_reference",
     "load",
     "node_path",
 ]

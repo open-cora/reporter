@@ -38,8 +38,8 @@ from reporter.translate import (
     AROC_METADATA_KEYS,
     ENDING_BY_EXIT_STATUS,
     Translator,
-    aroc_reference,
     engine_instant,
+    keeper_reference,
 )
 
 CAPTURED = Path(__file__).parent / "documents.json"
@@ -434,15 +434,15 @@ def test_a_reference_that_is_not_a_pair_of_ids_reads_as_no_reference() -> None:
     """
     execution_key, step_key = AROC_METADATA_KEYS
 
-    assert aroc_reference({execution_key: str(uuid4())}) is None
-    assert aroc_reference({execution_key: "not-an-id", step_key: str(uuid4())}) is None
-    assert aroc_reference({execution_key: str(uuid4()), step_key: 7}) is None
+    assert keeper_reference({execution_key: str(uuid4())}) is None
+    assert keeper_reference({execution_key: "not-an-id", step_key: str(uuid4())}) is None
+    assert keeper_reference({execution_key: str(uuid4()), step_key: 7}) is None
 
 
 def test_a_reference_both_keys_carry_reads_back_as_the_pair() -> None:
     execution_key, step_key = AROC_METADATA_KEYS
 
-    found = aroc_reference({execution_key: str(_EXECUTION_ID), step_key: str(_STEP_ID)})
+    found = keeper_reference({execution_key: str(_EXECUTION_ID), step_key: str(_STEP_ID)})
 
     assert found == (_EXECUTION_ID, _STEP_ID)
 

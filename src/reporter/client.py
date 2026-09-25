@@ -132,7 +132,7 @@ class RequestRefusedError(Exception):
         self.path = path
 
 
-class ArocClient:
+class KeeperClient:
     """Sends what the translator produced, to the AROC a config names."""
 
     def __init__(self, http: HttpClient, config: ReporterConfig) -> None:
@@ -211,8 +211,8 @@ def _instant(moment: datetime | None) -> str | None:
 
 
 __all__ = [
-    "ArocClient",
     "HttpClient",
+    "KeeperClient",
     "RequestRefusedError",
     "Response",
     "dataset_key_for",

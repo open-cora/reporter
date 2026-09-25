@@ -160,7 +160,7 @@ def engine_instant(document: Mapping[str, Any]) -> datetime | None:
     return datetime.fromtimestamp(float(seconds), tz=UTC)
 
 
-def aroc_reference(document: Mapping[str, Any]) -> tuple[UUID, UUID] | None:
+def keeper_reference(document: Mapping[str, Any]) -> tuple[UUID, UUID] | None:
     """The execution and step a start document says it belongs to.
 
     `None` when either key is absent, which is a hand-run scan, and also
@@ -223,7 +223,7 @@ class Translator:
         if not isinstance(uid, str):
             return Unmappable("a start carries no uid", "start")
 
-        reference = aroc_reference(document)
+        reference = keeper_reference(document)
         self._reference_by_run[uid] = reference
         if reference is None:
             return Ignored(
@@ -349,6 +349,6 @@ __all__ = [
     "ENDING_BY_EXIT_STATUS",
     "REPORT_BY_INTERRUPTION",
     "Translator",
-    "aroc_reference",
     "engine_instant",
+    "keeper_reference",
 ]

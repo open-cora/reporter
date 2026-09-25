@@ -76,7 +76,7 @@ class Recorder:
 class Routed:
     """Answers by which call was made, not by how many have been.
 
-    The two slots are the two calls `ArocClient` makes once a store is
+    The two slots are the two calls `KeeperClient` makes once a store is
     configured. Each holds a list consumed in order and reused once
     exhausted, so a scenario of any length needs one entry, and a test
     wanting the second report refused supplies two.

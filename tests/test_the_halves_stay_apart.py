@@ -35,7 +35,7 @@ PACKAGE = Path(__file__).resolve().parents[1] / "src" / "reporter"
 ENGINE_SIDE = frozenset({"translate", "sources"})
 """Modules that read one engine, and would be replaced for a second one."""
 
-AROC_SIDE = frozenset({"client", "config", "session", "relay"})
+KEEPER_SIDE = frozenset({"client", "config", "session", "relay"})
 """Modules that talk to AROC, and would be reused for a second engine."""
 
 STORE_SIDE = frozenset({"stores"})
@@ -189,7 +189,7 @@ def test_the_scan_finds_every_module_it_should() -> None:
 
 def test_every_module_is_placed_on_one_side_or_named_as_joining_them() -> None:
     """A module nobody classified is a module no rule below constrains."""
-    classified = ENGINE_SIDE | AROC_SIDE | STORE_SIDE | CONTRACT | JOINS_THEM
+    classified = ENGINE_SIDE | KEEPER_SIDE | STORE_SIDE | CONTRACT | JOINS_THEM
 
     assert set(modules()) == classified, (
         "A module is missing from the sets in this file, so no rule below applies to it: "
@@ -197,8 +197,8 @@ def test_every_module_is_placed_on_one_side_or_named_as_joining_them() -> None:
     )
 
 
-@pytest.mark.parametrize("name", sorted(AROC_SIDE))
-def test_a_module_that_talks_to_aroc_names_no_engine_module(name: str) -> None:
+@pytest.mark.parametrize("name", sorted(KEEPER_SIDE))
+def test_a_module_that_talks_to_the_keeper_names_no_engine_module(name: str) -> None:
     """The rule that was already broken once.
 
     An import here is how a second engine stops being a translator and
@@ -239,7 +239,7 @@ def test_a_module_that_reads_a_store_names_nothing_but_the_contract(name: str) -
     )
 
 
-@pytest.mark.parametrize("name", sorted(AROC_SIDE | CONTRACT | STORE_SIDE))
+@pytest.mark.parametrize("name", sorted(KEEPER_SIDE | CONTRACT | STORE_SIDE))
 def test_a_module_off_the_engine_side_keeps_engine_words_out_of_its_names(name: str) -> None:
     """The vocabulary half of the split, which the import half missed.
 
@@ -277,7 +277,7 @@ def test_a_module_that_reads_an_engine_never_names_a_store(name: str) -> None:
 def test_the_contract_depends_on_neither_side(name: str) -> None:
     """A vocabulary that imported one side would not be shared, it would
     belong to that side."""
-    reached = imports_of(modules()[name]) & (ENGINE_SIDE | AROC_SIDE | STORE_SIDE)
+    reached = imports_of(modules()[name]) & (ENGINE_SIDE | KEEPER_SIDE | STORE_SIDE)
 
     assert not reached, f"`{name}` is the shared vocabulary and imports {sorted(reached)}."
 
@@ -290,7 +290,7 @@ def test_only_one_module_joins_the_two_sides() -> None:
         for name, tree in modules().items()
         if name not in {"__init__", "__main__"}
         and imports_of(tree) & ENGINE_SIDE
-        and imports_of(tree) & AROC_SIDE
+        and imports_of(tree) & KEEPER_SIDE
     }
 
     assert joiners == {"wire"}, f"Expected only `wire` to name both sides, found {sorted(joiners)}."
@@ -314,11 +314,11 @@ def test_no_module_imports_a_store_library(name: str) -> None:
 
 
 @pytest.mark.parametrize("name", sorted(set(modules())))
-def test_no_module_imports_aroc_itself(name: str) -> None:
+def test_no_module_imports_the_keeper_itself(name: str) -> None:
     """Separate deployables, and the separation is the interpreter's rule
     rather than a convention only while this passes."""
-    assert "aroc" not in outside_imports(modules()[name]), (
-        f"`{name}` imports `aroc`. This is a client of that API over HTTP, and a "
+    assert "keeper" not in outside_imports(modules()[name]), (
+        f"`{name}` imports `keeper`. This is a client of that API over HTTP, and a "
         "reporter that can reach the model directly is not a separate deployable."
     )
 
@@ -352,8 +352,10 @@ def test_the_engine_word_ban_would_catch_something() -> None:
 def test_the_engine_library_ban_would_catch_something() -> None:
     """A banned-name check that matched nothing would pass on an empty
     list as readily as on a clean tree."""
-    pretend = ast.parse("import bluesky\nimport tiled.client\nfrom aroc.execution import Run\n")
+    pretend = ast.parse(
+        "import bluesky\nimport tiled.client\nfrom keeper.execution import Execution\n"
+    )
 
     assert outside_imports(pretend) & ENGINE_LIBRARIES == {"bluesky"}
     assert outside_imports(pretend) & STORE_LIBRARIES == {"tiled"}
-    assert "aroc" in outside_imports(pretend)
+    assert "keeper" in outside_imports(pretend)

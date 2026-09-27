@@ -1,5 +1,5 @@
 /* Landing-page hero. Full-bleed plate, left wash, editorial masthead.
-   The image files are pre-cropped to 2:1 at a per-painting anchor, so this
+   The image files are pre-cropped to 20:9 at a per-painting anchor, so this
    sheet only has to place type over them and keep it legible. */
 
 .hero {
@@ -158,9 +158,10 @@
   .hero__layer { opacity: 1 !important; }
 }
 
-/* Type on the right, for a plate whose subject sits on the left. Iris flies
-   up the left edge of her canvas and the drapery fills the right, so the
-   default wash would bury the figure and leave the empty half untouched. */
+/* Type on the right, for a plate whose subject sits on the left. The
+   Geographer leans over his chart on the left of his canvas and the wall
+   behind him is bare, so the default wash would bury the figure and leave
+   the empty half untouched. */
 .hero[data-align="right"] .hero__layer {
   background:
     linear-gradient(260deg,

@@ -9,12 +9,13 @@
      would clip that sliver away. */
   overflow: visible;
   background: var(--md-default-bg-color);
-  /* 50vw is exactly 2:1, the aspect the plates are cut to, so `cover` throws
-     nothing away between roughly 760px and 2080px of viewport. The plates were
-     cut to 20:9 first, and that letterbox was too shallow for canvases this
-     upright: it left the Geographer no headroom and reduced the Constable's
-     sky to a strip. */
-  height: clamp(380px, 50vw, 1040px);
+  /* The plates are 2:1 and the box that shows them is this height plus the
+     strip behind the header, so the hero has to be 50vw minus that strip for
+     the box to come out 2:1 and `cover` to throw nothing away. Subtracting it
+     is not a refinement. Without it the box is taller than the plate, and
+     because the image is a replaced element the overflow does not show up as
+     a crop: see the width note below. */
+  height: calc(clamp(380px, 50vw, 1040px) - var(--topnav-height, 0px));
   margin-top: -1px;
 }
 
@@ -27,6 +28,15 @@
   left: 0;
   right: 0;
   bottom: 0;
+  /* Explicit, and not left to `left: 0` with `right: 0`. Those two stretch a
+     div, but an image is a replaced element: with `width` auto and a height
+     given, its width comes from the intrinsic ratio and `right` is dropped as
+     over-constrained. That is what happened here, and it is invisible in a
+     screenshot of the plate itself. On a 1512px viewport the image was laid
+     out 1800px wide, so the right sixth of every plate was off the page along
+     with the Constable's barge, and the whole site carried a horizontal
+     scrollbar. `cover` never ran at all. */
+  width: 100%;
   height: calc(100% + var(--topnav-height, 0px));
   object-fit: cover;
   object-position: center center;

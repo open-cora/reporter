@@ -1,6 +1,6 @@
 # Reporter
 
-*Iris, messenger of the gods*
+*Passes on what it was handed, and reads none of it.*
 
 Relays one engine's document stream to the keeper as reports about the steps
 the keeper dispatched, and says where the data those steps produced is being

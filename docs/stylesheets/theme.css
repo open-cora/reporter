@@ -1,15 +1,21 @@
-/* Material palette for reporter, drawn from its own plate: steel, the cool of a silver print.
+/* Material palette for reporter, drawn from its own plate: steel, assigned rather than sampled: the plate is a greyscale photograph.
    Matte on purpose. The header should read as the same surface as the
-   painting below it, not as a band of product colour sitting on top. */
+   painting below it, not as a band of product colour sitting on top.
+
+   The four hues are pushed apart on purpose. Measured, three of the plates
+   sit inside one warm band from 7 to 52 degrees, because varnish does that
+   to an old painting, and the fourth has no chroma at all. Sampling alone
+   would have produced four browns, so each takes the note it genuinely owns
+   and the greyscale plate takes the cool gap. */
 :root > * {
-  --md-primary-fg-color:        #161d27;
-  --md-primary-fg-color--light: #27313f;
-  --md-primary-fg-color--dark:  #0e141b;
-  --md-accent-fg-color:         #6c88ac;
-  --md-accent-fg-color--transparent: #6c88ac1a;
+  --md-primary-fg-color:        #171e26;
+  --md-primary-fg-color--light: #29323d;
+  --md-primary-fg-color--dark:  #0f141a;
+  --md-accent-fg-color:         #718aa8;
+  --md-accent-fg-color--transparent: #718aa81a;
 }
 
 [data-md-color-scheme="slate"] {
-  --md-default-bg-color: #0d0f11;
-  --md-typeset-a-color:  #6c88ac;
+  --md-default-bg-color: #0e0f11;
+  --md-typeset-a-color:  #718aa8;
 }

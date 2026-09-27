@@ -1,5 +1,5 @@
 /* Landing-page hero. Full-bleed plate, left wash, editorial masthead.
-   The image files are pre-cropped to 20:9 at a per-painting anchor, so this
+   The image files are pre-cropped to 2:1 at a per-painting anchor, so this
    sheet only has to place type over them and keep it legible. */
 
 .hero {
@@ -9,11 +9,12 @@
      would clip that sliver away. */
   overflow: visible;
   background: var(--md-default-bg-color);
-  /* 45vw is exactly 20:9, the aspect the plates are cut to, so `cover` throws
-     nothing away between roughly 850px and 2300px of viewport. The old fixed
-     660px cap meant a 1920px screen saw only 68 percent of the plate height
-     and a 2560px screen barely half, which is what was cutting off heads. */
-  height: clamp(380px, 45vw, 1040px);
+  /* 50vw is exactly 2:1, the aspect the plates are cut to, so `cover` throws
+     nothing away between roughly 760px and 2080px of viewport. The plates were
+     cut to 20:9 first, and that letterbox was too shallow for canvases this
+     upright: it left the Geographer no headroom and reduced the Constable's
+     sky to a strip. */
+  height: clamp(380px, 50vw, 1040px);
   margin-top: -1px;
 }
 

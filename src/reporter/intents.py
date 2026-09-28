@@ -13,9 +13,10 @@ command missing from it is a command nobody reading this knows about.
 ## Every intent carries the keeper's own ids, and none carries a name
 
 This used to be the other way round. A `ReportRun` carried a plan NAME
-and whatever sent it had to turn that into a keeper plan id from a
-configured map, because a run was a record this reporter brought into
-existence and the keeper had never heard of the work before the report arrived.
+and whatever sent it had to turn that into a keeper operation id from
+a configured map, because a run was a record this reporter brought
+into existence and the keeper had never heard of the work before the
+report arrived.
 
 The keeper now composes the work itself. It writes a Procedure, dispatches an
 Execution, and whatever drives that execution carries the execution and

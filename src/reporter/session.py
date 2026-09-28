@@ -18,11 +18,12 @@ the delivery that knows where to ask about its data.
 
 ## It remembers nothing
 
-This module used to hold a map from an engine's run uid to the keeper's run id,
-with a lookup behind it for what a restart had forgotten. Both are gone.
-The ids are on the intent, because whatever dispatched the work carried
-them into the engine's own metadata and the translator reads them back
-out, so there is nothing here to cache and nothing to recover.
+This module used to hold a map from an engine's run uid to the record
+the keeper then held for it, with a lookup behind it for what a restart
+had forgotten. Both are gone. The ids are on the intent, because
+whatever dispatched the work carried them into the engine's own
+metadata and the translator reads them back out, so there is nothing
+here to cache and nothing to recover.
 
 What was lost with them is written down in `translate`: the translator
 holds the reference from a start to a stop, and a restart mid-scan cannot

@@ -128,13 +128,13 @@ class Held:
 
         a delivery that cannot be       a bug here, or an engine that
         mapped                          grew an ending nobody knows
-        a step the keeper does not hold       the reference in the engine's
-                                        metadata names nothing, which
+        a step the keeper does not      the reference in the engine's
+        hold                            metadata names nothing, which
                                         means whatever wrote it and the keeper
                                         disagree
         the store holds nothing for     the data is late, or the writer
         a run that ended                is pointed somewhere else
-        the keeper refused, terminally        a grant is missing
+        the keeper refused, terminally  a grant is missing
 
     The first entry that used to be here, a plan name with no configured
     id, is gone with the plan map.

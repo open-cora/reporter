@@ -5,8 +5,8 @@ the keeper, and a thing that calls an HTTP API needs a URL and a token rather
 than a port declared for it. Nothing in `apps/keeper` imports this package
 and nothing here imports `keeper`.
 
-**This reporter creates nothing.** the keeper composes a procedure, dispatches
-an execution, and whatever drives that execution carries the step's the keeper
+**This reporter creates nothing.** The keeper composes a procedure, dispatches
+an execution, and whatever drives that execution carries the step's keeper
 ids into the engine's own metadata. What arrives here is an engine
 talking about work this system already wrote down, so every intent names
 a record that exists and none of them brings one into being. That is the

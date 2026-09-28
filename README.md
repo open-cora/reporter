@@ -3,7 +3,7 @@
 *Passes on what it was handed, and reads none of it.*
 
 **The reporter is how results get back.** It reads the stream of messages an
-acquisition engine produces during a run, turns each one into a report about the
+engine produces during a run, turns each one into a report about the
 step it belongs to, and says where the data that step produced is stored. It runs
 next to the engine, because that is where the messages are, and everything it
 files it files over HTTP.

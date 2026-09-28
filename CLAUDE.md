@@ -6,7 +6,7 @@ Keep it as a pointer file, not a long doc; the real conventions live in
 
 ## What this repo is
 
-A reporter relays one acquisition engine's document stream to the keeper, as
+A reporter relays one engine's document stream to the keeper, as
 reports about the steps the keeper dispatched, and says where the data those
 steps produced is being kept.
 

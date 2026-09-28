@@ -1,7 +1,7 @@
 # Contributing
 
 The reporter is a personal research repository: it relays one
-acquisition engine's document stream to the keeper. It is public so the work can be read, cited, and learned from, not
+engine's document stream to the keeper. It is public so the work can be read, cited, and learned from, not
 because it is soliciting contributions.
 
 ## Where the code is developed

@@ -18,9 +18,8 @@ the same delivery again produces the same outcome, so there is nothing to
 come back for. Only `Held` is worth waking somebody, and only some of them
 urgently.
 
-`Recorded` used to be here, for a start that became a run the keeper did not
-previously hold. It is gone because this reporter no longer brings
-anything into existence: every record it touches was created by the keeper
+There is no outcome for a record brought into existence, because this
+reporter brings none: every record it touches was created by the keeper
 before the engine was asked to do anything.
 
 What is NOT here is a retry. A request that never arrived, or one the keeper
@@ -135,9 +134,6 @@ class Held:
         the store holds nothing for     the data is late, or the writer
         a run that ended                is pointed somewhere else
         the keeper refused, terminally  a grant is missing
-
-    The first entry that used to be here, a routine name with no
-    configured id, is gone with the map that held them.
 
     Retrying produces this again, which is why it is an outcome and not
     an exception.

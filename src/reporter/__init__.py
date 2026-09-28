@@ -11,10 +11,11 @@ ids into the engine's own metadata. What arrives here is an engine
 talking about work this system already wrote down, so every intent names
 a record that exists and none of them brings one into being. That is the
 whole of what changed when Execution stopped recording runs, and it is
-why there is no plan map, no external-reference lookup, and no command
-here that can be refused for naming something the keeper has never heard of.
+why there is no `plan_ids` map, no external-reference lookup, and no
+command here that can be refused for naming something the keeper has
+never heard of.
 
-A document with no keeper reference is a scan somebody ran by hand. It is
+A document with no keeper reference is work somebody ran by hand. It is
 skipped, and `translate` says why that is quiet rather than loud.
 
 Two halves that do not import each other. `Translator` turns one engine's

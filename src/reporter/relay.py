@@ -1,9 +1,9 @@
 """Take a delivery from the engine and let it go, immediately.
 
-The one thing between this reporter and a stalled scan. A subscriber that
-talks to the keeper inside the engine's own thread makes every scan wait on a
-network round trip, and at a facility where beamtime is the scarce thing
-that is the property that gets a reporter removed.
+The one thing between this reporter and a stalled run. A subscriber that
+talks to the keeper inside the engine's own thread makes every run wait
+on a network round trip, and at a facility where beamtime is the scarce
+thing that is the property that gets a reporter removed.
 
 So `submit` puts the payload on a queue and returns in microseconds, and
 a worker thread does the talking. The engine's thread never waits on the keeper,

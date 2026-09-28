@@ -12,19 +12,19 @@ command missing from it is a command nobody reading this knows about.
 
 ## Every intent carries the keeper's own ids, and none carries a name
 
-This used to be the other way round. A `ReportRun` carried a plan NAME
-and whatever sent it had to turn that into a keeper operation id from
-a configured map, because a run was a record this reporter brought
+This used to be the other way round. A `ReportRun` carried a routine
+NAME and whatever sent it had to turn that into a keeper operation id
+from a configured map, because a run was a record this reporter brought
 into existence and the keeper had never heard of the work before the
 report arrived.
 
 The keeper now composes the work itself. It writes a Procedure, dispatches an
 Execution, and whatever drives that execution carries the execution and
 step ids into the engine's own metadata. So the reference is on the
-delivery, this reporter creates nothing, and the plan map is gone along
-with every refusal that depended on it.
+delivery, this reporter creates nothing, and the `plan_ids` map is gone
+along with every refusal that depended on it.
 
-That is a smaller job and a stricter one. A document carrying no keeper
+That is a smaller job and a stricter one. A delivery carrying no keeper
 reference describes work this system never asked for, and there is
 nothing to record it against: see `translate` for why that is `Ignored`
 rather than an alert.
@@ -62,10 +62,13 @@ into a request body as they are. A `Literal` rather than an enum because
 they are wire strings and the only thing worth checking is that a typo
 cannot reach a request.
 
-Six where the run transitions were five, and the extra one is `Started`.
-A run had to be created before it could move, so starting was a different
-command with a different shape; a step already exists, so opening its run
-is the first of six reports about it and carries no more than the others.
+Six where the engine states are five, because `Started` and `Resumed`
+both land on Running and only the caller knows which it means. The
+keeper's `EngineReport` splits them for that reason and this follows it.
+
+`Started` carries no more than the others do. It was a command of its
+own with a different shape when a run had to be created before it could
+move, and a step already exists.
 """
 
 
@@ -75,7 +78,7 @@ class ReportStepRun:
 
     One intent for all six reports, because the keeper takes them on one
     endpoint with the verb in the body. That is itself a decision made
-    for this caller: a reporter turns each document into whichever of six
+    for this caller: a reporter turns each delivery into whichever of six
     it is, so a path per verb would make it build a URL by lookup.
 
     `execution_id` and `step_id` come from the engine's own metadata,
@@ -132,7 +135,7 @@ class Ignored:
 
     Most of a stream is this: the parts that describe what is about to be
     read, or carry the readings themselves, rather than saying anything
-    about a run's life. A document from work the keeper never dispatched is
+    about a run's life. A delivery from work the keeper never dispatched is
     this too. `reason` is filled in so a caller can count what it is
     skipping without the skip being an event.
     """
@@ -144,11 +147,11 @@ class Ignored:
 class Unmappable:
     """A delivery this translator handles, carrying something it cannot map.
 
-    Distinct from `Ignored`, and the distinction is the point. An
-    unrecognised `exit_status` is either a bug here or an engine that has
-    grown a fourth ending, and both are worth somebody's attention. A
-    descriptor producing nothing is neither. The spike put both in one
-    list, so the second kind was invisible among the first.
+    Distinct from `Ignored`, and the distinction is the point. An ending
+    this translator cannot map is either a bug here or an engine that has
+    grown a fourth one, and both are worth somebody's attention. A
+    delivery that only announces what is coming is neither. The spike put
+    both in one list, so the second kind was invisible among the first.
     """
 
     reason: str

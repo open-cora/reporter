@@ -13,7 +13,7 @@ which records they belong to comes from the engine's own metadata.
 The three that are gone all served one job: bringing a run into existence
 here and finding it again afterwards. The keeper composes and dispatches the
 work now, so there is nothing to create, nothing to resolve, and no
-configured plan to check at startup.
+configured routine to check at startup.
 
 `POST /operations` was already deliberately absent and stays absent for a
 stronger reason than before. Whatever opens a run describes one
@@ -150,8 +150,8 @@ class KeeperClient:
         `engine_reference` travels on every report. The keeper records it on a
         start and ignores it on the others, which is stated on that route
         as the one place it is laxer than its sibling: a reporter
-        draining a document stream repeats the engine's own uid on every
-        document, and refusing that would make the common case an error.
+        draining an engine's stream repeats the same reference on every
+        delivery, and refusing that would make the common case an error.
         """
         path = f"/executions/{intent.execution_id}/steps/{intent.step_id}/run"
         body: dict[str, Any] = {

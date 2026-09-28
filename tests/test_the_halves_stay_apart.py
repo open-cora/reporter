@@ -102,10 +102,11 @@ clean, which is how the leak actually happened: `relay` queued a thing it
 never opens and called it a `document`, so the module that knows least
 about the engine used its vocabulary in a signature.
 
-**Identifiers only, never prose.** Three passages have to say "document"
-to make their point, and all three are explaining this very boundary:
+**Identifiers only, never prose.** Four passages have to say "document"
+to make their point, and all four are explaining this very boundary:
 `session` on why `act` takes an `Intent`, `intents` on why `origin` is a
-plain string, and `relay` on why the word here is `delivery`. A prose ban
+plain string, `relay` on why the word here is `delivery`, and `stores`
+on why `store_instant` is not shared with `engine_instant`. A prose ban
 would need a line-level allow-list for them, which is brittle and would
 be edited to silence a failure. A name is a flat fact, so the rule is
 flat.

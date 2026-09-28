@@ -5,16 +5,16 @@ Two facts about the keeper, and an optional group about a store.
 ## What used to be here, and why it is not
 
 Two settings are gone, and both for one reason. `plan_ids` mapped an
-engine's plan names onto the keeper's operation ids, because a run was
-a record this reporter brought into existence and the id was not
-derivable from anything on a document. `external_ref_scheme` named the
+engine's routine names onto the keeper's operation ids, because a run
+was a record this reporter brought into existence and the id was not
+derivable from anything on a delivery. `external_ref_scheme` named the
 vocabulary an engine's run ids belonged to, because that reference was
 stored on the run and later used to find it again.
 
 The keeper composes the work now. The execution and step ids arrive in the
 engine's own metadata, so nothing is resolved, nothing is created, and
 the deployment fact those two settings carried is not a fact this
-reporter needs. An operator authoring a new plan no longer has to
+reporter needs. An operator authoring a new routine no longer has to
 remember to add it here, which removes the one failure mode this file
 previously argued was worth its cost.
 

@@ -136,8 +136,8 @@ class Held:
         a run that ended                is pointed somewhere else
         the keeper refused, terminally  a grant is missing
 
-    The first entry that used to be here, a plan name with no configured
-    id, is gone with the plan map.
+    The first entry that used to be here, a routine name with no
+    configured id, is gone with the map that held them.
 
     Retrying produces this again, which is why it is an outcome and not
     an exception.

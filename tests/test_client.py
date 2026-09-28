@@ -172,7 +172,7 @@ def test_register_dataset_posts_the_address_the_store_gave_and_returns_the_id() 
 
 
 def test_register_dataset_names_the_acquisition_and_not_the_traversal() -> None:
-    """An execution may acquire several times and each writes its own data,
+    """An execution may run several times and each writes its own data,
     which at a tomography beamline is the sample position. A body naming
     only the execution would lose which."""
     client, recorder = client_answering(Answer(201, {"dataset_id": str(A_DATASET)}))

@@ -407,7 +407,7 @@ def test_the_registration_names_the_step_the_reports_named() -> None:
 
 
 def test_the_registration_is_keyed_on_the_address_rather_than_the_step() -> None:
-    """Two datasets from one acquisition would otherwise share a key, and
+    """Two datasets from one run would otherwise share a key, and
     the second would come back holding the first one's id."""
     handle, routed = session_with_store(store_holding("completes"))
 
@@ -525,7 +525,7 @@ def test_a_dataset_found_on_its_own_is_filed_against_the_step_it_names() -> None
     """The slow path, and the reason `RegisterDataset` is in `intents`.
 
     Nothing here saw a document. Something swept a store, found data, and
-    said so, naming the acquisition it belongs to, and the session filed
+    said so, naming the run it belongs to, and the session filed
     it exactly as the ending document's path would have.
     """
     session, routed = a_session_with_store(store_holding("completes"))
@@ -550,7 +550,7 @@ def test_a_dataset_found_on_its_own_carries_no_report() -> None:
 
 def test_a_dataset_found_on_its_own_resolves_nothing() -> None:
     """The lookup the slow path used to depend on entirely is gone. A
-    caller that cannot name the acquisition has nothing to file against,
+    caller that cannot name the run has nothing to file against,
     so it names one, and this asks the keeper nothing before posting."""
     session, routed = a_session_with_store(store_holding("completes"))
 

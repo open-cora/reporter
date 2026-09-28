@@ -2,345 +2,80 @@
 
 *Passes on what it was handed, and reads none of it.*
 
-Relays one engine's document stream to the keeper as reports about the steps
-the keeper dispatched, and says where the data those steps produced is being
-kept.
-
-**Runs, against a live engine.** `python -m reporter --subscribe` reads
-documents off a real engine's 0MQ stream and reports to the keeper, and it has.
-It also replays a capture, which is how it is tested without a beamline.
-What is still missing is durability: see
-[What is missing](#what-is-missing).
-
-## What it is, and what it is not
-
-A client of the keeper, not a part of it. It calls an HTTP API rather than
-sitting behind a port the keeper declares.
-
-**It creates nothing.** The keeper composes a Procedure, dispatches an
-Execution, and whatever drives that execution carries the step's keeper ids
-into the engine's own metadata. What arrives here is an engine talking
-about work this system already wrote down, so every request names a
-record that exists.
-
-That is a change from the design this replaced, where a start document
-became a Run that the keeper had never heard of. Three things went with it: the
-plan map, the external-reference lookup that found a run again after a
-restart, and the startup check over both. What replaces them is a pair of
-ids on the delivery.
-
-**A document with no keeper reference is skipped.** It is a scan somebody
-ran by hand, it is real work, and there is nothing here to record it
-against. Quiet rather than loud, because the alternative fires on every
-document of every hand-run scan and teaches whoever is watching to ignore
-the channel. Nothing is destroyed and a reported shape could be added
-later.
-
-Two consequences worth stating, because both look like accidents:
-
-- **Nothing here imports `keeper`, and nothing in the keeper imports this.**
-  Its own project and its own lockfile are what make that the
-  interpreter's rule rather than a convention.
-- **It runs where the engine is.** The keeper runs where the database is. Two
-  processes because two places.
-
-It also has to name a particular engine on most of its pages, which
-the keeper and its pages may not: which engine a deployment runs is a
-deployment's fact, and a rule stated for one reads as a rule derived from
-one. Being out here is how that stays true without an exception.
-
-## The design in one picture
-
-The package is in two halves that do not import each other, joined in one
-named place. A second engine replaces the left column and reuses the
-right, which is a claim `tests/test_the_halves_stay_apart.py` enforces
-rather than one this paragraph makes.
-
-```
-   reads one engine            the vocabulary          talks to the keeper
-   ----------------            --------------          -------------
-   sources.py                                          client.py
-     a live 0MQ stream                                   report_step_run
-     or a capture                                        register_dataset
-        |
-        v
-   translate.py  ---------->  intents.py  <----------  session.py
-     start        ---->      ReportStepRun    ---->     POST .../run Started
-     event(pause) ---->      ReportStepRun    ---->     POST .../run Paused
-     stop         ---->      ReportStepRun    ---->     POST .../run Completed
-     descriptor   ---->      Ignored                  (nothing is sent)
-     no reference ---->      Ignored                  (nothing is sent)
-     exit_status? ---->      Unmappable               (nothing is sent, loudly)
-                                                          |
-                                             stores.py <--+  on an ending
-                                               locate(uid)
-                                                  |
-                                                  +---->    POST /datasets
-                                                          |
-                               outcomes.py  <-------------+
-                                 Relayed Kept
-                                 Unchanged Skipped Held
-
-                    wire.py   documents_into(session)
-                              the only module that names both halves
-```
-
-The one path is `POST /executions/{id}/steps/{id}/run`, with the verb in
-the body. That is the keeper's choice made for this caller: a reporter turns
-each document into whichever of six reports it is, so a path per verb
-would make it build a URL by lookup.
-
-`stores.py` is the third outside system and sits on neither side. The two
-outward halves differ in direction: an engine pushes, so its translator is
-called from `wire`, above the session; a store is asked, so its lookup is
-called from inside the session, below it. What the session names is a
-Protocol, so a different store is an implementation swapped at the
-entrypoint.
-
-`relay.py` sits in front of all of it with a queue and a worker thread, so
-the engine's own thread never waits on a network. It takes a function
-rather than a session, because a queue and a retry policy are the same
-whatever is behind them.
-
-The split was not designed. It was found by driving a second engine in
-A spike, whose stream has no documents in it at all,
-and discovering that the only thing coupling the right column to the left
-was a function signature.
-
-## Two bounded contexts, one process
-
-A stop means two things: the engine's run finished, and the data that
-acquisition produced exists somewhere. So an ending asks the store where,
-and reports both.
-
-```
-   engine  --+
-             +-->  [ this reporter ]  -->  Execution   POST .../run Completed
-   store   --+                        -->  Custody     POST /datasets
-```
-
-One process rather than two, because the two name the same step. A
-dataset cites the acquisition that produced it, which is the acquisition
-the report is about, so the delivery that ends a run is the delivery that
-knows where to ask about its data.
-
-**The dataset leg is optional.** No `[store]` table means no lookup, no
-`POST /datasets`, and everything else exactly as before. That is a
-deployment rather than a degraded one: a facility whose engine writes
-somewhere this cannot see should record runs and say nothing about data.
-
-**`Kept` replaces `Relayed` for an ending** rather than arriving beside
-it, because one intent gets one outcome. The cost is worth knowing before
-reading a tally: when the report lands and the dataset cannot be
-registered, the single outcome has to be `Held`, so a session run against
-a store that is down reports no `Relayed` at all even though every report
-landed. The reports are in the keeper either way and `Held` names the store as
-it happens. It is the summary that misleads, not the record.
-
-**Subscribe the writer first.** Both callbacks run on the engine's thread
-in the order they were subscribed, so a reporter subscribed after the
-writer sees a finished node every time, with no retry and no sleep.
-Subscribed before it, the node exists without its ending, the registration
-still happens, and the keeper stamps the arrival instead. That guarantee is
-in-process only: over a message bus this really is a race.
-
-## Why the translator holds state
-
-Two maps, and the second is the one that matters more.
-
-An `event` document does not name its run. It names a descriptor, and only
-the `descriptor` document carries `run_start`:
-
-```
-   start       uid, keeper_execution_id, keeper_step_id  --+
-   descriptor  uid, run_start -------------------------+-> descriptor -> run
-   event       descriptor -----------------------------+-> run -> the step
-   stop        run_start
-```
-
-And only the `start` carries the keeper reference, so what the start said
-has to be remembered until the stop. That includes a start that said
-nothing: the map records `None` for a run that is not this system's,
-because otherwise the pause and the stop of a hand-run scan would each
-produce an alert while the start was quiet.
-
-So `Translator` keeps both and forgets a run's entries when its `stop`
-arrives. It is still a pure core: what it holds is knowledge the stream
-already delivered, not anything read from outside.
-
-The spike this replaces tracked "the run we are currently walking"
-instead, which held only because it replayed one scenario at a time.
-
-**Restarting mid-scan loses the runs in flight.** The old design
-recovered from the keeper, because a run could be found by its external
-reference. A step cannot: the keeper publishes no lookup from what an engine
-calls a run to the step that opened it. So the remaining documents of
-that scan are `Held`, loudly, and closing it needs a query the keeper does not
-have.
-
-## The two fixtures
-
-`tests/documents.json` is captured output from a real engine driven through
-seven scenarios: every ending, both interruptions, a plan that raises, and
-one plan with real arguments. `tests/nodes.json` is the same idea against a
-real store: four scenarios written by the writer a deployment would use,
-then interrogated from outside the way this package has to.
-
-Neither is written by hand. The two collectors are in `scripts/`, outside
-every lane, because they import an engine and a store and this package
-depends on neither:
-
-```
-   scripts/collect_documents.py  ---->  tests/documents.json
-   scripts/collect_nodes.py      ---->  tests/nodes.json
-```
-
-`make refresh-captures` runs both with `--no-project`, which is forced
-rather than tidy: the store's client drives its own server through
-`starlette.testclient` and finds the second httpx the api pins beside the
-first. That is also why `scripts/` is excluded from ruff and pyright, since
-neither the engine nor the store is a dependency here.
-
-Re-running either overwrites its capture, which is deliberate and is the
-closest thing here to a test of the real thing. Ids and timestamps change
-every run, so the diff is mostly noise; what to read is whether the suite
-still passes. The assertions are written against the structural claims, so
-an engine or a store that changed one turns a test red with a message
-naming it, and that message is the finding.
-
-## Two ways to run it, and the same code either way
-
-**Beside the engine, reading its published stream.** The engine publishes
-to a 0MQ proxy, this connects to the other side of it, and the two know
-nothing about each other beyond an address.
-
-```
-   engine  ---->  0MQ proxy  ---->  python -m reporter --subscribe  ---->  the keeper
-                      |
-                      +---->  whatever else wants the documents
-```
-
-Preferred where there is a proxy, because it survives the engine
-restarting, it lets more than one thing read the stream, and a bug in here
-cannot take a scan down.
-
-**Inside the engine's process.** `Relay.submit` is already the callback a
-subscription wants, so there is nothing to build and nothing to configure
-past the file below:
-
-```python
-from pathlib import Path
-import httpx
-from reporter import KeeperClient, Relay, Session, documents_into, load
-
-config = load(Path("reporter.toml"))
-session = Session(KeeperClient(httpx.Client(timeout=10), config), config)
-relay = Relay(documents_into(session), print)
-relay.start()
-
-RE.subscribe(relay.submit)
-```
-
-That is the whole integration. `documents_into` is the only line that
-names an engine: it puts this engine's translator in front of a `Session`
-that knows nothing but the keeper. A different engine composes its own
-translator the same way and reuses everything under it. `submit` queues and returns in microseconds
-and a worker thread does the talking, so a scan never waits on the keeper even
-though this is running inside it.
-
-**What both have in common** is that a publisher drops what it sends while
-nothing is listening. Start the reporter before the engine, not after.
-
-### The stream is msgpack, and this refuses pickle
-
-A publisher serializes with `pickle` unless it is told otherwise, and a
-subscriber that went along with that would run whatever code reached the
-port. So construct the publisher to match:
-
-```python
-import msgpack
-from bluesky.callbacks.zmq import Publisher
-
-RE.subscribe(Publisher("127.0.0.1:5567", serializer=msgpack.dumps))
-```
-
-A frame this cannot read stops the run rather than being skipped, with one
-line naming the cause and exit 2. Every frame on a stream is encoded the
-same way, so one unreadable frame means all of them, and carrying on would
-drop every run on that stream while looking like a reporter that was
-working.
-
-Nothing here imports the engine's library to read its frames. The wire is
-a prefix, a document name and a msgpack payload separated by single
-spaces, which is the whole protocol, and reading it through the engine's
-own package would drag the engine in as a dependency of the thing whose
-claim is that it is not the engine.
-
-## Configuring it
-
-```toml
-[keeper]
-base_url = "https://keeper.example"
-token = "..."
-
-[store]
-base_url = "https://store.example"
-root = "raw"
-external_ref_scheme = "tiled-node-path"
-```
-
-Two settings and an optional table, where there used to be four and two
-tables. The plan map and the engine's reference scheme both went with the
-run record they served: the ids arrive on the delivery now, so there is
-no deployment fact left for this file to carry about them. An operator
-authoring a new plan no longer has to remember this file exists.
-
-A file with a `[plans]` table still in it loads. Nothing reads it, and
-refusing it would turn an upgrade into an outage over a setting that does
-nothing.
-
-`[store]` is the optional table and leaving it out switches the dataset
-leg off. Three things about it are worth knowing.
-
-`root` is where the writer points, and it is configuration because it
-cannot be discovered: a search does not descend, so a reporter cannot find
-a run by uid without already knowing where to look. A misconfigured root
-finds nothing rather than finding the wrong thing, which is the better
-failure.
-
-`external_ref_scheme` is the only scheme left. It names the vocabulary a
-store's addresses belong to, and it sits on the store table because it
-describes the store: a deployment that changes where its data is kept
-changes both together. The engine's own run id still travels, as a step's
-`engine_reference`, but the keeper holds that as a plain string rather than as
-a scheme-and-value pair.
-
-There is no token for the store. Nothing has needed one, and adding the
-field before something asks would be inventing an auth scheme on a store's
-behalf.
-
-Everything is checked at load. A base URL that is not one, a blank token,
-a `[store]` table that is present and wrong: all refuse to start rather
-than failing on the first scan of the day. A configured store is also
-reached for once before the first document moves, because a reporter that
-relays every report and quietly files no data is worse than one that will
-not start.
-
-There is no longer a startup check against the keeper. The reference arrives
-per document rather than from configuration, so an execution or step the keeper
-does not hold surfaces as a 404 on that document and is `Held`.
-
-## Running it
-
-```sh
-uv sync
-uv run pytest -q
-uv run ruff check src tests typings && uv run ruff format --check src tests typings
-uv run pyright src tests
-```
-
-Or from the repository root, where `make lint`, `make typecheck` and
-`make test` cover this project and the keeper together.
+**The reporter is how results get back.** It reads the stream of messages an
+acquisition engine produces during a run, turns each one into a report about the
+step it belongs to, and says where the data that step produced is stored. It runs
+next to the engine, because that is where the messages are, and everything it
+files it files over HTTP.
+
+**It invents nothing.** Every report names work that was written down before the
+engine was ever asked to do it: the job was put together, it was approved, and
+whatever ran it carried the step's ids into the engine's own metadata. So every
+request names something that already exists.
+
+A message that refers to no such work is skipped rather than turned into a new
+record. It is a scan somebody ran by hand, it is real work, and there is nothing
+here to attach it to. Skipped quietly, because complaining about every message of
+every hand-run scan teaches people to ignore the channel. Nothing is destroyed,
+and a shape for reporting it could be added later.
+
+**It reads none of it.** No message is opened to see what it means, no number is
+checked, and nothing is judged. What arrives is passed on word for word, and
+something further out decides what it was.
+
+## Why this is a program of its own
+
+While somebody is watching a run, getting results back is a convenience. The
+moment work runs unattended it is the only thing making what happened visible to
+whatever decides what happens next, and it has to keep working while nobody is
+watching it either.
+
+That is why it sits next to the engine rather than inside it. A bug here cannot
+take a scan down, the engine never waits on the network, and more than one thing
+can read the same stream.
+
+It is also why supporting a second engine means writing a translation rather than
+a rewrite. The half that reads an engine and the half that files a report do not
+know about each other, so a new engine costs only the vocabulary it speaks.
+
+And it is why this may name a particular engine on most of its pages when the
+record it files to may not. Which engine a site runs is that site's business, and
+a rule stated for one reads as a rule derived from one. Being a program of its
+own is how that stays true without an exception.
+
+## What it will not claim
+
+**That a run was any good.** Everything it files is something it was told, not
+something it checked. An engine reporting success is a claim, it travels as one,
+and nothing here dresses it up as a finding.
+
+**That nothing was lost.** Messages are held in memory between arriving and being
+filed, and a publisher drops what it sends while nobody is listening, so a
+message sent while this is down was never sent as far as this is concerned. At
+most once, known rather than accidental, and named in
+[What is missing](#what-is-missing) rather than implied.
+
+## Where it stands today
+
+`python -m reporter --subscribe` reads messages off a real engine's stream and
+reports them, and it has. It also replays a recording, which is how it is tested
+without a beamline. What is still missing is durability.
+
+## Reading further
+
+The detail that used to sit here lives on the site, where the nav carries it and
+a broken cross-link fails the build.
+
+| To read about | Page |
+| --- | --- |
+| Running one, configuring it, the stream format | [Running one](docs/running.md) |
+| What it reports, and why it remembers | [Reporting](docs/reporting.md) |
+| The two contexts, and how this is checked without a beamline | [Architecture](docs/architecture.md) |
+| What travels between this and the keeper | [Contract](docs/client-contract.md) |
+| The words, used the same way in code and prose | [Glossary](docs/glossary.md) |
+
+In short: `uv sync --all-extras` then `uv run pytest -q`. Every test runs against
+a recorded capture, so the suite needs no engine, no store and no beamline.
 
 ## What is missing
 
@@ -350,7 +85,7 @@ Or from the repository root, where `make lint`, `make typecheck` and
 | The checkpoint | The same thing. There is nothing to check point against: an offset is only meaningful over a transport that can be rewound to one. A broker in between gives both at once, and this becomes one of its consumers. |
 | Anything other than the keeper wanting these documents | Which is the question that decides the two rows above. If something else wants them, a broker is already justified and durability arrives with it. If not, this is the deployment and the gap is a cost somebody has to accept out loud. |
 | A reporter run against a live conducted scan | A sitting with a beamline. `conductor.adapters.bluesky_acquisition` now writes `keeper_execution_id` and `keeper_step_id` into every start document it opens under a dispatch, and both sides pin the spelling, so the contract this half states is performed. What has not happened is the two running against one engine at once. |
-| An identity to run as | A deployment. It is an actor in Access, and the two spikes each record the grants their half needs: a spike, a spike for the datasets. A process carrying both legs runs as one actor holding the union. It must **not** be granted `DefinePlan` or `DefineProcedure`: an adapter cannot honestly author either, and withholding the grants makes that a refusal at the boundary rather than a sentence in a document. |
+| An identity to run as | A deployment. It is an actor in Access, and the two spikes each record the grants their half needs: a spike, a spike for the datasets. A process carrying both legs runs as one actor holding the union. It must **not** be granted `DefineOperation` or `DefineProcedure`: an adapter cannot honestly author either, and withholding the grants makes that a refusal at the boundary rather than a sentence in a document. |
 | A token for the store | Something asking for one. The lookup sends no credential, so this works against a store that does not want one and nothing else. |
 
 Redelivery is safe, whatever the transport turns out to be, because both
@@ -400,10 +135,10 @@ Four processes, and every one of them real:
 # 1. a keeper with no database
 APP_ENV=test uv run uvicorn keeper.api.main:app --port 8077   # in the keeper's checkout
 
-# 2. author the plans, as an operator would. the reporter cannot: it is
-#    not granted DefinePlan, and could not derive a correct schema from
+# 2. author the operations, as an operator would. the reporter cannot: it
+#    is not granted DefineOperation, and could not derive a schema from
 #    one invocation if it were. put the ids it returns in reporter.toml.
-curl -X POST http://127.0.0.1:8077/plans -H 'content-type: application/json' \
+curl -X POST http://127.0.0.1:8077/operations -H 'content-type: application/json' \
   -d '{"name":"count","parameters_schema":{...}}'
 
 # 3. a proxy for the engine to publish to
@@ -463,17 +198,20 @@ seven runs rather than fourteen:
 ```
 
 Which is the redelivery gap closed, demonstrated rather than argued. A
-wrong plan id in the config exits 2 before anything is sent, and so does a
+wrong operation id in the config exits 2 before anything is sent, and so does a
 publisher this cannot decode.
 
-## The four
+## Related projects
 
-| Repo | Does |
+Published from the same development tree, and separate deployables on purpose.
+Nothing here imports any of them and none of them imports this; the boundary is
+the interpreter's rule rather than a convention.
+
+| Project | Does |
 | --- | --- |
-| [keeper](https://github.com/open-cora/keeper) | Records what was proposed, run and produced |
-| [conductor](https://github.com/open-cora/conductor) | Conducts a procedure across a beamline, one step at a time |
-| [reporter](https://github.com/open-cora/reporter) | Reports what an acquisition engine did |
-| [thinker](https://github.com/open-cora/thinker) | Proposes what to run next |
+| [keeper](https://github.com/open-cora/keeper) | Holds the record, and who may add to it |
+| [conductor](https://github.com/open-cora/conductor) | Runs the work at the beamline |
+| [thinker](https://github.com/open-cora/thinker) | Suggests what to run next |
 
 ## Where the code is developed
 
@@ -482,7 +220,7 @@ versioned and released on its own, and it runs standalone: its own lockfile,
 its own suite, its own site.
 
 **Development happens in [open-cora/cora](https://github.com/open-cora/cora)**,
-a tree holding the four side by side, from which each is extracted with
+a tree holding this project and the three above side by side, from which each is extracted with
 `git subtree` and its history intact. What is missing here is the other
 projects, and the end-to-end tests that need more than one of them at once.
 

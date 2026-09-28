@@ -243,7 +243,7 @@ def test_two_runs_interleaved_keep_their_own_steps() -> None:
     Built by relabelling one captured scenario, so both halves are real
     documents rather than invented ones, and the uids differ because the
     engine mints one per run and per descriptor. The two runs are given
-    different steps, which is what two acquisitions of one procedure
+    different steps, which is what two runs of one procedure
     running at once would look like.
     """
     other_step = uuid4()

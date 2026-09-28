@@ -15,10 +15,10 @@ here and finding it again afterwards. The keeper composes and dispatches the
 work now, so there is nothing to create, nothing to resolve, and no
 configured plan to check at startup.
 
-`POST /plans` was already deliberately absent and stays absent for a
+`POST /operations` was already deliberately absent and stays absent for a
 stronger reason than before. Whatever opens a run describes one
 invocation and carries nothing a correct parameter schema could be
-derived from, so an adapter that authored a plan would invent a
+derived from, so an adapter that authored an operation would invent a
 constraint. Now it would also be authoring the definition of work the keeper
 itself had already composed.
 
@@ -30,7 +30,7 @@ restarted reporter recomputes the same key having persisted nothing, and
 the second registration of one address returns the first one's dataset id
 rather than recording a second dataset.
 
-The address rather than the step, because one acquisition may write more
+The address rather than the step, because one run may write more
 than one. A key naming the step would give both registrations one note,
 so the second would come back holding the first dataset's id and would
 never be recorded at all. The keeper deliberately did not derive a dataset's
@@ -164,7 +164,7 @@ class KeeperClient:
             raise RequestRefusedError(response.status_code, response.text, method="POST", path=path)
 
     def register_dataset(self, intent: RegisterDataset, *, scheme: str) -> UUID:
-        """Record where an acquisition's output ended up, and return the keeper's id.
+        """Record where a run's output ended up, and return the keeper's id.
 
         `scheme` is passed in rather than read off the configuration here,
         because it belongs to the optional store table and a client

@@ -58,7 +58,11 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Reference:
+  - Running one: running.md
+  - Understanding it:
+      - Reporting: reporting.md
+      - Architecture: architecture.md
       - Contract: client-contract.md
-      - Conventions: conventions.md
       - Glossary: glossary.md
+  - Changing it:
+      - Conventions: conventions.md

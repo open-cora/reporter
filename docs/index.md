@@ -46,13 +46,28 @@ filed, and a publisher drops what it sends while nobody is listening, so a
 message sent while this is down was never sent as far as this is concerned. At
 most once, known rather than accidental.
 
-## Reference
+## The pages
 
-| Page | Subject |
+**Running one**, if you have to install one beside an engine.
+
+| Page | What it answers |
 | --- | --- |
+| [Running one](running.md) | The two ways to run one, what must not be pickle, and how to configure it |
+
+**Understanding it**, if you want to know what it does and why.
+
+| Page | What it answers |
+| --- | --- |
+| [Reporting](reporting.md) | What one reporter does, the two facts an ending carries, and what it will not claim |
+| [Architecture](architecture.md) | The split that makes a second engine a translation, and how this is checked without a beamline |
 | [Contract](client-contract.md) | The agreements this keeps at its edges: two names for one measurement, and the keys that join them |
-| [Conventions](conventions.md) | How this project is written: naming, comments, commits, test names |
 | [Glossary](glossary.md) | The words shared with the record, and what each one is pinned to |
+
+**Changing it**, if you are editing the code.
+
+| Page | What it answers |
+| --- | --- |
+| [Conventions](conventions.md) | How this project is written: naming, comments, commits, test names |
 
 What this knows about a real engine and a real store is recorded rather than
 assumed: two captured files, re-recordable with `make refresh-captures`, and a

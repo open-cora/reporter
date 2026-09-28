@@ -65,4 +65,6 @@ nav:
       - Contract: client-contract.md
       - Glossary: glossary.md
   - Changing it:
+      - Naming: naming.md
       - Conventions: conventions.md
+      - Workflow: workflow.md

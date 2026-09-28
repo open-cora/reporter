@@ -1,69 +1,15 @@
 # Conventions
 
-*How this project is written: what a name has to do, what a docstring is for,
-and what a commit message has to say.*
+*What a docstring is for, what a comment has to earn, and what a page may
+claim.*
 
 The chassis rules, and only the parts that bind a plain Python library. The
 keeper carries the rest, because they are about bounded contexts, event
 sourcing and a database this project does not have.
 
-## R1: Read-aloud test
-
-Say the name out loud. If it does not read like natural English, it is a smell, even when it parses correctly as code.
-
-- "default parameters" reads naturally.
-- "parameter defaults" stalls. It works as an adjectival construction, but not as a domain noun.
-
-The trap is that code identifiers compose without grammar checks. `parameter_defaults: dict` typechecks fine. The compiler does not notice that English speakers will say "the default parameters". Identifiers that fight English become identifiers people misremember, mistype, and have to look up.
-
-**Also count the term's domain overloads.** A term that reads naturally in isolation can have hidden collisions. At lock time, list the distinct meanings the word already carries in this domain. If there are more than three, look harder.
-
-## R2: Symmetry across the family
-
-When a related family of names exists (defaults / overrides / effective; declared / derived / cached), every member must share the same word-order skeleton.
-
-Ask: if I list every member of this family, do they all share a skeleton? If not, fix it before locking.
-
-**A family has a MEANING, not just a size.** Before adopting a family on a member-count argument, read two or three of its members and check that the family holds a meaning the new member shares. `to_X` returning something that is not an `X` joins the big family while breaking its semantics, which is worse than the outlier it replaced. Every cited fact can be true and the conclusion still wrong.
-
-## R3: Family-noun primacy, with the role as an adjective prefix
-
-**The family noun goes LAST. The role goes first, as an adjective.**
-
-```
-<role>_<family-noun-plural>
-
-default_parameters     override_parameters     effective_parameters
-default_settings       override_settings       effective_settings
-```
-
-This matches how English assembles compound nouns. The family noun carries the primary meaning; the adjective specializes it.
-
-The counter-example to avoid is `<family>_<role>`, which puts the abstract family noun first and a role noun second, pretending to be a suffix. It is grammatical but awkward in use.
-
-**This rule is read backwards more often than any other in this document.** R3 says noun-LAST. Before proposing a rename on R3 grounds, re-read this section.
-
-The schema is the exception: a schema describes the family rather than specializing within it, so `parameters_schema` is family-noun plus descriptor. There is no role, because a schema is not a role within the family. It IS the family contract.
-
-**Collective nouns are not plurals.** "Wiring" and "plumbing" read naturally in speech but break the field-name pattern. Use the plural for a collection field and reserve the collective for a higher-level concept label.
-
-## R4: Lock-time read-aloud process
-
-Before locking a design, run the R1 and R2 checks once more over every name in it. This is mechanical, takes about five minutes, and catches what mid-design momentum hides.
-
-1. List every new name introduced: fields, classes, functions, error classes.
-2. For each, say it aloud. Awkward? Flag it.
-3. Group into families by shared role-words. Do the skeletons match? If not, flag.
-4. Fix anything flagged and re-list.
-5. Then lock.
-
-
-## Where these rules do not apply
-
-- **Single-instance fields** with no family. R2 has nothing to check. R1 still applies.
-- **Industry-standard names** that follow a different convention. `created_at` and `occurred_at` are standard; do not rename them for symmetry with anything.
-- **Names that landed before a rule existed.** Apply the rules to new work and let old work pass through normal evolution, unless a rename is independently motivated.
-
+Naming is in [Naming](naming.md); commits and test names are in
+[Workflow](workflow.md). This page is what is left, and it is all about writing
+things down.
 
 ## Documentation
 
@@ -98,11 +44,12 @@ Write a rule as a rule. Do not write it as a description of enforcement unless
 the enforcement is there: "enforced by `test_x.py`" is a claim a reader will
 check by reading the sentence, not the directory.
 
-This repository carried 20 such claims from the project its chassis came from,
-naming fitness tests that exist there and not here, and one of them helpfully
-explained the silence of the others. A rule known to be unenforced is useful.
-A rule falsely believed to be enforced is worse than no rule, because nobody
-looks twice at it.
+Every project here began as a copy of a chassis, and the claims came with the
+copy: rules saying they were enforced by a test that lives in the repository the
+chassis came from and not in this one. Each project had to go through its own and
+either delete the claim or make it true. A rule known to be unenforced is still
+useful. A rule wrongly believed to be enforced is worse than no rule, because
+nobody looks twice at it.
 
 The same applies to evidence. A measurement belongs to the system that
 measured it; quoting a sibling project's numbers to justify a decision here
@@ -200,66 +147,3 @@ Test names carry scenarios. Per-test docstrings stay rare.
 - **Property-based tests document the property**, not the test shape. The `@given` body is the test; the docstring is the invariant being verified.
 - **Architecture tests document the rule, the rationale, and the exception.** They are the structural guardrails; a future contributor needs to know why each rule exists.
 - **Fixture docstrings only when non-obvious.** A soft IOC, a faked transport, and similar subtleties get one paragraph in `conftest.py`. Simple fixtures stay bare.
-
-## Commits
-
-Conventional Commits with scope: `type(scope): subject`. Imperative, lowercase, no trailing period, under 72 characters.
-
-| Type | Use for |
-| --- | --- |
-| `feat` | New caller-visible capability |
-| `fix` | Bug fix |
-| `refactor` | Internal restructure, no behavior change |
-| `perf` | Performance |
-| `test` | Tests only |
-| `docs` | Docs only |
-| `build` | Build, deps, packaging |
-| `ci` | CI, pre-commit, hooks |
-| `chore` | Anything else not user-visible |
-
-**Scopes:** `translate`, `session`, `relay`, `client`, `stores`, `sources`, `wire`, `config`. Repo-level ones are `repo`, `deps` and `ci`. Pick the dominant scope or omit it.
-
-**Granularity:** one commit is one cohesive change that compiles and passes tests. Port, adapter, and test for one capability is one commit. Refactor plus feature is two.
-
-The subject line says WHAT; the body says WHY.
-
-## Branch flow
-
-Solo: commit directly to `main`. CI must be green before pushing.
-
-**For anything non-trivial, use a worktree.** `git worktree add ../reporter-<task> main`, work there, commit, and return. Two reasons:
-
-- A parallel session's checkout can destroy uncommitted work in the main tree.
-- Pre-commit stashes unstaged changes to tracked files but [never untracked ones](https://github.com/pre-commit/pre-commit/issues/1212). A half-staged work-in-progress slice (untracked `handler.py` plus unstaged `wire.py` edits hidden by the stash) will false-fail architecture fitness functions and force `--no-verify` to land an otherwise-clean commit.
-
-Also avoid `git commit -- <paths>` with mixed staged and unstaged state: the path form bypasses the index in a way pre-commit's stash flow does not expect. Stage everything and verify `git diff` is empty before committing.
-
-
-## Test names
-Descriptive-sentence pytest style: snake_case prefixed with `test_`.
-
-```
-test_<subject>_<expected_outcome>[_<scenario>]
-```
-
-- **subject**: the unit under test.
-- **expected_outcome**: the property pinned, not the inputs.
-- **scenario** (optional): conditions, introduced with `when_` or `for_`.
-
-Optimize for the property, not the inputs.
-
-**Good:**
-
-```
-test_decide_emits_thing_defined_when_stream_is_empty
-test_handler_returns_thing_for_known_id
-test_post_things_returns_201_with_thing_id
-```
-
-**Avoid:**
-
-```
-test_post_things_with_three_parts_in_order_b_a_c   # describes inputs
-test_handler_3                                      # opaque
-test_register_thing_works                           # outcome too vague
-```

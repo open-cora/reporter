@@ -67,7 +67,9 @@ most once, known rather than accidental.
 
 | Page | What it answers |
 | --- | --- |
-| [Conventions](conventions.md) | How this project is written: naming, comments, commits, test names |
+| [Naming](naming.md) | What a name has to do before it is allowed in |
+| [Conventions](conventions.md) | What a docstring is for, what a comment has to earn, what a page may claim |
+| [Workflow](workflow.md) | Commits, branches, and what a test has to be called |
 
 What this knows about a real engine and a real store is recorded rather than
 assumed: two captured files, re-recordable with `make refresh-captures`, and a

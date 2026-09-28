@@ -12,8 +12,8 @@ optional: no store lookup means no dataset leg and everything else
 unchanged.
 
 The two are in one session rather than two because they name the same
-step. A dataset cites the acquisition that produced it, which is exactly
-the acquisition the report is about, so the delivery that ends a run is
+step. A dataset cites the run that produced it, which is exactly
+the run the report is about, so the delivery that ends a run is
 the delivery that knows where to ask about its data.
 
 ## It remembers nothing
@@ -216,7 +216,7 @@ class Session:
         which is exactly the difference from the fast path above. It also
         does not resolve anything any more: an intent arriving this way
         carries the same two ids the fast path has, because a caller that
-        cannot name the acquisition has nothing to file against.
+        cannot name the run has nothing to file against.
         """
         return self._file(intent, reported=None)
 

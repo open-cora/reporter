@@ -7,7 +7,7 @@ no engine and no keeper running.
 
 ## Where the keeper reference comes from
 
-Whatever drives an execution hands one acquisition step to an engine and
+Whatever drives an execution hands one run step to an engine and
 carries that step's keeper ids into the engine's own metadata. A start
 document is where they arrive, under `KEEPER_METADATA_KEYS` below, and this
 is the only place in the reporter that knows the spelling.

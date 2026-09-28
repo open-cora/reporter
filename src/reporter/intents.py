@@ -70,7 +70,7 @@ is the first of six reports about it and carries no more than the others.
 
 @dataclass(frozen=True)
 class ReportStepRun:
-    """An engine did something to the run one acquisition step opened.
+    """An engine did something to the run one run step opened.
 
     One intent for all six reports, because the keeper takes them on one
     endpoint with the verb in the body. That is itself a decision made
@@ -97,14 +97,14 @@ class ReportStepRun:
 
 @dataclass(frozen=True)
 class RegisterDataset:
-    """An acquisition produced data, and a store is keeping it at this address.
+    """A run produced data, and a store is keeping it at this address.
 
     The Custody half of the vocabulary, and the reason this file describes
     the whole job rather than most of it.
 
     It names the same step the report above does, because data belongs to
-    one acquisition rather than to a whole traversal. An execution may
-    acquire several times and each acquisition writes its own data, which
+    one run rather than to a whole traversal. An execution may
+    acquire several times and each run writes its own data, which
     at a tomography beamline is the sample position.
 
     `external_ref_value` is the store's address for the data and nothing

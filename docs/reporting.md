@@ -48,7 +48,7 @@ files both.
 ```
 
 One process rather than two, because both are about the same step. A dataset
-cites the acquisition that produced it, which is the acquisition the report is
+cites the run that produced it, which is the run the report is
 about, so the message that ends a run is the one that knows where to ask.
 
 **The store half is optional.** No store configured means no lookup and no

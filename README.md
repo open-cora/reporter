@@ -122,7 +122,7 @@ was a function signature.
 ## Two bounded contexts, one process
 
 A stop means two things: the engine's run finished, and the data that
-acquisition produced exists somewhere. So an ending asks the store where,
+run produced exists somewhere. So an ending asks the store where,
 and reports both.
 
 ```
@@ -132,7 +132,7 @@ and reports both.
 ```
 
 One process rather than two, because the two name the same step. A
-dataset cites the acquisition that produced it, which is the acquisition
+dataset cites the run that produced it, which is the run
 the report is about, so the delivery that ends a run is the delivery that
 knows where to ask about its data.
 

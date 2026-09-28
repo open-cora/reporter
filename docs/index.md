@@ -2,31 +2,59 @@
 template: home.html
 ---
 
-# Reports what an acquisition engine did.
+# Reports what happened, and where the data went.
 
-Relays one engine's document stream to the keeper as reports about the steps the
-keeper dispatched, and says where the data those steps produced is being kept.
+The reporter is how results get back. It reads the stream of messages an
+acquisition engine produces during a run, turns each one into a report about the
+step it belongs to, and says where the data that step produced is stored. It runs
+next to the engine, because that is where the messages are.
 
-It runs where the engine is; the keeper runs where the database is. Everything it
-files is something the record was told rather than something it checked, and
-nothing here claims otherwise.
+**It invents nothing.** Every report names work that was written down before the
+engine was ever asked to do it. A message that refers to no such work is skipped
+rather than turned into a new record: it is a scan somebody ran by hand, it is
+real work, and there is nothing here to attach it to. Skipped quietly, because
+complaining about every message of every hand-run scan teaches people to ignore
+the channel.
 
-It creates nothing. The keeper composes the procedure, dispatches the execution and
-holds the record, and a report naming no dispatched step is refused at the far end.
+**It reads none of it.** No message is opened to see what it means, no number is
+checked, and nothing is judged. What arrives is passed on word for word, and
+something further out decides what it was.
 
-## What is here
+## Why this is a program of its own
 
-The code, and the pages that outlive any one reading of it. The package's own
-`README.md` is the design document: the split that makes a second engine a
-translator rather than a rewrite, what each intent carries, and what this
-deliberately will not promise.
+While somebody is watching a run, getting results back is a convenience. The
+moment work runs unattended it is the only thing making what happened visible to
+whatever decides what happens next, and it has to keep working while nobody is
+watching it either.
+
+That is why it sits next to the engine rather than inside it. A bug here cannot
+take a scan down, the engine never waits on the network, and more than one thing
+can read the same stream.
+
+It is also why supporting a second engine means writing a translation rather than
+a rewrite. The half that reads an engine and the half that files a report do not
+know about each other, so a new engine costs only the vocabulary it speaks.
+
+## What it will not claim
+
+**That a run was any good.** Everything it files is something it was told, not
+something it checked. An engine reporting success is a claim, it travels as one,
+and nothing here dresses it up as a finding.
+
+**That nothing was lost.** Messages are held in memory between arriving and being
+filed, and a publisher drops what it sends while nobody is listening, so a
+message sent while this is down was never sent as far as this is concerned. At
+most once, known rather than accidental.
+
+## Reference
 
 | Page | Subject |
 | --- | --- |
-| [Client contract](client-contract.md) | The agreement with the keeper and with the conductor: two names for one acquisition, and the two metadata keys that join them |
-| [Conventions](conventions.md) | How this project is written: naming, docstrings, comments, commits, test names |
-| [Glossary](glossary.md) | The words shared with the keeper, and what each is pinned to |
+| [Contract](client-contract.md) | The agreements this keeps at its edges: two names for one measurement, and the keys that join them |
+| [Conventions](conventions.md) | How this project is written: naming, comments, commits, test names |
+| [Glossary](glossary.md) | The words shared with the record, and what each one is pinned to |
 
-What this package knows about a real engine and a real store is recorded rather
-than assumed: two capture files, re-recordable with `make refresh-captures`, and
-a suite whose assertions are written against the structural claims they hold.
+What this knows about a real engine and a real store is recorded rather than
+assumed: two captured files, re-recordable with `make refresh-captures`, and a
+suite whose checks are written against the claims they hold. The `README.md` sets
+out the design behind that.

@@ -2,52 +2,64 @@
 
 *Passes on what it was handed, and reads none of it.*
 
-Relays one engine's document stream to the keeper as reports about the steps
-the keeper dispatched, and says where the data those steps produced is being
-kept.
+**The reporter is how results get back.** It reads the stream of messages an
+acquisition engine produces during a run, turns each one into a report about the
+step it belongs to, and says where the data that step produced is stored. It runs
+next to the engine, because that is where the messages are, and everything it
+files it files over HTTP.
 
-**Runs, against a live engine.** `python -m reporter --subscribe` reads
-documents off a real engine's 0MQ stream and reports to the keeper, and it has.
-It also replays a capture, which is how it is tested without a beamline.
-What is still missing is durability: see
-[What is missing](#what-is-missing).
+**It invents nothing.** Every report names work that was written down before the
+engine was ever asked to do it: the job was put together, it was approved, and
+whatever ran it carried the step's ids into the engine's own metadata. So every
+request names something that already exists.
 
-## What it is, and what it is not
+A message that refers to no such work is skipped rather than turned into a new
+record. It is a scan somebody ran by hand, it is real work, and there is nothing
+here to attach it to. Skipped quietly, because complaining about every message of
+every hand-run scan teaches people to ignore the channel. Nothing is destroyed,
+and a shape for reporting it could be added later.
 
-A client of the keeper, not a part of it. It calls an HTTP API rather than
-sitting behind a port the keeper declares.
+**It reads none of it.** No message is opened to see what it means, no number is
+checked, and nothing is judged. What arrives is passed on word for word, and
+something further out decides what it was.
 
-**It creates nothing.** The keeper composes a Procedure, dispatches an
-Execution, and whatever drives that execution carries the step's keeper ids
-into the engine's own metadata. What arrives here is an engine talking
-about work this system already wrote down, so every request names a
-record that exists.
+## Why this is a program of its own
 
-That is a change from the design this replaced, where a start document
-became a Run that the keeper had never heard of. Three things went with it: the
-plan map, the external-reference lookup that found a run again after a
-restart, and the startup check over both. What replaces them is a pair of
-ids on the delivery.
+While somebody is watching a run, getting results back is a convenience. The
+moment work runs unattended it is the only thing making what happened visible to
+whatever decides what happens next, and it has to keep working while nobody is
+watching it either.
 
-**A document with no keeper reference is skipped.** It is a scan somebody
-ran by hand, it is real work, and there is nothing here to record it
-against. Quiet rather than loud, because the alternative fires on every
-document of every hand-run scan and teaches whoever is watching to ignore
-the channel. Nothing is destroyed and a reported shape could be added
-later.
+That is why it sits next to the engine rather than inside it. A bug here cannot
+take a scan down, the engine never waits on the network, and more than one thing
+can read the same stream.
 
-Two consequences worth stating, because both look like accidents:
+It is also why supporting a second engine means writing a translation rather than
+a rewrite. The half that reads an engine and the half that files a report do not
+know about each other, so a new engine costs only the vocabulary it speaks.
 
-- **Nothing here imports `keeper`, and nothing in the keeper imports this.**
-  Its own project and its own lockfile are what make that the
-  interpreter's rule rather than a convention.
-- **It runs where the engine is.** The keeper runs where the database is. Two
-  processes because two places.
+And it is why this may name a particular engine on most of its pages when the
+record it files to may not. Which engine a site runs is that site's business, and
+a rule stated for one reads as a rule derived from one. Being a program of its
+own is how that stays true without an exception.
 
-It also has to name a particular engine on most of its pages, which
-the keeper and its pages may not: which engine a deployment runs is a
-deployment's fact, and a rule stated for one reads as a rule derived from
-one. Being out here is how that stays true without an exception.
+## What it will not claim
+
+**That a run was any good.** Everything it files is something it was told, not
+something it checked. An engine reporting success is a claim, it travels as one,
+and nothing here dresses it up as a finding.
+
+**That nothing was lost.** Messages are held in memory between arriving and being
+filed, and a publisher drops what it sends while nobody is listening, so a
+message sent while this is down was never sent as far as this is concerned. At
+most once, known rather than accidental, and named in
+[What is missing](#what-is-missing) rather than implied.
+
+## Where it stands today
+
+`python -m reporter --subscribe` reads messages off a real engine's stream and
+reports them, and it has. It also replays a recording, which is how it is tested
+without a beamline. What is still missing is durability.
 
 ## The design in one picture
 
@@ -466,14 +478,17 @@ Which is the redelivery gap closed, demonstrated rather than argued. A
 wrong plan id in the config exits 2 before anything is sent, and so does a
 publisher this cannot decode.
 
-## The four
+## Related projects
 
-| Repo | Does |
+Published from the same development tree, and separate deployables on purpose.
+Nothing here imports any of them and none of them imports this; the boundary is
+the interpreter's rule rather than a convention.
+
+| Project | Does |
 | --- | --- |
-| [keeper](https://github.com/open-cora/keeper) | Records what was proposed, run and produced |
-| [conductor](https://github.com/open-cora/conductor) | Conducts a procedure across a beamline, one step at a time |
-| [reporter](https://github.com/open-cora/reporter) | Reports what an acquisition engine did |
-| [thinker](https://github.com/open-cora/thinker) | Proposes what to run next |
+| [keeper](https://github.com/open-cora/keeper) | Holds the record, and who may add to it |
+| [conductor](https://github.com/open-cora/conductor) | Runs the work at the beamline |
+| [thinker](https://github.com/open-cora/thinker) | Suggests what to run next |
 
 ## Where the code is developed
 
@@ -482,7 +497,7 @@ versioned and released on its own, and it runs standalone: its own lockfile,
 its own suite, its own site.
 
 **Development happens in [open-cora/cora](https://github.com/open-cora/cora)**,
-a tree holding the four side by side, from which each is extracted with
+a tree holding this project and the three above side by side, from which each is extracted with
 `git subtree` and its history intact. What is missing here is the other
 projects, and the end-to-end tests that need more than one of them at once.
 

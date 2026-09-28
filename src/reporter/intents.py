@@ -104,7 +104,7 @@ class RegisterDataset:
 
     It names the same step the report above does, because data belongs to
     one run rather than to a whole traversal. An execution may
-    acquire several times and each run writes its own data, which
+    run several times and each run writes its own data, which
     at a tomography beamline is the sample position.
 
     `external_ref_value` is the store's address for the data and nothing

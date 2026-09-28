@@ -15,10 +15,10 @@ here and finding it again afterwards. The keeper composes and dispatches the
 work now, so there is nothing to create, nothing to resolve, and no
 configured plan to check at startup.
 
-`POST /plans` was already deliberately absent and stays absent for a
+`POST /operations` was already deliberately absent and stays absent for a
 stronger reason than before. Whatever opens a run describes one
 invocation and carries nothing a correct parameter schema could be
-derived from, so an adapter that authored a plan would invent a
+derived from, so an adapter that authored an operation would invent a
 constraint. Now it would also be authoring the definition of work the keeper
 itself had already composed.
 

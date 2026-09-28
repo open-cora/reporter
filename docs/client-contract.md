@@ -21,7 +21,7 @@ So one run carries both:
 | | minted by | known at | where it appears |
 | --- | --- | --- | --- |
 | run uid | the engine | the moment the run opens | `start["uid"]` |
-| execution and step ids | the keeper | at dispatch, before the plan is submitted | `start["keeper_execution_id"]`, `start["keeper_step_id"]` |
+| execution and step ids | the keeper | at dispatch, before the operation is submitted | `start["keeper_execution_id"]`, `start["keeper_step_id"]` |
 
 An earlier draft of this table named a single key holding one reference the driver minted, and no such key exists. Two travel, because a step is an entity inside the Execution aggregate rather than a stream of its own, so naming one means naming the execution around it.
 

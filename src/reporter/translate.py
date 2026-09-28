@@ -206,7 +206,7 @@ class Translator:
         Order matters for two reasons now. An `event` needs its
         descriptor to have arrived, and everything after a start needs
         that start, because the start is the only document carrying the
-        the keeper reference.
+        keeper reference.
         """
         if name == "start":
             return self._start(document)

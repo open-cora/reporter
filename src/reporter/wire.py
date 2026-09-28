@@ -12,7 +12,7 @@ it is one named function that a reader can find.
     sources ---> relay ---> documents_into ---> the keeper
                               |
                               +-- translate.Translator   engine-shaped
-                              +-- session.Session        the keeper-shaped
+                              +-- session.Session        keeper-shaped
 
 A second engine writes its own translator, composes it here or beside
 here, and reuses everything under `intents` unchanged. What that costs is

@@ -1,6 +1,6 @@
 # Running one
 
-This page is for whoever installs a reporter beside an acquisition engine.
+This page is for whoever installs a reporter beside an engine.
 
 ## Two ways, and the same code either way
 

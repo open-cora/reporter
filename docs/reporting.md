@@ -4,7 +4,7 @@ What one reporter does, what it promises, and what it refuses to claim.
 
 ## What it does
 
-An acquisition engine produces a stream of messages while it runs. A reporter
+An engine produces a stream of messages while it runs. A reporter
 reads that stream, turns each message into a report about the step it belongs
 to, and files it. When a run ends it also says where the data that run produced
 is stored.

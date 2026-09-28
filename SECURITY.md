@@ -25,7 +25,7 @@ depending on severity and complexity.
 
 ## What this software does, which is the thing to read first
 
-A reporter reads one acquisition engine's document stream and writes reports
+A reporter reads one engine's document stream and writes reports
 to the keeper. It creates nothing: the keeper composes the procedure,
 dispatches the execution and holds the record, and a report that names no
 dispatched step is refused at the far end.

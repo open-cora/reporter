@@ -21,7 +21,7 @@ keeper has never heard of.
 
 That is a smaller job and a stricter one. A delivery carrying no keeper
 reference describes work this system never asked for, and there is
-nothing to record it against: see `translate` for why that is `Ignored`
+nothing to record it against: see the translator for why that is `Ignored`
 rather than an alert.
 
 Nothing here carries parameters either, and the omission is the same

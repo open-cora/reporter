@@ -8,7 +8,7 @@ that changes one fails a run instead of changing a report nobody re-reads.
 
 ## Two kinds of test, and the second kind runs nothing
 
-Most of this file drives `HttpStoreLookup` over a transport shaped like
+Most of this file drives `HttpLocating` over a transport shaped like
 the captured response. The block at the foot drives nothing at all: it
 reads the capture and asserts claims about the store that something here
 was built on, so that re-running the collector against a newer store
@@ -34,13 +34,8 @@ from typing import Any
 
 import pytest
 
-from reporter.stores import (
-    HttpStoreLookup,
-    Location,
-    StoreRefusedError,
-    node_path,
-    store_instant,
-)
+from reporter.adapters.store_http import HttpLocating, node_path, store_instant
+from reporter.seams import Location, RefusedError, UnavailableError
 
 CAPTURED = Path(__file__).parent / "nodes.json"
 
@@ -149,7 +144,7 @@ def test_locate_asks_the_metadata_route_under_the_configured_writer_root() -> No
     node = scenario["node"]
     http = Recorder(Answer(200, body_for(node, stop_time=None)))
 
-    HttpStoreLookup(http, BASE_URL, WRITER_ROOT).locate(node["key"])
+    HttpLocating(http, BASE_URL, WRITER_ROOT).locate(node["key"])
 
     assert http.urls == [f"{BASE_URL}/api/v1/metadata/{WRITER_ROOT}/{node['key']}"]
 
@@ -158,7 +153,7 @@ def test_locate_builds_one_url_however_the_root_and_base_are_punctuated() -> Non
     node = scenarios()["completes"]["node"]
     http = Recorder(Answer(200, body_for(node, stop_time=None)))
 
-    HttpStoreLookup(http, f"{BASE_URL}/", f"/{WRITER_ROOT}/").locate(node["key"])
+    HttpLocating(http, f"{BASE_URL}/", f"/{WRITER_ROOT}/").locate(node["key"])
 
     assert http.urls == [f"{BASE_URL}/api/v1/metadata/{WRITER_ROOT}/{node['key']}"]
 
@@ -167,7 +162,7 @@ def test_locate_reports_a_store_serving_from_its_root_without_a_doubled_separato
     node = scenarios()["completes"]["node"]
     http = Recorder(Answer(200, body_for(node, stop_time=None)))
 
-    HttpStoreLookup(http, BASE_URL, "").locate(node["key"])
+    HttpLocating(http, BASE_URL, "").locate(node["key"])
 
     assert http.urls == [f"{BASE_URL}/api/v1/metadata/{node['key']}"]
 
@@ -178,7 +173,7 @@ def test_locate_returns_the_address_and_the_ending_the_store_holds() -> None:
     stop_time = scenario["store_stop_time"]
     http = Recorder(Answer(200, body_for(node, stop_time=stop_time)))
 
-    located = HttpStoreLookup(http, BASE_URL, WRITER_ROOT).locate(node["key"])
+    located = HttpLocating(http, BASE_URL, WRITER_ROOT).locate(node["key"])
 
     assert located == Location(
         path=node["normalised_path"],
@@ -205,7 +200,7 @@ def test_locate_returns_the_engines_own_ending_moment_to_the_microsecond() -> No
         node = scenario["node"]
         http = Recorder(Answer(200, body_for(node, stop_time=scenario["store_stop_time"])))
 
-        located = HttpStoreLookup(http, BASE_URL, WRITER_ROOT).locate(node["key"])
+        located = HttpLocating(http, BASE_URL, WRITER_ROOT).locate(node["key"])
 
         assert located is not None
         assert located.occurred_at is not None
@@ -218,7 +213,7 @@ def test_locate_returns_a_location_with_no_time_when_the_store_holds_no_ending()
     node = scenarios()["completes"]["node"]
     http = Recorder(Answer(200, body_for(node, stop_time=None)))
 
-    located = HttpStoreLookup(http, BASE_URL, WRITER_ROOT).locate(node["key"])
+    located = HttpLocating(http, BASE_URL, WRITER_ROOT).locate(node["key"])
 
     assert located == Location(path=node["normalised_path"], occurred_at=None)
 
@@ -226,17 +221,40 @@ def test_locate_returns_a_location_with_no_time_when_the_store_holds_no_ending()
 def test_locate_returns_nothing_for_a_run_the_store_does_not_hold() -> None:
     http = Recorder(Answer(404, text="not found"))
 
-    assert HttpStoreLookup(http, BASE_URL, WRITER_ROOT).locate("no-such-run") is None
+    assert HttpLocating(http, BASE_URL, WRITER_ROOT).locate("no-such-run") is None
 
 
-@pytest.mark.parametrize("status", [401, 403, 500, 503])
-def test_locate_refuses_loudly_on_any_answer_that_is_not_a_node_or_a_404(status: int) -> None:
+@pytest.mark.parametrize("status", [401, 403])
+def test_locate_answered_with_a_settled_no_is_refused(status: int) -> None:
     http = Recorder(Answer(status, text="nope"))
 
-    with pytest.raises(StoreRefusedError) as refusal:
-        HttpStoreLookup(http, BASE_URL, WRITER_ROOT).locate("a-run")
+    with pytest.raises(RefusedError) as refusal:
+        HttpLocating(http, BASE_URL, WRITER_ROOT).locate("a-run")
 
-    assert refusal.value.status == status
+    assert str(status) in str(refusal.value)
+
+
+@pytest.mark.parametrize("status", [429, 500, 503])
+def test_locate_answered_with_a_passing_no_is_unavailable(status: int) -> None:
+    """Whether waiting could change a store's answer is knowledge about
+    HTTP, so it is settled here rather than by whoever called."""
+    http = Recorder(Answer(status, text="nope"))
+
+    with pytest.raises(UnavailableError):
+        HttpLocating(http, BASE_URL, WRITER_ROOT).locate("a-run")
+
+
+def test_locate_that_never_arrives_is_unavailable_rather_than_escaping() -> None:
+    """A store lookup runs inside the relay's worker, so a transport
+    failure that travelled as its library's own exception would pass
+    through every handler above it."""
+
+    class Unreachable:
+        def get(self, url: str) -> Answer:
+            raise OSError("connection reset")
+
+    with pytest.raises(UnavailableError, match="did not arrive"):
+        HttpLocating(Unreachable(), BASE_URL, WRITER_ROOT).locate("a-run")
 
 
 def test_store_instant_reads_a_unix_time_as_an_aware_moment() -> None:

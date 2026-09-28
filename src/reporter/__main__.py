@@ -41,10 +41,10 @@ whatever was queued is gone, along with whatever was published while it
 was down. That is at-most-once, and closing it needs a transport that
 keeps a log rather than anything here.
 
-Restarting costs more than it used to, and the extra cost is in
-`translate`: the keeper reference for a run in flight lives in the
-translator and cannot be recovered, so a scan that was running through a
-restart is reported on no further.
+Restarting costs more than it used to, and the extra cost is in the
+translator: the keeper reference for a run in flight lives there and
+cannot be recovered, so a scan that was running through a restart is
+reported on no further.
 """
 
 import argparse
@@ -54,22 +54,20 @@ from collections import Counter
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 from types import FrameType
+from typing import Protocol
 
 import httpx
 
-from reporter.client import KeeperClient
+from reporter.adapters.bluesky_documents import documents_into
+from reporter.adapters.capture_replay import from_capture
+from reporter.adapters.keeper_http import HttpClient, HttpFiling, HttpReporting
+from reporter.adapters.store_http import HttpLocating, StoreHttpClient
+from reporter.adapters.zmq_subscription import DecodeError, from_subscription
 from reporter.config import ConfigError, ReporterConfig, load
 from reporter.outcomes import Held, Outcome
 from reporter.relay import Relay
+from reporter.seams import Delivery, Filing, Locating, RefusedError, UnavailableError
 from reporter.session import Session
-from reporter.sources import DecodeError, Delivery, from_capture, from_subscription
-from reporter.stores import (
-    HttpStoreLookup,
-    StoreHttpClient,
-    StoreLookup,
-    StoreRefusedError,
-)
-from reporter.wire import documents_into
 
 REQUEST_TIMEOUT_SECONDS = 10.0
 """How long one call to the keeper may take before it counts as not arriving.
@@ -125,14 +123,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     tally = Tally()
     unreadable: str | None = None
     with httpx.Client(timeout=REQUEST_TIMEOUT_SECONDS) as http:
-        client = KeeperClient(http, config)
-        store = store_lookup(http, config)
-        unreachable = store_that_does_not_answer(store, config)
+        reporting = HttpReporting(http, config.base_url, config.token)
+        filing, locating = dataset_leg(http, config)
+        unreachable = store_that_does_not_answer(locating, config)
         if unreachable is not None:
             print(f"configuration: {unreachable}", file=sys.stderr)
             return 2
 
-        relay = Relay(documents_into(Session(client, config, store)), tally.record)
+        relay = Relay(documents_into(Session(reporting, filing, locating)), tally.record)
         relay.start()
         try:
             unreadable = drive(_documents(arguments), relay)
@@ -210,20 +208,40 @@ def _parse(argv: Sequence[str] | None) -> argparse.Namespace:
     return arguments
 
 
-def store_lookup(http: StoreHttpClient, config: ReporterConfig) -> StoreLookup | None:
-    """The store this deployment keeps its data in, if it has one.
+class Transport(HttpClient, StoreHttpClient, Protocol):
+    """One client reaching both services, which is how they share a pool.
 
-    `None` switches the dataset leg off, which is a configuration this
+    The two adapters declare their own narrow shapes and neither knows
+    the other exists. This names the intersection, because a single
+    entrypoint hands one object to both and the timeouts, the retries and
+    the TLS are a deployment's to set once.
+    """
+
+
+def dataset_leg(http: Transport, config: ReporterConfig) -> tuple[Filing | None, Locating | None]:
+    """Both halves of the dataset leg, or neither of them.
+
+    Two capabilities from one table, returned together because they are
+    switched on together. Filing needs the scheme a store's addresses
+    belong to and locating needs the store itself, so a deployment with
+    no `[store]` table can do neither, and one with a table can do both.
+    Building them in one place is what makes the half-configured pair
+    unconstructable rather than something `Session` has to reject.
+
+    Two `None`s switch the leg off, which is a configuration this
     reporter supports rather than a degraded one. One HTTP client serves
-    both the keeper and the store, so timeouts and the connection pool are set
-    in a single place.
+    both the keeper and the store, so timeouts and the connection pool
+    are set in a single place.
     """
     if config.store is None:
-        return None
-    return HttpStoreLookup(http, config.store.base_url, config.store.root)
+        return None, None
+    return (
+        HttpFiling(http, config.base_url, config.token, config.store.external_ref_scheme),
+        HttpLocating(http, config.store.base_url, config.store.root),
+    )
 
 
-def store_that_does_not_answer(store: StoreLookup | None, config: ReporterConfig) -> str | None:
+def store_that_does_not_answer(store: Locating | None, config: ReporterConfig) -> str | None:
     """Whether a configured store answers, said the way a person would fix it.
 
     The probe asks for a run that cannot exist, so a reachable store says
@@ -236,9 +254,9 @@ def store_that_does_not_answer(store: StoreLookup | None, config: ReporterConfig
         return None
     try:
         store.locate("a-run-that-cannot-exist")
-    except StoreRefusedError as refusal:
+    except RefusedError as refusal:
         return f"the store at {config.store.base_url} refused: {refusal}"
-    except (OSError, httpx.HTTPError) as unreachable:
+    except UnavailableError as unreachable:
         return f"the store at {config.store.base_url} did not answer: {unreachable}"
     return None
 

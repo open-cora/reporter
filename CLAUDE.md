@@ -20,15 +20,26 @@ from that point on. A fix here does not reach there.
 
 ## The split this package is built around
 
-`translate` and `sources` read one engine and know nothing about the keeper.
-`client`, `config`, `session` and `relay` talk to the keeper and know nothing
-about any engine. `intents` is the vocabulary between them, and `wire` is the
-one place they are joined.
+`seams` declares four capabilities and nothing that satisfies them:
+`Reporting` records what an engine did to one step's run, `Filing` records
+where the data it produced is kept, `Locating` asks a store where that data
+went, and `Delivering` is where deliveries come from. Each is named for what
+this reporter needs rather than for what answers it, so two of them reaching
+one keeper today is a fact about a deployment and not about the shape here.
 
-That split is what makes a second engine a translator rather than a rewrite,
-and nothing about it is visible in a diff. It was broken once already, by a
-helper filed on the wrong side, and no test failed because there was no test.
-`tests/test_the_halves_stay_apart.py` is that test.
+`session`, `relay`, `intents` and `outcomes` sit above that line with
+`seams`, and between them they import the standard library and each other.
+`config` reads a file and is held to the same rule. Every implementation is
+under `adapters/`, one module per outside system, and `__main__` is the only
+module that names one.
+
+That split is what makes a second engine a module in `adapters/` rather than
+a rewrite, and nothing about it is visible in a diff. It was broken once
+already, by a helper filed on the wrong side, and no test failed because
+there was no test. `tests/test_the_core_names_no_seam.py` is that test, and
+it carries the vocabulary rule too: the core may not use an engine's words
+in a name, which is how the leak actually happened while every import stayed
+clean.
 
 ## Conventions
 
@@ -62,7 +73,7 @@ own, because there is one tier:
 | `tests/test_no_phase_markers.py` | No plan coordinate or finding code |
 | `tests/test_docstring_references_resolve.py` | Every backticked name and cited path resolves |
 | `tests/test_test_names_carry_outcome.py` | A test name states a property |
-| `tests/test_the_halves_stay_apart.py` | Neither half imports the other |
+| `tests/test_the_core_names_no_seam.py` | The core names a Protocol, never an adapter |
 
 Each enumerates through `git ls-files`, so **a file git has never seen is
 invisible to every one of them**. Stage new files before trusting a green

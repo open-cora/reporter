@@ -33,7 +33,7 @@ That means a keeper identifier sits in somebody else's records, which is the one
 
 The engine's own uid travels in the other direction, as a step's `engine_reference`. It is a correlation hint rather than a key: nothing checks that such a run exists, and nothing could, because whatever watches the engine records it on its own schedule.
 
-**Both sides are implemented.** `conductor.adapters.bluesky_engine` writes the pair into the start document of every run it opens under a dispatch, and `reporter.translate` reads it back. The spelling is written out in both projects, which share no code and ship separately, and each pins the two literals in a test that names the other side. A run opened outside a dispatch carries neither key, which is how a scan somebody ran by hand stays distinguishable from work this system is owed a report on.
+**Both sides are implemented.** `conductor.adapters.bluesky_engine` writes the pair into the start document of every run it opens under a dispatch, and `reporter.adapters.bluesky_documents` reads it back. The spelling is written out in both projects, which share no code and ship separately, and each pins the two literals in a test that names the other side. A run opened outside a dispatch carries neither key, which is how a scan somebody ran by hand stays distinguishable from work this system is owed a report on.
 
 ## Two settings that have to agree
 

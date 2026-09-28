@@ -33,14 +33,14 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from reporter.intents import Ignored, Intent, RegisterDataset, ReportStepRun, Unmappable
-from reporter.translate import (
+from reporter.adapters.bluesky_documents import (
     ENDING_BY_EXIT_STATUS,
     KEEPER_METADATA_KEYS,
     Translator,
     engine_instant,
     keeper_reference,
 )
+from reporter.intents import Ignored, Intent, RegisterDataset, ReportStepRun, Unmappable
 
 CAPTURED = Path(__file__).parent / "documents.json"
 
@@ -126,7 +126,7 @@ def translate_all(scenario: str) -> list[Intent]:
 def test_the_two_keys_are_spelled_the_way_the_conductor_writes_them() -> None:
     """A wire format written out in two projects that share no code.
 
-    `conductor.adapters.bluesky_acquisition` holds the same pair, and
+    `conductor.adapters.bluesky_engine` holds the same pair, and
     `docs/reference/client-contract.md` holds the agreement. Every other
     test here reads the keys through `KEEPER_METADATA_KEYS`, which proves
     one name is used consistently and would survive a change to what

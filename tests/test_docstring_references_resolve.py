@@ -67,12 +67,6 @@ PROSPECTIVE_NAMES: frozenset[str] = frozenset(
         # would mean defining the thing the example exists to describe.
         "test_decide_emits_x",
         "test_handler_works",
-        # Three things this project had and removed, each named so the
-        # prose can say what went and why. Requiring them to exist would
-        # undo the removals they describe.
-        "plan_ids",
-        "ReportRun",
-        "Recorded",
     }
 )
 """Names this project deliberately does not define.
@@ -81,6 +75,13 @@ Distinct from `EXTERNAL_NAMES`, which are real elsewhere. These are real
 nowhere: a shape some future module should adopt, a stand-in inside a
 worked example, or an alternative the prose rejects by name. Each costs a
 line here, so an entry is a decision rather than a way past the check.
+
+It held three more, each a thing this project had removed and went on
+naming so the prose could say what went. Every one of those sentences
+has since been rewritten to say what is here instead, which is where the
+tree puts history, and an exemption whose citation is gone exempts
+nothing. Check before adding one back: if no docstring needs the name,
+the entry is not a decision, it is a leftover.
 """
 
 _SPAN = re.compile(r"`([^`\n]+)`")

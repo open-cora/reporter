@@ -24,20 +24,40 @@ subscription wants, so there is nothing to build:
 ```python
 from pathlib import Path
 import httpx
-from reporter import KeeperClient, Relay, Session, documents_into, load
+from reporter import Relay, Session, load
+from reporter.adapters.bluesky_documents import documents_into
+from reporter.adapters.keeper_http import HttpReporting
 
 config = load(Path("reporter.toml"))
-session = Session(KeeperClient(httpx.Client(timeout=10), config), config)
+http = httpx.Client(timeout=10)
+session = Session(HttpReporting(http, config.base_url, config.token))
 relay = Relay(documents_into(session), print)
 relay.start()
 
 RE.subscribe(relay.submit)
 ```
 
-That is the whole integration. One line names an engine: it puts that engine's
-translator in front of a session that knows nothing but the record. Submitting
-queues and returns in microseconds and a worker thread does the talking, so a
-scan never waits on the network even though this is running inside it.
+That is the whole integration. Two lines name something outside: one picks the
+engine whose documents these are, the other picks how the record is reached.
+Everything between them is a session that knows neither. Submitting queues and
+returns in microseconds and a worker thread does the talking, so a scan never
+waits on the network even though this is running inside it.
+
+The session above records runs and says nothing about data, because it was
+given no `Filing` and no `Locating`. Adding the dataset leg means building
+both from the `[store]` table and passing them, which is what `__main__` does:
+
+```python
+from reporter.adapters.keeper_http import HttpFiling
+from reporter.adapters.store_http import HttpLocating
+
+store = config.store
+session = Session(
+    HttpReporting(http, config.base_url, config.token),
+    HttpFiling(http, config.base_url, config.token, store.external_ref_scheme),
+    HttpLocating(http, store.base_url, store.root),
+)
+```
 
 **Start the reporter before the engine, either way.** A publisher drops what it
 sends while nothing is listening.

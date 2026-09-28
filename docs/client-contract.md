@@ -8,7 +8,7 @@ package none of them wants to depend on. What holds the copies honest is not
 this page: it is that the two metadata keys are pinned to literals in a test
 on each side, and renaming one fails the other.
 
-The keeper has two clients that are not part of it. The reporter watches an acquisition engine and records what it sees. The conductor composes a procedure and drives a beamline through it, holding a device claim for each step. Neither imports `keeper`, nothing in the keeper imports either, and they do not import each other.
+The keeper has two clients that are not part of it. The reporter watches an engine and records what it sees. The conductor composes a procedure and drives a beamline through it, holding a device claim for each step. Neither imports `keeper`, nothing in the keeper imports either, and they do not import each other.
 
 They nevertheless talk about the same work, so they need one answer to "which run is that". This page is that answer. It is prose rather than a shared package on purpose: a third project existing to hold a string and four HTTP rules would cost more than the duplication it saves.
 
@@ -33,7 +33,7 @@ That means a keeper identifier sits in somebody else's records, which is the one
 
 The engine's own uid travels in the other direction, as a step's `engine_reference`. It is a correlation hint rather than a key: nothing checks that such a run exists, and nothing could, because whatever watches the engine records it on its own schedule.
 
-**Both sides are implemented.** `conductor.adapters.bluesky_acquisition` writes the pair into the start document of every run it opens under a dispatch, and `reporter.translate` reads it back. The spelling is written out in both projects, which share no code and ship separately, and each pins the two literals in a test that names the other side. A run opened outside a dispatch carries neither key, which is how a scan somebody ran by hand stays distinguishable from work this system is owed a report on.
+**Both sides are implemented.** `conductor.adapters.bluesky_engine` writes the pair into the start document of every run it opens under a dispatch, and `reporter.translate` reads it back. The spelling is written out in both projects, which share no code and ship separately, and each pins the two literals in a test that names the other side. A run opened outside a dispatch carries neither key, which is how a scan somebody ran by hand stays distinguishable from work this system is owed a report on.
 
 ## Two settings that have to agree
 
@@ -54,7 +54,7 @@ Nothing checks this. Two deployments configured differently file data under two 
 
 The keeper owns every genesis, so a duplicate reference is a relay mistake on records that already existed rather than a second record of one fact.
 
-**The conductor calls the keeper, and `python -m conductor` is the process that does it.** It asks what has been dispatched to its beamline, claims one execution, walks it, and reports each step as the step ends, all over the same HTTP surface the reporter uses. `Acquired.engine_reference` reaches a caller through `Done`, and it is a correlation hint rather than a key.
+**The conductor calls the keeper, and `python -m conductor` is the process that does it.** It asks what has been dispatched to its beamline, claims one execution, walks it, and reports each step as the step ends, all over the same HTTP surface the reporter uses. `Ran.engine_reference` reaches a caller through `Done`, and it is a correlation hint rather than a key.
 
 ## When a client does start calling the keeper
 

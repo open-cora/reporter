@@ -14,7 +14,7 @@ They nevertheless talk about the same work, so they need one answer to "which ru
 
 ## One run has two names
 
-An engine mints its own identifier for every run it opens and puts it in the start document it publishes. The keeper's names exist earlier: the execution and the step are written when the procedure is dispatched, before anything is asked of an engine. Metadata passed at the call arrives in the start document unchanged, which a spike measured against a real engine.
+An engine mints its own identifier for every run it opens and puts it in the start document it publishes. The keeper's names exist earlier: the execution and the step are written when the procedure is dispatched, before anything is asked of an engine. Metadata passed at the call is expected to arrive in the start document unchanged, and an adapter that finds otherwise has no way to pair the two names.
 
 So one run carries both:
 
@@ -39,7 +39,7 @@ The engine's own uid travels in the other direction, as a step's `engine_referen
 
 The scheme is a word, and two deployments have to pick the same one.
 
-- The reporter reads `external_ref_scheme` from the `[store]` table of its TOML configuration and sends it with every dataset it registers. A spike recommends a word for the engine it drove, and what a given deployment settled on is written down in its beamline descriptor.
+- The reporter reads `external_ref_scheme` from the `[store]` table of its TOML configuration and sends it with every dataset it registers. What a given deployment settled on is written down in its beamline descriptor.
 - Anything that later resolves a dataset's address must read it under that same word.
 
 Nothing checks this. Two deployments configured differently file data under two vocabularies that look alike and are not, and nothing in the keeper can tell them apart, because the scheme names a vocabulary rather than an instance.

@@ -14,15 +14,14 @@ applied to an address, it is part of the definition of the address, and
 it is written once here rather than at every place that builds or checks
 one.
 
-A spike is where that came from, and `tests/nodes.json` is the capture it
-came out of.
+`tests/nodes.json`, the capture recorded against a real store, is where
+that came from.
 
 ## No client library, and the reason is measured rather than argued
 
 The store's own Python client reads two fields off the `data` member of
 an ordinary HTTP response, so an adapter reading that response directly
-gets the same address, byte for byte. The spike checks both ways against
-each other on four runs and they agree on all four.
+gets the same address, byte for byte.
 
 That leaves one dependency where there would have been two, and it is
 the one this reporter already has for the keeper. It is the same

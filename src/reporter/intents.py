@@ -36,9 +36,9 @@ than anything document-shaped because a second engine's stream is not
 made of documents. For this translator it is a document name.
 
 Keeping these as values rather than calls is what makes the translation
-testable against a captured file. Every finding the spike printed is a
-statement about which of these four a delivery produces, and a value can
-be asserted where a POST cannot.
+testable against a captured file. Every finding about an engine's stream
+is a statement about which of these four a delivery produces, and a value
+can be asserted where a POST cannot.
 """
 
 from dataclasses import dataclass
@@ -142,8 +142,8 @@ class Unmappable:
     Distinct from `Ignored`, and the distinction is the point. An ending
     this translator cannot map is either a bug here or an engine that has
     grown a fourth one, and both are worth somebody's attention. A
-    delivery that only announces what is coming is neither. The spike put
-    both in one list, so the second kind was invisible among the first.
+    delivery that only announces what is coming is neither. Putting both
+    in one list would make the second kind invisible among the first.
     """
 
     reason: str

@@ -2,8 +2,8 @@
 
 `documents.json` is captured output, seven scenarios driven through a real
 engine on purpose: every ending, both interruptions, a plan that raises,
-and one plan with real arguments. The spike that captured it checked its
-findings by printing a table and reading it. Here they are assertions, so
+and one plan with real arguments. The collector that captured it checked
+its findings by printing a table and reading it. Here they are assertions, so
 a change that breaks one fails a run instead of changing a report nobody
 re-reads.
 
@@ -176,15 +176,15 @@ UNPREDICTED = "unknown"
 One of the seven is the hard stop, and the reason it carries no expected
 status is the trap in `ENDING_BY_EXIT_STATUS`: asking an engine to stop
 and a plan finishing both record `success`, while the hard stop records
-`abort`. The spike drove it to find out rather than to confirm, and left
-the answer out of the fixture so that reading it back would not look like
-a prediction. Asserting one here would invent the certainty it declined.
+`abort`. The capture was driven to find out rather than to confirm, and
+the answer was left out of the fixture so that reading it back would not
+look like a prediction. Asserting one here would invent the certainty it declined.
 """
 
 
 @pytest.mark.parametrize("scenario", scenarios())
 def test_a_scenario_ends_where_the_engine_says_it_ended(scenario: str) -> None:
-    """The spike's printed agreement table, as a failure rather than a column."""
+    """The collector's printed agreement table, as a failure rather than a column."""
     recorded = captured()[scenario]
     intents = translate_all(scenario)
     endings = [
@@ -225,7 +225,7 @@ def test_every_report_in_a_scenario_names_the_step_its_start_carried(scenario: s
 
 
 def test_an_interruption_is_attributed_through_its_descriptor() -> None:
-    """The hop the spike skipped, which is why it could not interleave.
+    """The hop a single-scenario replay can skip, which is why it cannot interleave.
 
     An event names a descriptor and a descriptor names the run, so
     attribution needs both documents and no memory of "the run we are
@@ -310,7 +310,7 @@ def test_an_unknown_document_type_is_ignored_and_says_which() -> None:
 
 
 def test_an_unknown_exit_status_is_unmappable_and_not_ignored() -> None:
-    """The distinction the spike collapsed, and the reason for two types.
+    """The distinction a single list collapses, and the reason for two types.
 
     A fourth ending, or a typo here, must not read the same as a document
     that was never going to produce anything.

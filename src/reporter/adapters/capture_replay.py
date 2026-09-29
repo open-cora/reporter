@@ -27,8 +27,8 @@ if TYPE_CHECKING:
 def from_capture(path: Path) -> Iterator[Delivery]:
     """Every delivery in a capture, flattened into one stream.
 
-    The capture groups its contents by scenario, because the spike that
-    wrote it was comparing scenarios. A reporter sees one stream, so they
+    The capture groups its contents by scenario, because the collector
+    that wrote it drove one scenario at a time. A reporter sees one stream, so they
     are flattened into one here, which is also closer to what a
     subscription delivers.
     """

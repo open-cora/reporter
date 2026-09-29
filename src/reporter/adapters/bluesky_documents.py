@@ -1,15 +1,15 @@
 """One engine's documents, turned into intents and joined to a session.
 
 Pure, and an adapter anyway. No network, no clock, no configuration:
-documents in, `Intent` values out, which is what lets every result the
-spike obtained by driving a real engine be re-asserted against the
-captured file with no engine and no keeper running.
+documents in, `Intent` values out, which is what lets every result
+obtained by driving a real engine be re-asserted against the captured
+file with no engine and no keeper running.
 
 It is filed here rather than beside `session` because of what it knows
 rather than what it touches. The grammar below is one engine's: a start,
 a descriptor, an event and a stop, and the two-hop lookup between them.
 A second engine writes a sibling in this directory and reuses everything
-under `intents` unchanged, which a spike measured against an engine whose
+under `intents` unchanged, and that holds even for an engine whose
 stream has no documents in it at all.
 
 ## Where the keeper reference comes from
@@ -63,9 +63,9 @@ descriptor, and only the `descriptor` document carries `run_start`:
     stop        run_start
 
 So attributing an event is a two-hop lookup, and the stream supplies both
-hops. The spike sidestepped it by tracking "the run we are currently
-walking", which held only because it replayed one scenario at a time. A
-live stream makes no such promise.
+hops. Tracking "the run we are currently walking" sidesteps it, and
+holds only while one scenario is replayed at a time. A live stream makes
+no such promise.
 
 There is now a second map, and it is the one that matters more. Only the
 start carries the keeper reference, and every later document about that run
@@ -136,9 +136,9 @@ ENDING_BY_EXIT_STATUS: Final[dict[str, Report]] = {
 Asking an engine to stop early and a plan running to completion both
 record `success`, and the harder stop records `abort`. So which method a
 person called is not recoverable from a document, and a run that somebody
-halted deliberately is indistinguishable here from one that ran out. The
-spike established this by driving all three and comparing; it is a fact
-about the wire rather than a choice made here.
+halted deliberately is indistinguishable here from one that ran out.
+That is a fact about the wire rather than a choice made here, and
+`tests/documents.json` carries all three to compare.
 """
 
 REPORT_BY_INTERRUPTION: Final[dict[str, Report]] = {"pause": "Paused", "resume": "Resumed"}

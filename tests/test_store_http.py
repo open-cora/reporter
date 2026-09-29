@@ -2,8 +2,8 @@
 
 `nodes.json` is captured output: a real engine driven into a real store
 through the writer a deployment would use, then interrogated from the
-outside the way this reporter has to. The spike that captured it printed a
-table and read it. Here the same facts are assertions, so a store release
+outside the way this reporter has to. The collector that captured it
+printed a table and read it. Here the same facts are assertions, so a store release
 that changes one fails a run instead of changing a report nobody re-reads.
 
 ## Two kinds of test, and the second kind runs nothing
@@ -271,8 +271,8 @@ def test_store_instant_declines_anything_that_is_not_a_number(unusable: Any) -> 
 # Nothing below exercises this package. Each one asserts a claim about the
 # store that something here was built on, so that re-running the collector
 # against a newer store turns a changed claim into a red test naming it
-# rather than into a diff nobody reads. A spike
-# is where each came from; the section is on the test.
+# rather than into a diff nobody reads. The capture is where each came
+# from; the section is on the test.
 
 
 def test_a_reporter_subscribed_after_the_writer_sees_a_finished_node() -> None:

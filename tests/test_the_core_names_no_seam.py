@@ -99,10 +99,10 @@ decision to make here, out loud.
 STORE_LIBRARIES = frozenset({"tiled"})
 """Store clients no module here may import, for a different reason.
 
-The engine ban is about identity. This one is about a measurement: a
-spike read one node both through the store's client and off its raw HTTP
-surface and got the same address four times out of four, so the client
-would buy insulation from an envelope that two fields are read out of,
+The engine ban is about identity. This one is about what the client
+buys: reading one node through the store's client and off its raw HTTP
+surface gives the same address, so the client would buy insulation from
+an envelope that two fields are read out of,
 and cost a dependency.
 
 Separate from the set above rather than merged into it, because the two
@@ -322,7 +322,7 @@ def test_no_module_imports_an_engine_library(path: Path) -> None:
 
 @pytest.mark.parametrize("path", _all_paths(), ids=lambda p: p.name)
 def test_no_module_imports_a_store_library(path: Path) -> None:
-    """The dependency the spike measured as unnecessary rather than refused."""
+    """The dependency found unnecessary rather than refused."""
     reached = sorted(
         root for root in _imported_roots(path) if root.split(".")[0] in STORE_LIBRARIES
     )

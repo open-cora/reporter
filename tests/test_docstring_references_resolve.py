@@ -51,6 +51,13 @@ EXTERNAL_NAMES: frozenset[str] = frozenset(
         # each side pins the literals, so one moving alone turns a test
         # red rather than a run.
         "EngineReport",
+        # The engine library's 0MQ publisher, named by the decoder that
+        # reads the frames it puts on the socket rather than importing it.
+        "Publisher",
+        # The conductor's adapter, the other half of the metadata contract
+        # this project's decoder reads back. Real, in another project, and
+        # unresolvable here for exactly as long as that stays true.
+        "bluesky_engine",
     }
 )
 """Names that are real, but defined outside this project.
@@ -87,11 +94,11 @@ the entry is not a decision, it is a leftover.
 _SPAN = re.compile(r"`([^`\n]+)`")
 """Anything between backticks, on one line.
 
-The span is not the name. Prose writes a dotted attribute, a call and a
-subscript, and the name a reader would go looking for is the head of each:
-the part before the first dot, bracket or parenthesis. Matching the whole
-span instead lets a reference to a class nothing defines go unnoticed,
-hidden by whatever follows the dot.
+The span is not the name. Prose writes a dotted path, a call and a
+subscript, and every dotted segment is a name a reader may go looking
+for. Resolving only the first lets a dead class hide behind a live
+module, which is how a sibling's citation outlived its class by a
+rename.
 """
 
 _NAME_SHAPES = (
@@ -132,18 +139,21 @@ so admitting one should cost a line saying who does hold it.
 
 
 def _cited_names(doc: str) -> list[str]:
-    """Heads of every backticked span whose shape says it names code."""
-    heads: list[str] = []
+    """Every segment of every backticked span whose shape says it names code."""
+    cited: list[str] = []
     for span in _SPAN.findall(doc):
         span = span.strip()
         # A span with a space inside it is a phrase, not a reference. Only a
         # single token can be looked up.
         if not span or " " in span:
             continue
-        head = re.split(r"[.(\[]", span, maxsplit=1)[0]
-        if head and any(shape.match(head) for shape in _NAME_SHAPES):
-            heads.append(head)
-    return heads
+        path = re.split(r"[(\[]", span, maxsplit=1)[0]
+        cited.extend(
+            part
+            for part in path.split(".")
+            if part and any(shape.match(part) for shape in _NAME_SHAPES)
+        )
+    return cited
 
 
 def _all_python_files() -> list[Path]:

@@ -38,7 +38,7 @@ place.
 
 A second engine replaces the left column and reuses the right. That is what
 makes supporting another engine a translation rather than a rewrite, and it is
-checked by `tests/test_the_halves_stay_apart.py` rather than claimed here.
+checked by `tests/test_the_core_names_no_seam.py` rather than claimed here.
 
 **The split was found, not designed.** It came out of driving a second engine
 whose stream has no messages in it at all, and discovering that the only thing

@@ -59,6 +59,10 @@ clean.
 - Default to no `#` comments. Add one only when the WHY is non-obvious.
 - Test names carry scenarios (`test_<subject>_<scenario>_<expectation>`); per-test docstrings stay rare.
 - A docstring may not name a symbol or a file that does not exist. Backticks mean "this is a symbol"; use a plain word when you mean a word.
+- A module that defines a public type is named after one of them, so a
+  reader who opens a file finds the type its name promised. A module named
+  for a family takes the family's singular, and one that is about a function
+  rather than a type declares itself in `NAMESPACE_MODULES`.
 
 ## The rules that are actually enforced
 
@@ -74,6 +78,7 @@ own, because there is one tier:
 | `tests/test_docstring_references_resolve.py` | Every backticked name and cited path resolves |
 | `tests/test_test_names_carry_outcome.py` | A test name states a property |
 | `tests/test_the_core_names_no_seam.py` | The core names a Protocol, never an adapter |
+| `tests/test_module_names_match_their_type.py` | A module is named after a type it defines |
 
 Each enumerates through `git ls-files`, so **a file git has never seen is
 invisible to every one of them**. Stage new files before trusting a green

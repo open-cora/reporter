@@ -117,37 +117,62 @@ real output from a real store rather than a shape imagined here.
 
 ## Proving it, end to end
 
-Two demonstrations, and neither is a test double. The first has a real
-engine in it.
+One demonstration that is real, and one that has not happened. Saying
+which is which is the point of this section, and the reason there are no
+plausible figures under a third heading.
 
-**Both are runs of the engine leg only.** Neither has had a store in it,
-so the numbers below carry no `Kept`. The dataset leg is covered by tests
-against real captured store output and has not been through this section,
-which is the difference between checked and demonstrated, and the reason
-this paragraph is here rather than a third heading with plausible figures
-under it.
+### A capture, which needs no beamline
 
-### An engine nobody captured
-
-Four processes, and every one of them real:
+The committed recording is seven scenarios somebody ran by hand at a
+beamline, with nothing dispatching them. No start document in it carries
+the keeper's ids, so this reporter has no record to attach any of it to:
 
 ```sh
-# 1. a keeper with no database
-APP_ENV=test uv run uvicorn keeper.api.main:app --port 8077   # in the keeper's checkout
+uv run python -m reporter --config reporter.toml --replay tests/documents.json
+```
 
-# 2. author the operations, as an operator would. the reporter cannot: it
-#    is not granted DefineOperation, and could not derive a schema from
-#    one invocation if it were. put the ids it returns in reporter.toml.
-curl -X POST http://127.0.0.1:8077/operations -H 'content-type: application/json' \
-  -d '{"name":"count","parameters_schema":{...}}'
+```
+  Skipped      29
+```
 
-# 3. a proxy for the engine to publish to
+That is the whole output, and it is worth seeing once. The keeper was
+never contacted: the run above used a base URL with nothing listening on
+it and still exited 0, because every document translated to `Ignored`
+before anything could be sent.
+
+Work nobody dispatched being quiet rather than loud is the behaviour most
+likely to look like a broken reporter, and it is the deliberate one. An
+alert here would fire on every document of every scan run by hand at the
+beamline, which teaches whoever is watching to stop reading the output,
+and the `Held` channel rests on that not happening.
+
+A publisher this cannot decode exits 2 rather than skipping the frame,
+and so does a configuration that will not load. Both refuse before
+anything is sent.
+
+### A conducted scan, which has not happened
+
+There is no transcript of a run that records something, because that run
+needs four things at once: a keeper holding a dispatched execution, a
+conductor claiming and driving it, an engine that conductor drives, and a
+proxy between that engine and this. `conductor.adapters.bluesky_engine`
+writes `keeper_execution_id` and `keeper_step_id` into the start document
+of every run it opens under a dispatch, and this reporter reads them back,
+and each side pins the two literals in a test naming the other. Both
+halves are built and tested. They have not been run against one engine at
+the same time, which is the row [What is missing](#what-is-missing)
+carries.
+
+What can be stated without that sitting is the wiring, which is checked
+against real captured output rather than imagined:
+
+```sh
+# a proxy for the engine to publish to
 python -c "from bluesky.callbacks.zmq import Proxy; Proxy(5567, 5568).start()"
 
-# 4. the reporter, before the engine, because a publisher drops what it
-#    sends while nothing is listening
-uv run python -m reporter \
-  --config reporter.toml --subscribe tcp://127.0.0.1:5568
+# the reporter, before the engine, because a publisher drops what it
+# sends while nothing is listening
+uv run python -m reporter --config reporter.toml --subscribe tcp://127.0.0.1:5568
 ```
 
 Then, in an engine wired to that proxy:
@@ -155,51 +180,16 @@ Then, in an engine wired to that proxy:
 ```python
 import msgpack
 from bluesky.callbacks.zmq import Publisher
-from bluesky.plans import count
-from ophyd.sim import det
 
 RE.subscribe(Publisher("127.0.0.1:5567", serializer=msgpack.dumps))
-RE(count([det], num=3))
 ```
 
-Stop the reporter, and the six documents that scan emitted come out as:
-
-```
-   stopping, and finishing what is already queued
-     Moved        1        the stop document
-     Recorded     1        the start document
-     Skipped      4        a descriptor and three readings
-```
-
-and `GET /runs` holds a Completed run carrying the engine's own uid. No
-capture file was involved at any point.
+The serializer is not optional. A publisher uses `pickle` unless told
+otherwise, and a subscriber that went along with that would run whatever
+code reached the port.
 
 Stopping is SIGTERM as well as Ctrl-C, and both drain what the relay is
 still holding before the process goes.
-
-### A capture, which needs no beamline
-
-The same command with `--replay tests/documents.json` runs the seven
-captured scenarios:
-
-```
-   Moved        12
-   Recorded      7
-   Skipped      10
-```
-
-Run it a second time and it prints this instead, with the keeper still holding
-seven runs rather than fourteen:
-
-```
-   Recorded      7      the idempotency key returned the first run's id
-   Skipped      10
-   Unchanged    12      the transitions had already happened
-```
-
-Which is the redelivery gap closed, demonstrated rather than argued. A
-wrong operation id in the config exits 2 before anything is sent, and so does a
-publisher this cannot decode.
 
 ## Related projects
 

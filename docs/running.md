@@ -124,17 +124,10 @@ nothing.
 
 ## Watching it work
 
-Stopping the process prints a tally of what it did. Against a real engine
-running one three-point count:
-
-```
-   Moved        1        the ending
-   Recorded     1        the opening
-   Skipped      4        a descriptor and three readings
-```
-
-Stopping drains whatever the queue is still holding before the process goes,
-whether that is a polite stop or an interrupt.
+Stopping the process prints a tally of what it did, counted by outcome:
+`Relayed`, `Kept`, `Unchanged`, `Skipped` and `Held`. Stopping drains
+whatever the queue is still holding before the process goes, whether that is
+a polite stop or an interrupt.
 
 Replaying the captured recording needs no beamline at all:
 
@@ -142,9 +135,20 @@ Replaying the captured recording needs no beamline at all:
 uv run python -m reporter --config reporter.toml --replay tests/documents.json
 ```
 
-Run it a second time and the tally changes while the record still holds seven
-runs rather than fourteen, because the keys sent with each write returned the
-first run's id. That is redelivery being safe, demonstrated rather than argued.
+```
+  Skipped      29
+```
+
+Every document in that recording was a scan somebody ran by hand, so none of
+them carries the ids a dispatch writes and there is no record to attach any
+of it to. The keeper is not contacted at all, which is why the command above
+exits 0 even with nothing listening at the configured address. A tally of
+nothing but `Skipped` against a live stream means the same thing: whatever is
+publishing was not dispatched by the keeper.
+
+`Held` is the line worth watching. It is printed as it happens rather than at
+the end, because a process that reports it on shutdown reports it to nobody,
+and it is the only outcome that makes the exit status non-zero.
 
 ## Running the tests
 

@@ -46,9 +46,8 @@ from collections.abc import Callable, Mapping, Sequence
 from time import sleep
 from typing import Any, Final
 
-from reporter.client import RequestRefusedError
 from reporter.outcomes import Held, Outcome
-from reporter.stores import StoreRefusedError
+from reporter.seams import UnavailableError
 
 DEFAULT_CAPACITY: Final = 1000
 """How many deliveries may wait before `submit` starts refusing.
@@ -62,8 +61,9 @@ whatever a real stream's burst rate says.
 DEFAULT_RETRY_DELAYS: Final[tuple[float, ...]] = (0.5, 2.0, 5.0, 15.0)
 """How long to wait between attempts, and how many attempts there are.
 
-Only failures worth retrying get here: a 429 or a 5xx from the keeper or from a
-store, or a request that never arrived. Everything else is already an
+Only failures worth retrying get here, and they arrive as one class:
+whatever is behind the handle raises `UnavailableError` when nothing answered
+and asking again might get an answer. Everything else is already an
 outcome by the time the worker sees it.
 
 Bounded rather than forever, because a worker retrying one delivery
@@ -79,10 +79,15 @@ _STOP: Final = object()
 Handle = Callable[[str, Mapping[str, Any]], Outcome]
 """What the worker calls, once per delivery.
 
-An outcome means the delivery is finished with. Raising means the
-opposite, and only a refusal from the keeper, a refusal from a store, or a
-request that did not arrive are retried, which is the contract
+An outcome means the delivery is finished with, and `UnavailableError` means
+the opposite. That is the whole contract, and it is the contract
 `Session.act` is written to.
+
+It used to be three classes, two of them named for a transport and one
+of them `OSError`, and a seam whose library raised something else had
+its failures escape into a thread with no handler for them. A worker
+that dies looks exactly like a beamline that is not running, which is
+the shape of failure worth designing out rather than catching wider.
 """
 
 
@@ -166,10 +171,8 @@ class Relay:
         for delay in (*self._retry_delays, None):
             try:
                 return self._handle(name, payload)
-            except (RequestRefusedError, StoreRefusedError) as refusal:
-                last = str(refusal)
-            except OSError as failure:
-                last = f"the request did not arrive: {failure}"
+            except UnavailableError as unavailable:
+                last = str(unavailable)
             if delay is None:
                 break
             sleep(delay)

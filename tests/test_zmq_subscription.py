@@ -22,7 +22,9 @@ import msgpack
 import pytest
 import zmq
 
-from reporter.sources import DecodeError, Delivery, decode, from_capture, from_subscription
+from reporter.adapters.capture_replay import from_capture
+from reporter.adapters.zmq_subscription import DecodeError, decode, from_subscription
+from reporter.seams import Delivery
 
 CAPTURED = Path(__file__).parent / "documents.json"
 
@@ -102,7 +104,7 @@ def test_a_payload_that_is_not_a_document_is_refused() -> None:
     and anything else is a publisher this cannot read."""
     frame = b" ".join([b"", b"start", msgpack.dumps([1, 2, 3])])
 
-    with pytest.raises(DecodeError, match="rather than a document"):
+    with pytest.raises(DecodeError, match="rather than a mapping"):
         decode(frame)
 
 

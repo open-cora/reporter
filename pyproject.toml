@@ -7,21 +7,33 @@ requires-python = ">=3.13"
 authors = [{ name = "Doga Gursoy" }]
 license = { text = "Apache-2.0" }
 
-# Three, and none of them is an engine. Every module below `__main__`
-# takes an HTTP client shaped like the two verbs it uses, so the library is
-# a choice a deployment makes rather than one this package embeds.
-#
+# The core has none, and the absence is the design rather than an early
+# state. Everything above `reporter/adapters/` takes a seam shaped like the
+# verbs it uses, so which engine publishes, which store keeps the data and
+# how the keeper is reached are choices a deployment makes at its
+# entrypoint.
+dependencies = []
+
+# An adapter's library is an extra for the same reason. Installing this
+# package to write a reporter for a second engine should not drag in a 0MQ
+# socket, and `reporter.adapters.zmq_subscription` is the only module that
+# imports either name below.
+[project.optional-dependencies]
 # The subscription reads a published document stream off a 0MQ socket, and
 # that needs the socket and the encoding and nothing else: the frame is a
 # prefix, a name and a msgpack payload separated by spaces. Reading it
 # through the engine's own library would buy that split and drag in the
 # engine, numpy included, which is a strange dependency for a package whose
-# claim is that it is not the engine. See `sources.py`.
-dependencies = [
-    "httpx>=0.28,<1",
+# claim is that it is not the engine.
+subscribe = [
     "pyzmq>=27,<28",
     "msgpack>=1.1,<2",
 ]
+# Running this as a process, rather than importing it as a library. Only
+# `__main__` and the two HTTP adapters need it, and each of those writes out
+# the shape of a client and takes one, so acting on an intent costs no HTTP
+# library at all.
+service = ["httpx>=0.28,<1"]
 
 # Pinned to the same ranges as apps/keeper. Two projects linting under two ruff
 # versions is a drift source with no upside, and the pre-commit hook that
@@ -32,6 +44,13 @@ dev = [
     "ruff>=0.16.1,<0.17",
     "pyright>=1.1.411,<2",
     "pre-commit>=4.6.1,<5",
+    # Every adapter's library, because the suite checks the adapters too and
+    # `uv sync` does not install extras. The same arrangement apps/conductor
+    # uses for the two Channel Access libraries, for the same reason: an
+    # adapter that no test could import would be an adapter nothing checks.
+    "httpx>=0.28,<1",
+    "pyzmq>=27,<28",
+    "msgpack>=1.1,<2",
 ]
 
 [build-system]

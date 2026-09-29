@@ -9,6 +9,7 @@ from collections.abc import Iterator
 from gc import collect
 from pathlib import Path
 from signal import SIGTERM, getsignal, signal
+from typing import Any
 from uuid import UUID
 from weakref import ref
 
@@ -17,20 +18,21 @@ import pytest
 
 from reporter.__main__ import (
     Tally,
+    dataset_leg,
     drive,
     main,
     stop_on_termination,
-    store_lookup,
     store_that_does_not_answer,
 )
-from reporter.client import KeeperClient
+from reporter.adapters.bluesky_documents import documents_into
+from reporter.adapters.keeper_http import HttpReporting
+from reporter.adapters.store_http import HttpLocating
+from reporter.adapters.zmq_subscription import DecodeError
 from reporter.config import ReporterConfig, from_mapping
 from reporter.outcomes import Held, Outcome, Relayed, Skipped, Unchanged
 from reporter.relay import Relay
+from reporter.seams import Delivery
 from reporter.session import Session
-from reporter.sources import DecodeError, Delivery
-from reporter.stores import HttpStoreLookup
-from reporter.wire import documents_into
 from tests._fakes import Answer, Recorder, Routed
 
 AN_EXECUTION = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
@@ -179,7 +181,7 @@ def an_idle_relay() -> Relay:
     than about what happens to the documents in it.
     """
     config = a_config()
-    handle = documents_into(Session(KeeperClient(Routed(), config), config))
+    handle = documents_into(Session(HttpReporting(Routed(), config.base_url, config.token)))
     return Relay(handle, lambda _: None)
 
 
@@ -217,30 +219,33 @@ def a_store_config(**overrides: str) -> ReporterConfig:
     )
 
 
-def test_no_store_table_means_no_lookup_and_nothing_to_check() -> None:
+def test_no_store_table_means_neither_capability_and_nothing_to_check() -> None:
+    """Both halves go together, which is what makes the half-configured
+    pair unconstructable rather than something a session has to reject."""
     config = a_config()
 
-    assert store_lookup(Recorder([]), config) is None
+    assert dataset_leg(Recorder([]), config) == (None, None)
     assert store_that_does_not_answer(None, config) is None
 
 
-def test_a_configured_store_produces_a_lookup_over_the_shared_client() -> None:
-    lookup = store_lookup(Recorder([]), a_store_config())
+def test_a_configured_store_produces_both_capabilities_over_one_client() -> None:
+    filing, locating = dataset_leg(Recorder([]), a_store_config())
 
-    assert isinstance(lookup, HttpStoreLookup)
+    assert isinstance(locating, HttpLocating)
+    assert filing is not None
 
 
 def test_a_store_that_answers_leaves_nothing_to_report() -> None:
     """It is asked for a run that cannot exist, so an empty store passes."""
     config = a_store_config()
-    lookup = store_lookup(Recorder([Answer(404, text="not found")]), config)
+    _, lookup = dataset_leg(Recorder([Answer(404, text="not found")]), config)
 
     assert store_that_does_not_answer(lookup, config) is None
 
 
 def test_a_store_that_refuses_stops_the_run_and_names_the_store() -> None:
     config = a_store_config()
-    lookup = store_lookup(Recorder([Answer(403, text="not permitted")]), config)
+    _, lookup = dataset_leg(Recorder([Answer(403, text="not permitted")]), config)
 
     unreachable = store_that_does_not_answer(lookup, config)
 
@@ -257,8 +262,11 @@ def test_a_store_that_cannot_be_reached_at_all_stops_the_run() -> None:
         def get(self, url: str) -> Answer:
             raise httpx.ConnectError(f"nothing is listening on {url}")
 
+        def post(self, url: str, **_: Any) -> Answer:
+            raise AssertionError("the probe reads, it does not write")
+
     config = a_store_config()
-    lookup = store_lookup(Unreachable(), config)
+    _, lookup = dataset_leg(Unreachable(), config)
 
     unreachable = store_that_does_not_answer(lookup, config)
 

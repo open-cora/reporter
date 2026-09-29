@@ -6,10 +6,9 @@ every document, every state transition, every interruption.
 
 This script knows nothing about the reporter. That is what makes the
 capture worth having, because a fixture recorded by the thing under test
-would agree with it by construction. It began life as half of a throwaway
-spike and stayed when the spike went, for the same reason: the questions
-about the engine were answered by running it, and the answers are in the
-file this writes.
+would agree with it by construction. It began as throwaway tooling and
+stayed, for the same reason: the questions about the engine were answered
+by running it, and the answers are in the file this writes.
 
 It is not part of any test run and nothing imports it. The captures are
 committed, so this is only ever run deliberately, when a newer engine is
@@ -156,7 +155,7 @@ def _scenario_ending_from_pause(method: str, expected: str) -> dict[str, Any]:
     error: str | None = None
     try:
         leave()
-    except Exception as raised:  # noqa: BLE001 - a spike records, it does not judge
+    except Exception as raised:  # noqa: BLE001 - a collector records, it does not judge
         error = f"{type(raised).__name__}: {raised}"
     return {
         "expected_keeper_status": expected,
@@ -202,7 +201,7 @@ def scenario_real_plan() -> dict[str, Any]:
     in, and those take devices.
 
     Skipped rather than fatal when `ophyd` is absent, so the rest of the
-    spike still runs on the lighter dependency set.
+    collector still runs on the lighter dependency set.
     """
     try:
         from bluesky.plans import count

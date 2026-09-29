@@ -1,21 +1,15 @@
-"""Where documents come from.
+"""Delivering, from an engine publishing over 0MQ.
 
-A source yields `(document name, document)` pairs in the order an engine
-emitted them. `Session` and `Relay` take them one at a time and have no
-opinion about the origin, so everything engine-shaped about getting hold
-of a document stops here.
-
-There are two. `from_capture` reads a file, which is how this gets tested
-against a real keeper without a beamline. `from_subscription` reads a live
-engine publishing over 0MQ, which is the one that makes this a reporter
-rather than a replay tool.
-
-Both are iterators, and the only difference that matters to a caller is
-that the second one never ends.
+The source that makes this a reporter rather than a replay tool. It
+reads the socket and the encoding and nothing else, which is why the
+engine's own library is not a dependency: the frame is a prefix, a name
+and a msgpack payload separated by single spaces, and reading it through
+the engine would drag that engine in, numpy included, to a package whose
+claim is that it is not the engine.
 
 ## A third way in, which needs no code here
 
-An engine in the same process hands documents over directly, because
+An engine in the same process hands deliveries over directly, because
 `Relay.submit` already has the signature a subscription callback wants:
 
     RE.subscribe(relay.submit)
@@ -27,54 +21,37 @@ nothing to pull. See the README for the whole recipe.
 ## What is still undecided, and it is no longer liveness
 
 Durability. 0MQ publish and subscribe is fire and forget: a subscriber
-that is not running when a document goes out never learns it existed, and
-there is no offset to come back to. That is at-most-once, which is what
-`Relay` already says this reporter is, and closing it means a transport
-that keeps a log rather than anything in this module.
-
-So the subscription and the checkpoint turned out to be two decisions
-after all, and only the second one is still open.
+that is not running when a delivery goes out never learns it existed,
+and there is no offset to come back to. That is at-most-once, which is
+what `Relay` already says this reporter is, and closing it means a
+transport that keeps a log rather than anything in this module.
 """
 
-import json
-from collections.abc import Generator, Iterator
+from __future__ import annotations
+
 from contextlib import closing
-from pathlib import Path
-from typing import Any, Final, cast
+from typing import TYPE_CHECKING, Any, Final, cast
 
 import msgpack
 import zmq
 
-Delivery = tuple[str, dict[str, Any]]
-"""One document, as the stream delivered it: its type name and its body."""
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from reporter.seams import Delivery
 
 DEFAULT_POLL_MILLISECONDS: Final = 500
-"""How long a subscription waits for a document before looking up.
+"""How long a subscription waits for a delivery before looking up.
 
 It is not a timeout and nothing is lost by it: 0MQ queues what arrives
-while nobody is asking. It is how often the loop reaches a point where an
-interrupt can land, which is the difference between a process that stops
-on Ctrl-C and one that has to be killed.
+while nobody is asking. It is how often the loop reaches a point where
+an interrupt can land, which is the difference between a process that
+stops on Ctrl-C and one that has to be killed.
 """
 
 
 class DecodeError(Exception):
-    """A frame arrived that this cannot read as a published document."""
-
-
-def from_capture(path: Path) -> Iterator[Delivery]:
-    """Every document in a capture, flattened into one stream.
-
-    The capture groups documents by scenario, because the spike that wrote
-    it was comparing scenarios. A reporter sees one stream, so they are
-    flattened into one here, which is also closer to what a subscription
-    delivers.
-    """
-    captured: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
-    for scenario in captured.values():
-        entries: list[dict[str, Any]] = scenario["documents"]
-        for entry in entries:
-            yield (str(entry["name"]), dict(entry["doc"]))
+    """A frame arrived that this cannot read as a published delivery."""
 
 
 def from_subscription(
@@ -83,7 +60,7 @@ def from_subscription(
     prefix: bytes = b"",
     poll_milliseconds: int = DEFAULT_POLL_MILLISECONDS,
 ) -> Generator[Delivery]:
-    """Documents from an engine publishing over 0MQ, until interrupted.
+    """Deliveries from an engine publishing over 0MQ, until interrupted.
 
     `address` is a 0MQ endpoint such as `tcp://127.0.0.1:5568`, and it is
     normally the outbound side of a proxy rather than an engine directly,
@@ -113,10 +90,10 @@ def from_subscription(
 
 
 def decode(frame: bytes) -> Delivery:
-    """One published frame, as a document.
+    """One published frame, as a delivery.
 
-    The frame is a prefix, a document name and a payload, separated by
-    single spaces, and the payload is the document:
+    The frame is a prefix, a name and a payload, separated by single
+    spaces, and the payload is the body:
 
         b"beam stop \\x82\\xa9run_start..."
           ^^^^ ^^^^  ^^^^^^^^^^^^^^^^^^^
@@ -141,7 +118,7 @@ def decode(frame: bytes) -> Delivery:
         ) from malformed
 
     try:
-        document = msgpack.unpackb(payload)
+        body = msgpack.unpackb(payload)
     except Exception as unreadable:
         raise DecodeError(
             f"The payload of a {name.decode(errors='replace')!r} frame is not msgpack. "
@@ -150,24 +127,17 @@ def decode(frame: bytes) -> Delivery:
             "with serializer=msgpack.dumps."
         ) from unreadable
 
-    if not isinstance(document, dict):
+    if not isinstance(body, dict):
         raise DecodeError(
-            f"A {name.decode(errors='replace')!r} frame carried {type(document).__name__} "
-            "rather than a document."
+            f"A {name.decode(errors='replace')!r} frame carried {type(body).__name__} "
+            "rather than a mapping."
         )
 
     # The keys are a claim rather than a check. msgpack hands back whatever
-    # was encoded, and walking every key of every document to prove they are
-    # strings would cost a scan per document to learn what the format
+    # was encoded, and walking every key of every payload to prove they are
+    # strings would cost a scan per delivery to learn what the format
     # already guarantees.
-    return (name.decode(), cast("dict[str, Any]", document))
+    return (name.decode(), cast("dict[str, Any]", body))
 
 
-__all__ = [
-    "DEFAULT_POLL_MILLISECONDS",
-    "DecodeError",
-    "Delivery",
-    "decode",
-    "from_capture",
-    "from_subscription",
-]
+__all__ = ["DEFAULT_POLL_MILLISECONDS", "DecodeError", "decode", "from_subscription"]

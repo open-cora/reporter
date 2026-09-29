@@ -19,7 +19,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from reporter.stores import Location
+from reporter.adapters.store_http import Location
 
 
 @dataclass(frozen=True)
@@ -76,7 +76,7 @@ class Recorder:
 class Routed:
     """Answers by which call was made, not by how many have been.
 
-    The two slots are the two calls `KeeperClient` makes once a store is
+    The two slots are the two calls this reporter makes once a store is
     configured. Each holds a list consumed in order and reused once
     exhausted, so a scenario of any length needs one entry, and a test
     wanting the second report refused supplies two.
@@ -132,21 +132,27 @@ class Routed:
 class Store:
     """A store that holds whatever the test put in it.
 
-    Keyed by the engine's run id, which is what a lookup is given. A uid
-    with no entry answers `None`, the way a real store answers for a run
-    it was never handed, and `asked` is there so a test can show the leg
-    did not run rather than inferring it from the absence of a request.
+    Keyed by the engine's run id, which is what a lookup is given. A
+    reference with no entry answers `None`, the way a real store answers
+    for a run it was never handed, and `asked` is there so a test can show
+    the leg did not run rather than inferring it from the absence of a
+    request.
+
+    The parameter is spelled the way `Locating` spells it. A structural
+    protocol compares parameter names, so a fake that called it something
+    else would not satisfy the seam it stands in for, and the suite would
+    be checking a shape nothing implements.
     """
 
     locations: dict[str, Location] = field(default_factory=dict["str", "Location"])
     refusal: Exception | None = None
     asked: list[str] = field(default_factory=list["str"])
 
-    def locate(self, run_uid: str) -> Location | None:
-        self.asked.append(run_uid)
+    def locate(self, run_reference: str) -> Location | None:
+        self.asked.append(run_reference)
         if self.refusal is not None:
             raise self.refusal
-        return self.locations.get(run_uid)
+        return self.locations.get(run_reference)
 
 
 __all__ = ["Answer", "Recorder", "Routed", "Sent", "Store"]

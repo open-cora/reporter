@@ -11,13 +11,12 @@ from uuid import UUID
 
 import pytest
 
-from reporter.client import KeeperClient
+from reporter.adapters.bluesky_documents import KEEPER_METADATA_KEYS, documents_into
+from reporter.adapters.keeper_http import HttpReporting
 from reporter.config import from_mapping
 from reporter.outcomes import Held, Outcome, Relayed, Skipped
 from reporter.relay import DEFAULT_RETRY_DELAYS, Relay
 from reporter.session import Session
-from reporter.translate import KEEPER_METADATA_KEYS
-from reporter.wire import documents_into
 from tests._fakes import Answer, Routed
 
 AN_EXECUTION = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
@@ -45,7 +44,7 @@ def relay_over(
 ) -> tuple[Relay, list[Outcome], Routed]:
     """A relay whose retries take no time, so the tests do not either."""
     routed = Routed(report=list(answers) or [Answer(204)])
-    handle = documents_into(Session(KeeperClient(routed, CONFIG), CONFIG))
+    handle = documents_into(Session(HttpReporting(routed, CONFIG.base_url, CONFIG.token)))
     seen: list[Outcome] = []
     return (
         Relay(handle, seen.append, capacity=capacity, retry_delays=retry_delays),
@@ -80,7 +79,7 @@ def test_submitting_does_not_wait_for_the_previous_delivery() -> None:
         release.wait(5)
 
     routed = Routed(report=[Answer(204)])
-    handle = documents_into(Session(KeeperClient(routed, CONFIG), CONFIG))
+    handle = documents_into(Session(HttpReporting(routed, CONFIG.base_url, CONFIG.token)))
     relay = Relay(handle, block, retry_delays=())
     relay.start()
     relay.submit("start", A_START)
@@ -175,7 +174,7 @@ def test_a_request_that_never_arrived_is_retried_like_a_refusal() -> None:
                 raise OSError("connection reset")
             return Answer(204)
 
-    session = Session(KeeperClient(Failing(), CONFIG), CONFIG)
+    session = Session(HttpReporting(Failing(), CONFIG.base_url, CONFIG.token))
     seen: list[Outcome] = []
     relay = Relay(documents_into(session), seen.append, retry_delays=(0.0,))
     relay.start()

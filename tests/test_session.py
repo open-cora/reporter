@@ -2,7 +2,7 @@
 
 The closest thing to an end-to-end run this project has that needs no
 engine. Each test feeds documents a real engine emitted through a real
-`Translator` into a real `Session` over a real `KeeperClient`, and asserts
+`Translator` into a real `Session` over the real keeper adapters, and asserts
 the outcomes. Only the socket is fake.
 
 The two are composed by `documents_into`, which is the composition the
@@ -27,15 +27,14 @@ from uuid import UUID
 
 import pytest
 
-from reporter.client import KeeperClient, RequestRefusedError
+from reporter.adapters.bluesky_documents import KEEPER_METADATA_KEYS, documents_into
+from reporter.adapters.keeper_http import HttpFiling, HttpReporting
 from reporter.config import from_mapping
 from reporter.intents import RegisterDataset, Report
 from reporter.outcomes import Held, Kept, Outcome, Relayed, Skipped, Unchanged
 from reporter.relay import Handle
-from reporter.session import ENDINGS, Session, is_worth_retrying
-from reporter.stores import Location, StoreRefusedError
-from reporter.translate import KEEPER_METADATA_KEYS
-from reporter.wire import documents_into
+from reporter.seams import Location, RefusedError, UnavailableError
+from reporter.session import ENDINGS, Session
 from tests._fakes import Answer, Routed, Store
 
 CAPTURED = Path(__file__).parent / "documents.json"
@@ -79,7 +78,7 @@ def session_over(**answers: list[Answer]) -> tuple[Handle, Routed]:
     about.
     """
     routed = Routed(report=answers.get("report") or [Answer(204)])
-    return documents_into(Session(KeeperClient(routed, CONFIG), CONFIG)), routed
+    return documents_into(Session(HttpReporting(routed, CONFIG.base_url, CONFIG.token))), routed
 
 
 def drive(scenario: str, handle: Handle) -> list[Outcome]:
@@ -234,25 +233,18 @@ def test_a_step_keeper_does_not_hold_is_held_and_names_the_path() -> None:
     assert str(A_STEP) in outcome.reason
 
 
-def test_a_refusal_that_might_pass_later_raises_so_the_caller_waits() -> None:
-    """The distinction a checkpoint turns on. An outcome says the document
-    is finished with; an exception says ask again."""
+def test_a_failure_that_might_pass_later_raises_so_the_caller_waits() -> None:
+    """The distinction a checkpoint turns on. An outcome says the delivery
+    is finished with; `UnavailableError` says ask again.
+
+    This session knows nothing about which answers are worth waiting on.
+    The adapter decided that before raising, which is why the assertion
+    here is on a class rather than on a number.
+    """
     handle, _ = session_over(report=[Answer(503, text="unavailable")])
 
-    with pytest.raises(RequestRefusedError) as refusal:
+    with pytest.raises(UnavailableError):
         handle(*deliveries("completes")[0])
-
-    assert refusal.value.status == 503
-
-
-@pytest.mark.parametrize("status", [429, 500, 502, 503, 504])
-def test_a_status_worth_waiting_on_is_recognised(status: int) -> None:
-    assert is_worth_retrying(status)
-
-
-@pytest.mark.parametrize("status", [400, 403, 404, 409, 422])
-def test_a_status_that_will_not_change_is_not(status: int) -> None:
-    assert not is_worth_retrying(status)
 
 
 def test_an_unmappable_document_is_held_and_names_the_document() -> None:
@@ -311,7 +303,12 @@ def a_session_with_store(store: Store, **answers: list[Answer]) -> tuple[Session
         report=answers.get("report") or [Answer(204)],
         register=answers.get("register") or [Answer(201, {"dataset_id": str(A_DATASET)})],
     )
-    return Session(KeeperClient(routed, STORE_CONFIG), STORE_CONFIG, store), routed
+    reporting = HttpReporting(routed, STORE_CONFIG.base_url, STORE_CONFIG.token)
+    assert STORE_CONFIG.store is not None
+    filing = HttpFiling(
+        routed, STORE_CONFIG.base_url, STORE_CONFIG.token, STORE_CONFIG.store.external_ref_scheme
+    )
+    return Session(reporting, filing, store), routed
 
 
 def session_with_store(store: Store, **answers: list[Answer]) -> tuple[Handle, Routed]:
@@ -445,22 +442,27 @@ def test_a_run_the_store_holds_nothing_for_is_held_and_names_the_run() -> None:
 
 
 def test_a_store_refusing_for_good_is_held_rather_than_raised() -> None:
-    store = Store(refusal=StoreRefusedError(403, "not permitted", url="https://store.example/x"))
+    store = Store(refusal=RefusedError("GET https://store.example/x: 403 not permitted"))
     handle, _ = session_with_store(store)
 
     outcomes = drive("completes", handle)
 
     ending = outcomes[-1]
     assert isinstance(ending, Held)
-    assert "403" in ending.reason
+    assert "not permitted" in ending.reason
 
 
-def test_a_store_having_a_bad_moment_raises_so_the_caller_waits() -> None:
-    """The relay retries this. An outcome would advance past it instead."""
-    store = Store(refusal=StoreRefusedError(503, "later", url="https://store.example/x"))
+def test_a_store_being_unreachable_raises_so_the_caller_waits() -> None:
+    """The relay retries this. An outcome would advance past it instead.
+
+    Which answers are worth waiting on is settled inside the store's
+    adapter, so what reaches here is already one class or the other and
+    this session does no arithmetic to tell them apart.
+    """
+    store = Store(refusal=UnavailableError("GET https://store.example/x: 503 later"))
     handle, _ = session_with_store(store)
 
-    with pytest.raises(StoreRefusedError):
+    with pytest.raises(UnavailableError):
         drive("completes", handle)
 
 
@@ -504,11 +506,26 @@ def test_a_redelivered_ending_the_store_lost_reports_the_decline_it_got() -> Non
     assert isinstance(outcomes[-1], Held)
 
 
-def test_a_store_lookup_without_a_store_table_is_refused_at_construction() -> None:
-    """The two halves of the configuration cannot disagree, because one of
-    them carries the scheme the other's addresses belong to."""
-    with pytest.raises(ValueError, match="store"):
-        Session(KeeperClient(Routed(), CONFIG), CONFIG, Store())
+def test_a_session_that_can_locate_but_not_file_holds_what_it_finds() -> None:
+    """The pair that used to be refused at construction.
+
+    A lookup with nothing to file against was a `ValueError` here, because
+    the scheme a store's addresses belong to lived beside the store table
+    and a session holding one without the other could not finish the job.
+    Nothing rejects the pair now: `dataset_leg` returns both capabilities
+    or neither, so the combination is not built. What is asserted instead
+    is that a session given it anyway degrades into an alert rather than
+    into a crash or a silent drop.
+    """
+    store = Store(locations={uid_of("completes"): Location("raw/r1", AN_ENDING)})
+    routed = Routed(report=[Answer(204)])
+    session = Session(HttpReporting(routed, CONFIG.base_url, CONFIG.token), None, store)
+
+    outcomes = drive("completes", documents_into(session))
+
+    held = [outcome for outcome in outcomes if isinstance(outcome, Held)]
+    assert len(held) == 1
+    assert "nothing to file it with" in held[0].reason
 
 
 def a_found_dataset(step_id: UUID = A_STEP) -> RegisterDataset:

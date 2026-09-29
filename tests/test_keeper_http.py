@@ -24,9 +24,10 @@ from uuid import UUID
 
 import pytest
 
-from reporter.client import KeeperClient, RequestRefusedError, dataset_key_for
+from reporter.adapters.keeper_http import HttpFiling, HttpReporting, dataset_key_for
 from reporter.config import from_mapping
 from reporter.intents import RegisterDataset, Report, ReportStepRun
+from reporter.seams import DisagreedError, RefusedError, UnavailableError
 from tests._fakes import Answer, Recorder
 
 AN_EXECUTION = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
@@ -39,9 +40,14 @@ CONFIG = from_mapping({"keeper": {"base_url": "https://keeper.example", "token":
 RUN_PATH = f"/executions/{AN_EXECUTION}/steps/{A_STEP}/run"
 
 
-def client_answering(*answers: Answer) -> tuple[KeeperClient, Recorder]:
+def reporting_answering(*answers: Answer) -> tuple[HttpReporting, Recorder]:
     recorder = Recorder(answers=list(answers))
-    return KeeperClient(recorder, CONFIG), recorder
+    return HttpReporting(recorder, CONFIG.base_url, CONFIG.token), recorder
+
+
+def filing_answering(*answers: Answer) -> tuple[HttpFiling, Recorder]:
+    recorder = Recorder(answers=list(answers))
+    return HttpFiling(recorder, CONFIG.base_url, CONFIG.token, A_SCHEME), recorder
 
 
 def a_report(reported: Report = "Started", **overrides: Any) -> ReportStepRun:
@@ -69,9 +75,9 @@ def a_dataset(at: datetime | None = None) -> RegisterDataset:
 def test_a_report_posts_to_the_step_the_intent_names() -> None:
     """The execution and the step are both in the path, which is what makes
     a step addressable at all: it has no stream of its own."""
-    client, recorder = client_answering(Answer(204))
+    reporting, recorder = reporting_answering(Answer(204))
 
-    client.report_step_run(a_report())
+    reporting.record(a_report())
 
     sent = recorder.sent[0]
     assert sent.method == "POST"
@@ -82,10 +88,10 @@ def test_a_report_puts_the_verb_in_the_body_rather_than_the_path() -> None:
     """One endpoint for six reports, which is the keeper's choice made for this
     caller: a reporter turns each document into whichever of six it is, so
     a path per verb would make it build a URL by lookup."""
-    client, recorder = client_answering(Answer(204), Answer(204))
+    reporting, recorder = reporting_answering(Answer(204), Answer(204))
 
-    client.report_step_run(a_report("Started"))
-    client.report_step_run(a_report("Completed", origin="stop"))
+    reporting.record(a_report("Started"))
+    reporting.record(a_report("Completed", origin="stop"))
 
     assert [(s.json or {})["reported"] for s in recorder.sent] == ["Started", "Completed"]
     assert {s.url for s in recorder.sent} == {f"https://keeper.example{RUN_PATH}"}
@@ -95,9 +101,9 @@ def test_a_report_carries_the_engines_own_id_on_every_one_of_them() -> None:
     """The keeper records it on a start and ignores it elsewhere, which is stated
     on that route. Sending it always is what lets the store be asked about
     the same run on the delivery that ends it."""
-    client, recorder = client_answering(Answer(204))
+    reporting, recorder = reporting_answering(Answer(204))
 
-    client.report_step_run(a_report("Paused", origin="event"))
+    reporting.record(a_report("Paused", origin="event"))
 
     assert (recorder.sent[0].json or {})["engine_reference"] == A_UID
 
@@ -105,23 +111,27 @@ def test_a_report_carries_the_engines_own_id_on_every_one_of_them() -> None:
 def test_a_report_with_no_time_sends_a_null_rather_than_dropping_the_field() -> None:
     """Sending null says the delivery carried no time, and the keeper stamps the
     moment it was told. Omitting the field says the same thing less clearly."""
-    client, recorder = client_answering(Answer(204))
-    client.report_step_run(a_report(occurred_at=None))
+    reporting, recorder = reporting_answering(Answer(204))
+    reporting.record(a_report(occurred_at=None))
 
     assert (recorder.sent[0].json or {})["occurred_at"] is None
 
 
-def test_a_report_that_does_not_follow_raises_a_409_rather_than_passing() -> None:
-    """The refusal a redelivered stop produces. It is expected and it is
-    still an exception, because only the caller knows whether it expected
-    one."""
-    client, _ = client_answering(Answer(409, text="has Completed from its engine"))
+def test_a_report_that_does_not_follow_raises_disagreed_rather_than_passing() -> None:
+    """The refusal a redelivered stop produces, and the only seam that
+    produces it. It is expected and it is still an exception, because only
+    the caller knows whether it expected one.
 
-    with pytest.raises(RequestRefusedError) as refusal:
-        client.report_step_run(a_report("Completed", origin="stop"))
+    `detail` is what the keeper said and nothing this adapter added,
+    because the session copies it onto an `Unchanged` and a route
+    prepended here would end up in the record.
+    """
+    reporting, _ = reporting_answering(Answer(409, text="has Completed from its engine"))
 
-    assert refusal.value.status == 409
-    assert refusal.value.path == RUN_PATH
+    with pytest.raises(DisagreedError) as disagreement:
+        reporting.record(a_report("Completed", origin="stop"))
+
+    assert disagreement.value.detail == "has Completed from its engine"
 
 
 def test_a_report_sends_no_idempotency_key() -> None:
@@ -129,21 +139,54 @@ def test_a_report_sends_no_idempotency_key() -> None:
     409 naming the engine state it holds, which distinguishes a redelivery
     from a reporter that has lost track of a run. A cached success would
     not."""
-    client, recorder = client_answering(Answer(204))
-    client.report_step_run(a_report("Paused", origin="event"))
+    reporting, recorder = reporting_answering(Answer(204))
+    reporting.record(a_report("Paused", origin="event"))
 
     assert "Idempotency-Key" not in (recorder.sent[0].headers or {})
 
 
-@pytest.mark.parametrize("status", [400, 403, 404, 500])
-def test_a_report_refuses_on_anything_but_a_204(status: int) -> None:
-    client, _ = client_answering(Answer(status, text="no"))
+@pytest.mark.parametrize("status", [400, 403, 404])
+def test_a_report_answered_with_a_settled_no_is_refused(status: int) -> None:
+    reporting, _ = reporting_answering(Answer(status, text="no"))
 
-    with pytest.raises(RequestRefusedError) as refusal:
-        client.report_step_run(a_report())
+    with pytest.raises(RefusedError) as refusal:
+        reporting.record(a_report())
 
-    assert refusal.value.status == status
-    assert refusal.value.path == RUN_PATH
+    assert str(status) in str(refusal.value)
+    assert RUN_PATH in str(refusal.value)
+
+
+@pytest.mark.parametrize("status", [429, 500, 502, 503, 504])
+def test_a_report_answered_with_a_passing_no_is_unavailable(status: int) -> None:
+    """The distinction the core no longer makes for itself.
+
+    Whether waiting could change an answer is knowledge about HTTP, so it
+    is settled here and travels upward as a class. A 500 used to arrive
+    above as the same exception a 400 did, with a number on it that two
+    separate callers then had to interpret the same way.
+    """
+    reporting, _ = reporting_answering(Answer(status, text="later"))
+
+    with pytest.raises(UnavailableError):
+        reporting.record(a_report())
+
+
+def test_a_request_that_never_arrives_is_unavailable_rather_than_escaping() -> None:
+    """A worker that dies looks like a beamline that is not running.
+
+    The relay retries one class and nothing else, so a transport failure
+    that travelled as its library's own exception would pass through
+    every handler above and kill the thread silently.
+    """
+
+    class Unreachable:
+        def post(self, url: str, **_: Any) -> Answer:
+            raise OSError("connection reset")
+
+    reporting = HttpReporting(Unreachable(), CONFIG.base_url, CONFIG.token)
+
+    with pytest.raises(UnavailableError, match="did not arrive"):
+        reporting.record(a_report())
 
 
 # Registering a dataset. The store half is `tests/test_stores.py`; these
@@ -155,9 +198,9 @@ A_SCHEME = "tiled-node-path"
 
 
 def test_register_dataset_posts_the_address_the_store_gave_and_returns_the_id() -> None:
-    client, recorder = client_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
+    filing, recorder = filing_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
 
-    registered = client.register_dataset(a_dataset(AN_INSTANT), scheme=A_SCHEME)
+    registered = filing.record(a_dataset(AN_INSTANT))
 
     assert registered == A_DATASET
     sent = recorder.sent[0]
@@ -175,18 +218,18 @@ def test_register_dataset_names_the_acquisition_and_not_the_traversal() -> None:
     """An execution may run several times and each writes its own data,
     which at a tomography beamline is the sample position. A body naming
     only the execution would lose which."""
-    client, recorder = client_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
+    filing, recorder = filing_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
 
-    client.register_dataset(a_dataset(), scheme=A_SCHEME)
+    filing.record(a_dataset())
 
     body = recorder.sent[0].json or {}
     assert body["step_id"] == str(A_STEP)
 
 
 def test_register_dataset_sends_a_key_derived_from_the_address_not_the_step() -> None:
-    client, recorder = client_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
+    filing, recorder = filing_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
 
-    client.register_dataset(a_dataset(), scheme=A_SCHEME)
+    filing.record(a_dataset())
 
     sent = recorder.sent[0]
     assert sent.headers is not None
@@ -212,24 +255,32 @@ def test_the_dataset_key_is_the_same_on_every_recomputation() -> None:
 
 
 def test_register_dataset_sends_no_moment_when_the_store_held_no_ending() -> None:
-    client, recorder = client_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
+    filing, recorder = filing_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
 
-    client.register_dataset(a_dataset(), scheme=A_SCHEME)
+    filing.record(a_dataset())
 
     sent = recorder.sent[0]
     assert sent.json is not None
     assert sent.json["occurred_at"] is None
 
 
-@pytest.mark.parametrize("status", [400, 403, 404, 422, 500])
-def test_register_dataset_refuses_on_anything_but_a_201(status: int) -> None:
-    client, _ = client_answering(Answer(status, text="no"))
+@pytest.mark.parametrize("status", [400, 403, 404, 422])
+def test_filing_answered_with_a_settled_no_is_refused(status: int) -> None:
+    filing, _ = filing_answering(Answer(status, text="no"))
 
-    with pytest.raises(RequestRefusedError) as refusal:
-        client.register_dataset(a_dataset(), scheme=A_SCHEME)
+    with pytest.raises(RefusedError) as refusal:
+        filing.record(a_dataset())
 
-    assert refusal.value.status == status
-    assert refusal.value.path == "/datasets"
+    assert str(status) in str(refusal.value)
+    assert "/datasets" in str(refusal.value)
+
+
+@pytest.mark.parametrize("status", [429, 500, 503])
+def test_filing_answered_with_a_passing_no_is_unavailable(status: int) -> None:
+    filing, _ = filing_answering(Answer(status, text="later"))
+
+    with pytest.raises(UnavailableError):
+        filing.record(a_dataset())
 
 
 @pytest.mark.parametrize(
@@ -247,10 +298,11 @@ def test_every_write_carries_the_bearer_token(path: str, success: Answer) -> Non
     the second case raise on the first case's answer, and the assertion
     underneath never ran.
     """
-    client, recorder = client_answering(success)
     if path == "run":
-        client.report_step_run(a_report())
+        reporting, recorder = reporting_answering(success)
+        reporting.record(a_report())
     else:
-        client.register_dataset(a_dataset(), scheme=A_SCHEME)
+        filing, recorder = filing_answering(success)
+        filing.record(a_dataset())
 
     assert (recorder.sent[0].headers or {})["Authorization"] == "Bearer a-token"

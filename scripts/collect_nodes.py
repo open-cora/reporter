@@ -50,8 +50,8 @@ REPORTER = Path(__file__).resolve().parents[1]
 OUT = REPORTER / "tests" / "nodes.json"
 """Where the capture is written.
 
-Under the reporter's tests, where the sibling spike's capture also ended
-up, because the dataset leg now asserts against it. It lived next to this
+Under the reporter's tests, where the sibling collector's capture also
+ended up, because the dataset leg now asserts against it. It lived next to this
 script while nothing read it, on the rule that a fixture nothing reads is
 a file.
 
@@ -205,7 +205,7 @@ def _look_for(root: Container, uid: str) -> dict[str, Any]:
     """What a reporter asking the store for one run would get back, now."""
     try:
         node = root[uid]
-    except Exception as refusal:  # noqa: BLE001 - a spike records, it does not judge
+    except Exception as refusal:  # noqa: BLE001 - a collector records, it does not judge
         return {"present": False, "refusal": type(refusal).__name__}
     metadata = node.metadata
     return {
@@ -344,7 +344,7 @@ def _raw_data_sources(root: Container, path: str) -> Any:
     relative = path.split("/", 1)[1] if "/" in path else path
     try:
         return root[relative].item["attributes"].get("data_sources")
-    except Exception as refusal:  # noqa: BLE001 - a spike records, it does not judge
+    except Exception as refusal:  # noqa: BLE001 - a collector records, it does not judge
         return f"unreachable: {type(refusal).__name__}"
 
 

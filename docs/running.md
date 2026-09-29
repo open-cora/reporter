@@ -24,20 +24,40 @@ subscription wants, so there is nothing to build:
 ```python
 from pathlib import Path
 import httpx
-from reporter import KeeperClient, Relay, Session, documents_into, load
+from reporter import Relay, Session, load
+from reporter.adapters.bluesky_documents import documents_into
+from reporter.adapters.keeper_http import HttpReporting
 
 config = load(Path("reporter.toml"))
-session = Session(KeeperClient(httpx.Client(timeout=10), config), config)
+http = httpx.Client(timeout=10)
+session = Session(HttpReporting(http, config.base_url, config.token))
 relay = Relay(documents_into(session), print)
 relay.start()
 
 RE.subscribe(relay.submit)
 ```
 
-That is the whole integration. One line names an engine: it puts that engine's
-translator in front of a session that knows nothing but the record. Submitting
-queues and returns in microseconds and a worker thread does the talking, so a
-scan never waits on the network even though this is running inside it.
+That is the whole integration. Two lines name something outside: one picks the
+engine whose documents these are, the other picks how the record is reached.
+Everything between them is a session that knows neither. Submitting queues and
+returns in microseconds and a worker thread does the talking, so a scan never
+waits on the network even though this is running inside it.
+
+The session above records runs and says nothing about data, because it was
+given no `Filing` and no `Locating`. Adding the dataset leg means building
+both from the `[store]` table and passing them, which is what `__main__` does:
+
+```python
+from reporter.adapters.keeper_http import HttpFiling
+from reporter.adapters.store_http import HttpLocating
+
+store = config.store
+session = Session(
+    HttpReporting(http, config.base_url, config.token),
+    HttpFiling(http, config.base_url, config.token, store.external_ref_scheme),
+    HttpLocating(http, store.base_url, store.root),
+)
+```
 
 **Start the reporter before the engine, either way.** A publisher drops what it
 sends while nothing is listening.
@@ -104,17 +124,10 @@ nothing.
 
 ## Watching it work
 
-Stopping the process prints a tally of what it did. Against a real engine
-running one three-point count:
-
-```
-   Moved        1        the ending
-   Recorded     1        the opening
-   Skipped      4        a descriptor and three readings
-```
-
-Stopping drains whatever the queue is still holding before the process goes,
-whether that is a polite stop or an interrupt.
+Stopping the process prints a tally of what it did, counted by outcome:
+`Relayed`, `Kept`, `Unchanged`, `Skipped` and `Held`. Stopping drains
+whatever the queue is still holding before the process goes, whether that is
+a polite stop or an interrupt.
 
 Replaying the captured recording needs no beamline at all:
 
@@ -122,9 +135,20 @@ Replaying the captured recording needs no beamline at all:
 uv run python -m reporter --config reporter.toml --replay tests/documents.json
 ```
 
-Run it a second time and the tally changes while the record still holds seven
-runs rather than fourteen, because the keys sent with each write returned the
-first run's id. That is redelivery being safe, demonstrated rather than argued.
+```
+  Skipped      29
+```
+
+Every document in that recording was a scan somebody ran by hand, so none of
+them carries the ids a dispatch writes and there is no record to attach any
+of it to. The keeper is not contacted at all, which is why the command above
+exits 0 even with nothing listening at the configured address. A tally of
+nothing but `Skipped` against a live stream means the same thing: whatever is
+publishing was not dispatched by the keeper.
+
+`Held` is the line worth watching. It is printed as it happens rather than at
+the end, because a process that reports it on shutdown reports it to nobody,
+and it is the only outcome that makes the exit status non-zero.
 
 ## Running the tests
 

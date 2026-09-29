@@ -1,20 +1,33 @@
-"""One intent at a time, acted on against the keeper.
+"""One intent at a time, acted on against whatever was wired in.
 
 Where the two halves meet: something upstream says what happened, in the
-vocabulary of `intents`, and this sends it and decides what to do with a
-no.
+vocabulary of `intents`, and this acts on it and decides what to do with
+a no.
 
 ## Two bounded contexts, one session
 
-It reports into Execution, what an engine did to one step's run, and into
-Custody, where the data that step produced is being kept. The second is
-optional: no store lookup means no dataset leg and everything else
-unchanged.
+It reports into Execution, what an engine did to one step's run, and
+into Custody, where the data that step produced is being kept. The
+second is optional: no `Filing` and no `Locating` means no dataset leg
+and everything else unchanged.
 
 The two are in one session rather than two because they name the same
-step. A dataset cites the run that produced it, which is exactly
-the run the report is about, so the delivery that ends a run is
-the delivery that knows where to ask about its data.
+step. A dataset cites the run that produced it, which is exactly the run
+the report is about, so the delivery that ends a run is the delivery
+that knows where to ask about its data.
+
+## It is given capabilities, not a client and a configuration
+
+Three seams in, and which service answers them is a question this file
+cannot ask. It used to take one client object and the whole
+configuration, and that configuration was consulted at three separate
+places to work out whether the dataset leg was on. A session that cannot file is now a
+session that was not given `Filing`, so there is one answer and nothing
+to disagree with itself.
+
+It also removed a state that should never have been reachable. A store
+lookup with no store table was a constructor argument pair this had to
+reject at runtime, and the two are now built together or not at all.
 
 ## It remembers nothing
 
@@ -25,41 +38,27 @@ because whatever dispatched the work carried them into the engine's own
 metadata and the translator reads them back out, so there is nothing
 here to cache and nothing to recover.
 
-What was lost with them is written down in `translate`: the translator
-holds the reference from a start to a stop, and a restart mid-run cannot
-get it back, where the old lookup could. That is a gap in the layer that
-holds the state rather than one this module papers over.
-
 ## It does not know which engine it serves
 
 `act` takes an `Intent`, not a document. That boundary was found rather
-than designed: it took a document until a second engine turned up with no
-documents in it, publishing single values over a control system, and the
-only thing coupling this module to the first engine was the signature.
-
-Everything below the translator is the same for both, so the translator is
-the caller's to own. A reporter for another engine writes one and reuses
-this unchanged. A spike is where that came
-from.
+than designed: it took a document until a second engine turned up with
+no documents in it, publishing single values over a control system, and
+the only thing coupling this module to the first engine was the
+signature.
 
 ## Shaped for either subscription
 
 `act` takes one intent and returns. It does not own a loop, does not
 poll, and does not know whether it was called by a callback the engine
-invokes or by something pulling from a queue. That is deliberate: how this
-reporter subscribes is undecided, and the two shapes differ in who owns
-the loop rather than in what happens to a delivery.
+invokes or by something pulling from a queue.
 
 It also means the checkpoint belongs to the caller. An outcome is a
-delivery this reporter is finished with, so a caller may advance past it;
-an exception means the opposite. Nothing here writes a cursor, because
-where a cursor lives is the other half of the subscription decision.
+delivery this reporter is finished with, so a caller may advance past
+it; `UnavailableError` means the opposite.
 """
 
 from typing import Final
 
-from reporter.client import KeeperClient, RequestRefusedError
-from reporter.config import ReporterConfig
 from reporter.intents import (
     Ignored,
     Intent,
@@ -69,63 +68,36 @@ from reporter.intents import (
     Unmappable,
 )
 from reporter.outcomes import Held, Kept, Outcome, Relayed, Skipped, Unchanged
-from reporter.stores import StoreLookup, StoreRefusedError
+from reporter.seams import DisagreedError, Filing, Locating, RefusedError, Reporting
 
 ENDINGS: Final[frozenset[Report]] = frozenset({"Completed", "Aborted", "Failed"})
-"""The reports after which an engine has nothing further to say about a run.
+"""The three reports that mean a run is over and its data is worth asking about.
 
-Used to ask a store for the data rather than to refuse a report: the keeper
-decides what may follow what, and a reporter second-guessing it would
-withhold a report the domain would have accepted.
-
-Written out rather than derived from one engine's exit statuses, which is
-what it used to be. Which reports are terminal is the keeper's fact, and
-reading it off a translator made it look like the engine's.
+A store is asked once per run rather than once per delivery, and this is
+which delivery does the asking.
 """
-
-_CONFLICT: Final = 409
-_TOO_MANY: Final = 429
-
-
-def is_worth_retrying(status: int) -> bool:
-    """Whether sending the same request again could plausibly work.
-
-    A 5xx is the keeper or something in front of it having a bad moment, and a
-    429 is being asked to slow down; both change on their own. Every
-    other refusal is about the request, and the request will be identical
-    next time.
-
-    The split decides whether a delivery becomes an outcome the caller
-    can advance past, or an exception telling it not to.
-    """
-    return status >= 500 or status == _TOO_MANY
 
 
 class Session:
-    """Sends one stream's intents, and asks the store when there is one."""
+    """Sends one stream's intents, and asks a store when there is one."""
 
     def __init__(
         self,
-        client: KeeperClient,
-        config: ReporterConfig,
-        store: StoreLookup | None = None,
+        reporting: Reporting,
+        filing: Filing | None = None,
+        locating: Locating | None = None,
     ) -> None:
-        if store is not None and config.store is None:
-            raise ValueError(
-                "A store lookup needs a [store] table in the configuration, which is "
-                "where the scheme its addresses belong to is written down."
-            )
-        self._client = client
-        self._config = config
-        self._store = store
+        self._reporting = reporting
+        self._filing = filing
+        self._locating = locating
 
     def act(self, intent: Intent) -> Outcome:
         """Do whatever one intent asks for, and say what came of it.
 
-        Raises `RequestRefusedError` when the keeper's answer was worth
-        retrying, and the caller should not advance past the intent. Any
-        transport failure raises out of the HTTP client unchanged, for
-        the same reason.
+        Raises `UnavailableError` when nothing answered and asking again
+        might, in which case the caller should not advance past the
+        intent. Everything else is an outcome, and an outcome means this
+        delivery is finished with.
         """
         match intent:
             case Ignored(reason=reason):
@@ -141,11 +113,11 @@ class Session:
         """Send one engine report, and file what it produced if it ended one."""
         declined: str | None = None
         try:
-            self._client.report_step_run(intent)
-        except RequestRefusedError as refusal:
-            if refusal.status != _CONFLICT:
-                return self._held_or_raise(refusal, intent.origin)
-            declined = refusal.detail
+            self._reporting.record(intent)
+        except DisagreedError as disagreement:
+            declined = disagreement.detail
+        except RefusedError as refusal:
+            return Held(f"the report was refused: {refusal}", intent.origin)
 
         kept = self._keep(intent)
         if kept is not None:
@@ -158,15 +130,16 @@ class Session:
         """Register what an ended run produced, if a store says where it is.
 
         `None` means there was nothing to do and the caller should report
-        the relay on its own: either this deployment has no store, or the
-        run has not ended and so has produced nothing to speak of yet.
+        the relay on its own: either this deployment cannot locate data,
+        or the run has not ended and so has produced nothing to speak of
+        yet.
 
-        It runs after a declined report as well as an accepted one, and
-        that is not an oversight. A 409 is what a redelivery looks like,
-        and the delivery it repeats may have recorded the ending and died
-        before recording the data. Re-registering an address the keeper already
-        holds costs one request and returns the same id, because the retry
-        key is derived from that address.
+        It runs after a disagreement as well as after an accepted report,
+        and that is not an oversight. A disagreement is what a redelivery
+        looks like, and the delivery it repeats may have recorded the
+        ending and died before recording the data. Re-filing an address
+        the keeper already holds costs one request and returns the same
+        id, because the far side is asked to make that the case.
 
         The store is asked about the engine's own run id, which is why
         that travels on every report rather than only on a start. A store
@@ -177,14 +150,12 @@ class Session:
         The slow path is `_register`, reached through `act` by anything
         that found the data some other way.
         """
-        if self._store is None or self._config.store is None or intent.reported not in ENDINGS:
+        if self._locating is None or intent.reported not in ENDINGS:
             return None
 
         try:
-            location = self._store.locate(intent.engine_reference)
-        except StoreRefusedError as refusal:
-            if is_worth_retrying(refusal.status):
-                raise
+            location = self._locating.locate(intent.engine_reference)
+        except RefusedError as refusal:
             return Held(f"the store refused: {refusal}", intent.origin)
 
         if location is None:
@@ -214,28 +185,23 @@ class Session:
         backfill, a repair by hand.
 
         There is no report because no engine report arrived with it,
-        which is exactly the difference from the fast path above. It also
-        does not resolve anything any more: an intent arriving this way
-        carries the same two ids the fast path has, because a caller that
-        cannot name the run has nothing to file against.
+        which is exactly the difference from the fast path above.
         """
         return self._file(intent, reported=None)
 
     def _file(self, intent: RegisterDataset, *, reported: Report | None) -> Outcome:
-        """The one request both ways in make, and the one outcome."""
-        if self._config.store is None:
+        """The one call both ways in make, and the one outcome."""
+        if self._filing is None:
             return Held(
-                "a dataset was reported and no [store] table says what scheme its "
-                "address belongs to",
+                "a dataset was reported and this reporter was given nothing to file it "
+                "with, so nothing records where the data is",
                 intent.origin,
             )
 
         try:
-            dataset_id = self._client.register_dataset(
-                intent, scheme=self._config.store.external_ref_scheme
-            )
-        except RequestRefusedError as refusal:
-            return self._held_or_raise(refusal, intent.origin)
+            dataset_id = self._filing.record(intent)
+        except RefusedError as refusal:
+            return Held(f"the dataset was refused: {refusal}", intent.origin)
 
         return Kept(
             intent.execution_id,
@@ -245,11 +211,5 @@ class Session:
             intent.external_ref_value,
         )
 
-    def _held_or_raise(self, refusal: RequestRefusedError, origin: str) -> Outcome:
-        """A refusal becomes an outcome, unless waiting could change it."""
-        if is_worth_retrying(refusal.status):
-            raise refusal
-        return Held(f"{refusal.method} {refusal.path} refused: {refusal}", origin)
 
-
-__all__ = ["ENDINGS", "Session", "is_worth_retrying"]
+__all__ = ["ENDINGS", "Session"]

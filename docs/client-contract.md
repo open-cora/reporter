@@ -14,7 +14,7 @@ They nevertheless talk about the same work, so they need one answer to "which ru
 
 ## One run has two names
 
-An engine mints its own identifier for every run it opens and puts it in the start document it publishes. The keeper's names exist earlier: the execution and the step are written when the procedure is dispatched, before anything is asked of an engine. Metadata passed at the call arrives in the start document unchanged, which a spike measured against a real engine.
+An engine mints its own identifier for every run it opens and puts it in the start document it publishes. The keeper's names exist earlier: the execution and the step are written when the procedure is dispatched, before anything is asked of an engine. Metadata passed at the call is expected to arrive in the start document unchanged, and an adapter that finds otherwise has no way to pair the two names.
 
 So one run carries both:
 
@@ -33,13 +33,13 @@ That means a keeper identifier sits in somebody else's records, which is the one
 
 The engine's own uid travels in the other direction, as a step's `engine_reference`. It is a correlation hint rather than a key: nothing checks that such a run exists, and nothing could, because whatever watches the engine records it on its own schedule.
 
-**Both sides are implemented.** `conductor.adapters.bluesky_engine` writes the pair into the start document of every run it opens under a dispatch, and `reporter.translate` reads it back. The spelling is written out in both projects, which share no code and ship separately, and each pins the two literals in a test that names the other side. A run opened outside a dispatch carries neither key, which is how a scan somebody ran by hand stays distinguishable from work this system is owed a report on.
+**Both sides are implemented.** `conductor.adapters.bluesky_engine` writes the pair into the start document of every run it opens under a dispatch, and `reporter.adapters.bluesky_documents` reads it back. The spelling is written out in both projects, which share no code and ship separately, and each pins the two literals in a test that names the other side. A run opened outside a dispatch carries neither key, which is how a scan somebody ran by hand stays distinguishable from work this system is owed a report on.
 
 ## Two settings that have to agree
 
 The scheme is a word, and two deployments have to pick the same one.
 
-- The reporter reads `external_ref_scheme` from the `[store]` table of its TOML configuration and sends it with every dataset it registers. A spike recommends a word for the engine it drove, and what a given deployment settled on is written down in its beamline descriptor.
+- The reporter reads `external_ref_scheme` from the `[store]` table of its TOML configuration and sends it with every dataset it registers. What a given deployment settled on is written down in its beamline descriptor.
 - Anything that later resolves a dataset's address must read it under that same word.
 
 Nothing checks this. Two deployments configured differently file data under two vocabularies that look alike and are not, and nothing in the keeper can tell them apart, because the scheme names a vocabulary rather than an instance.

@@ -100,7 +100,7 @@ The tests admit three declared exceptions, each a named frozenset:
 | | For | Example |
 |---|---|---|
 | `EXTERNAL_NAMES` | Real, defined outside this project | `EngineReport`, which the keeper defines |
-| `PROSPECTIVE_NAMES` | Real nowhere, deliberately | `ReportRun`, an intent this package removed |
+| `PROSPECTIVE_NAMES` | Real nowhere, deliberately | `test_handler_works`, a stand-in inside a worked example |
 | `EXTERNAL_FILES` | A real file this project does not hold | `reporter.toml`, which an operator writes |
 
 `PROSPECTIVE_NAMES` exists because naming a thing before it exists, or

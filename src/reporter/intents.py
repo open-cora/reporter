@@ -12,30 +12,22 @@ command missing from it is a command nobody reading this knows about.
 
 ## Every intent carries the keeper's own ids, and none carries a name
 
-This used to be the other way round. A `ReportRun` carried a routine
-NAME and whatever sent it had to turn that into a keeper operation id
-from a configured map, because a run was a record this reporter brought
-into existence and the keeper had never heard of the work before the
-report arrived.
-
-The keeper now composes the work itself. It writes a Procedure, dispatches an
+The keeper composes the work itself. It writes a Procedure, dispatches an
 Execution, and whatever drives that execution carries the execution and
 step ids into the engine's own metadata. So the reference is on the
-delivery, this reporter creates nothing, and the `plan_ids` map is gone
-along with every refusal that depended on it.
+delivery and this reporter creates nothing: no intent turns a routine
+name into a keeper id, and none can be refused for naming work the
+keeper has never heard of.
 
 That is a smaller job and a stricter one. A delivery carrying no keeper
 reference describes work this system never asked for, and there is
-nothing to record it against: see `translate` for why that is `Ignored`
+nothing to record it against: see the translator for why that is `Ignored`
 rather than an alert.
 
 Nothing here carries parameters either, and the omission is the same
-fact. A `ReportRun` had to carry what the engine was called with, because
-the keeper's record of the run was being made from it, and the reporter had to
-drop every argument that was a device repr rather than a value. The keeper now
-holds those values on the procedure it composed, so what the engine says
-it was called with is at best a second copy and at worst a disagreement
-this system cannot adjudicate.
+fact. The keeper holds those values on the procedure it composed, so
+what the engine says it was called with is at best a second copy and at
+worst a disagreement this system cannot adjudicate.
 
 Each intent that can produce an alert carries an `origin`: a short label
 naming whatever in the engine's stream this came from. It is there so a
@@ -44,9 +36,9 @@ than anything document-shaped because a second engine's stream is not
 made of documents. For this translator it is a document name.
 
 Keeping these as values rather than calls is what makes the translation
-testable against a captured file. Every finding the spike printed is a
-statement about which of these four a delivery produces, and a value can
-be asserted where a POST cannot.
+testable against a captured file. Every finding about an engine's stream
+is a statement about which of these four a delivery produces, and a value
+can be asserted where a POST cannot.
 """
 
 from dataclasses import dataclass
@@ -150,8 +142,8 @@ class Unmappable:
     Distinct from `Ignored`, and the distinction is the point. An ending
     this translator cannot map is either a bug here or an engine that has
     grown a fourth one, and both are worth somebody's attention. A
-    delivery that only announces what is coming is neither. The spike put
-    both in one list, so the second kind was invisible among the first.
+    delivery that only announces what is coming is neither. Putting both
+    in one list would make the second kind invisible among the first.
     """
 
     reason: str

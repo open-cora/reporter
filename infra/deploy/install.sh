@@ -79,9 +79,17 @@ fi
 [ -x "${APP_DIR}/.venv/bin/python3" ] || die "no virtualenv at ${APP_DIR}/.venv.
     Run again with SYNC=1, or share one built on a machine that can reach a
     package index."
-"${APP_DIR}/.venv/bin/python3" -c "import epics" 2>/dev/null \
-    || die "the virtualenv has no pyepics, so a record source cannot run.
-    Re-sync with --extra epics."
+# `epics.PV` rather than `import epics`, and this is not fussiness. A
+# beamline account commonly has a directory called `epics` in its home,
+# which Python imports as an empty namespace package, so the bare import
+# succeeds while pyepics is absent. Measured on the 2-BM host, where
+# `-P` does not help either. Touching a name pyepics actually defines is
+# what tells the two apart.
+"${APP_DIR}/.venv/bin/python3" -c "import epics; epics.PV" 2>/dev/null \
+    || die "the virtualenv has no usable pyepics, so a record source cannot run.
+    Re-sync with --extra epics, or install it from wheels. Note that a bare
+    'import epics' can succeed here against a directory of that name in the
+    home, which is why this checks for a name pyepics defines."
 
 CAGET="${CAGET:-$(command -v caget || true)}"
 [ -x "${CAGET:-}" ] || die "caget not found, and the preflight cannot run without it."

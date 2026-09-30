@@ -403,9 +403,14 @@ def test_the_registration_names_the_step_the_reports_named() -> None:
     }
 
 
-def test_the_registration_is_keyed_on_the_address_rather_than_the_step() -> None:
-    """Two datasets from one run would otherwise share a key, and
-    the second would come back holding the first one's id."""
+def test_the_registration_is_keyed_on_the_step_and_the_address_together() -> None:
+    """Either half alone loses a case, and they are opposite cases.
+
+    Without the address, two datasets from one run share a key and the
+    second comes back holding the first one's id. Without the step, two
+    runs that wrote one address do, which is what an engine whose scan
+    number resets does every time it comes back.
+    """
     handle, routed = session_with_store(store_holding("completes"))
 
     drive("completes", handle)
@@ -413,8 +418,7 @@ def test_the_registration_is_keyed_on_the_address_rather_than_the_step() -> None
     sent = routed.calls("POST", containing="/datasets")[0]
     assert sent.headers is not None
     key = sent.headers["Idempotency-Key"]
-    assert key == f"register-dataset:raw/{uid_of('completes')}"
-    assert str(A_STEP) not in key
+    assert key == f"register-dataset:{A_STEP}:raw/{uid_of('completes')}"
 
 
 def test_a_store_holding_no_ending_still_registers_and_lets_keeper_stamp_it() -> None:

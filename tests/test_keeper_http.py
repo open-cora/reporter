@@ -226,32 +226,45 @@ def test_register_dataset_names_the_acquisition_and_not_the_traversal() -> None:
     assert body["step_id"] == str(A_STEP)
 
 
-def test_register_dataset_sends_a_key_derived_from_the_address_not_the_step() -> None:
+def test_register_dataset_sends_a_key_derived_from_the_step_and_the_address() -> None:
     filing, recorder = filing_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
 
     filing.record(a_dataset())
 
     sent = recorder.sent[0]
     assert sent.headers is not None
-    assert sent.headers["Idempotency-Key"] == dataset_key_for(A_PATH)
+    assert sent.headers["Idempotency-Key"] == dataset_key_for(A_STEP, A_PATH)
     assert sent.headers["Authorization"] == "Bearer a-token"
 
 
 def test_two_datasets_from_one_acquisition_are_keyed_apart() -> None:
-    """The whole reason the key names an address. Keyed on the step, the
+    """Why the address is in the key. Keyed on the step alone, the
     second of these would come back holding the first one's id."""
-    primary = dataset_key_for(f"{A_PATH}/primary")
-    darks = dataset_key_for(f"{A_PATH}/darkfields")
+    primary = dataset_key_for(A_STEP, f"{A_PATH}/primary")
+    darks = dataset_key_for(A_STEP, f"{A_PATH}/darkfields")
 
     assert primary != darks
+
+
+def test_two_runs_writing_one_address_are_keyed_apart() -> None:
+    """Why the step is in the key, which it was not until a run showed it.
+
+    An engine whose scan number resets writes over yesterday's name.
+    Keyed on the address alone the second registration returns the
+    first record's id and appends no event, so that run is recorded as
+    having produced data nobody filed, and the caller sees a success.
+    """
+    another_step = UUID("01a0ba65-df83-7501-aa5d-3e2318ef9570")
+
+    assert dataset_key_for(A_STEP, A_PATH) != dataset_key_for(another_step, A_PATH)
 
 
 def test_the_dataset_key_is_the_same_on_every_recomputation() -> None:
     """Derived rather than remembered, which is what makes a redelivery safe
     after a restart that persisted nothing."""
-    assert dataset_key_for("raw/5b4f40e7") == dataset_key_for("raw/5b4f40e7")
-    assert dataset_key_for("raw/5b4f40e7") != dataset_key_for("raw/5b4f40e8")
-    assert "raw/5b4f40e7" in dataset_key_for("raw/5b4f40e7")
+    assert dataset_key_for(A_STEP, "raw/5b4f40e7") == dataset_key_for(A_STEP, "raw/5b4f40e7")
+    assert dataset_key_for(A_STEP, "raw/5b4f40e7") != dataset_key_for(A_STEP, "raw/5b4f40e8")
+    assert "raw/5b4f40e7" in dataset_key_for(A_STEP, "raw/5b4f40e7")
 
 
 def test_register_dataset_sends_no_moment_when_the_store_held_no_ending() -> None:

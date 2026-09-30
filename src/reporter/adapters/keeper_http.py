@@ -44,19 +44,23 @@ question of which library is in use stops being one it can get wrong.
 
 ## Redelivery, and why only one call carries a key
 
-`Filing` sends an `Idempotency-Key` derived from the store's address. The
-keeper keys its cache on `(principal_id, key, surface_id)`, so a restarted
-reporter recomputes the same key having persisted nothing, and the second
-registration of one address returns the first one's dataset id rather
-than recording a second dataset.
+`Filing` sends an `Idempotency-Key` derived from the step and the
+store's address together. The keeper keys its cache on
+`(principal_id, key, surface_id)`, so a restarted reporter recomputes
+the same key having persisted nothing, and the second registration of
+one run's output returns the first one's dataset id rather than
+recording a second dataset.
 
-The address rather than the step, because one run may write more than
-one. A key naming the step would give both registrations one note, so the
-second would come back holding the first dataset's id and would never be
-recorded at all. The keeper deliberately did not derive a dataset's
-identity from the step that produced it, so that one-per-step would not
-be frozen into the schema, and keying the retry note on the step would
-put it back somewhere no migration announces.
+Both halves, for opposite reasons. Without the address, a run that
+wrote two datasets would record one. Without the step, two runs that
+wrote one address would record one, and the second would read forever
+as a run whose data nobody filed. See `dataset_key_for`.
+
+Naming the step in the key is not the same as deriving a dataset's
+identity from it. The keeper deliberately did not do the second, so
+that one-per-step would not be frozen into the schema, and it is not
+frozen here: the address is in the key beside the step, so a run that
+writes several still records several.
 
 `Reporting` carries no key, deliberately. A repeated report is already
 refused by the aggregate with a 409 naming the engine state it holds,
@@ -91,18 +95,31 @@ _TOO_MANY: Final = 429
 _SERVER_ERROR: Final = 500
 
 
-def dataset_key_for(external_ref_value: str) -> str:
+def dataset_key_for(step_id: UUID, external_ref_value: str) -> str:
     """The key that makes a redelivered registration harmless.
 
     Derived rather than remembered, which is the whole point. The keeper
     keys on `(principal_id, key, surface_id)`, so a reporter running as
     one actor recomputes this after any restart having persisted nothing.
 
-    A dataset is identified by where the data is, so this names an
-    address. Prefixed because a bare path in that table says nothing
-    about what it was for, and somebody will eventually read the table.
+    Both halves, and each is load-bearing in a different direction.
+
+    The address, because one run may write more than one dataset. A key
+    naming only the step would give both registrations one note, so the
+    second would come back holding the first's id and would never be
+    recorded at all.
+
+    The step, because more than one run may write one address. It is
+    the same failure read the other way and it is the quieter of the
+    two: the registration returns a success and an id, appends no
+    event, and leaves that run recorded as having produced data nobody
+    filed. The keeper does not treat an external reference as unique
+    and says so, and a key that did was quietly making it so.
+
+    Prefixed because a bare path in that table says nothing about what
+    it was for, and somebody will eventually read the table.
     """
-    return f"register-dataset:{external_ref_value}"
+    return f"register-dataset:{step_id}:{external_ref_value}"
 
 
 class Response(Protocol):
@@ -201,7 +218,9 @@ class HttpFiling:
             "external_ref": {"scheme": self._scheme, "value": intent.external_ref_value},
             "occurred_at": _instant(intent.occurred_at),
         }
-        headers = self._headers({"Idempotency-Key": dataset_key_for(intent.external_ref_value)})
+        headers = self._headers(
+            {"Idempotency-Key": dataset_key_for(intent.step_id, intent.external_ref_value)}
+        )
         response = _posted(self._http, f"{self._base_url}{path}", body, headers, path)
         if response.status_code != _CREATED:
             raise _refusal(response.status_code, response.text, method="POST", path=path)

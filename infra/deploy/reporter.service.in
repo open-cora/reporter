@@ -1,0 +1,57 @@
+# One reporter, watching one engine at one beamline. Written by install.sh
+# from this template; the tracked copy names no host and no beamline, so
+# reading it here shows the shape and reading the installed copy shows the
+# deployment.
+#
+# ConditionHost is the load-bearing line, for the reason it is in every
+# other unit here: `systemd --user` reads units only from $HOME, and a
+# beamline's $HOME is NFS mounted by every machine at that beamline.
+# Enabling this once from the wrong shell starts a second reporter on
+# another machine, watching the same engine.
+#
+# Two reporters are a milder fault than two conductors, which is worth
+# being precise about rather than reassuring. Nothing is driven twice and
+# no hardware moves. What happens is that both see the same scan end and
+# both report it, so the keeper is told twice about one run. A second
+# report of a step already reported is refused rather than believed, so
+# the damage is noise in the log rather than a wrong record. The guard is
+# here anyway, because noise that nobody can explain costs a morning.
+#
+# --records rather than --subscribe, because a TomoScan beamline publishes
+# no documents. A deployment watching a RunEngine writes the other flag
+# and needs no other change.
+#
+# The token lives in the configuration file at mode 600, not in this unit,
+# which is world readable like every other unit in a shared home.
+
+[Unit]
+Description=CORA reporter at @BEAMLINE@
+ConditionHost=@DEPLOY_HOST@
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@APP_DIR@
+
+# The keeper presents a certificate from a private CA, so the client is
+# pointed at a bundle carrying the system anchors plus that one. Pointing
+# it at the CA alone would work and would also make this process distrust
+# everything else, which is a surprise waiting for the first other
+# endpoint.
+Environment=SSL_CERT_FILE=@CA_BUNDLE@
+@EPICS_ENVIRONMENT@
+ExecStart=@APP_DIR@/.venv/bin/python3 -m reporter --config @CONFIG@ --records @PREFIX@
+
+# A reporter that stops is a beamline whose scans still run and are never
+# reported: the executions stay open at the keeper and nothing says why.
+# So it is restarted rather than left down, and the interval is long
+# enough that a misconfiguration does not become a request flood.
+Restart=always
+RestartSec=15
+
+StandardOutput=append:@LOG@
+StandardError=append:@LOG@
+
+[Install]
+WantedBy=default.target

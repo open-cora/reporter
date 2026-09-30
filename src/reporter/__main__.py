@@ -62,10 +62,11 @@ from reporter.adapters.bluesky_documents import documents_into
 from reporter.adapters.capture_replay import from_capture
 from reporter.adapters.keeper_http import HttpClient, HttpFiling, HttpReporting
 from reporter.adapters.store_http import HttpLocating, StoreHttpClient
+from reporter.adapters.tomoscan_records import from_tomoscan, records_into
 from reporter.adapters.zmq_subscription import DecodeError, from_subscription
 from reporter.config import ConfigError, ReporterConfig, load
 from reporter.outcomes import Held, Outcome
-from reporter.relay import Relay
+from reporter.relay import Handle, Relay
 from reporter.seams import Delivery, Filing, Locating, RefusedError, UnavailableError
 from reporter.session import Session
 
@@ -130,10 +131,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"configuration: {unreachable}", file=sys.stderr)
             return 2
 
-        relay = Relay(documents_into(Session(reporting, filing, locating)), tally.record)
+        session = Session(reporting, filing, locating)
+        relay = Relay(handle_for(arguments, session), tally.record)
         relay.start()
         try:
-            unreadable = drive(_documents(arguments), relay)
+            unreadable = drive(deliveries(arguments), relay)
         finally:
             relay.stop(timeout=DRAIN_TIMEOUT_SECONDS)
 
@@ -144,10 +146,33 @@ def main(argv: Sequence[str] | None = None) -> int:
     return status
 
 
-def _documents(arguments: argparse.Namespace) -> Iterator[Delivery]:
-    """The source the arguments asked for."""
+def handle_for(arguments: argparse.Namespace, session: Session) -> Handle:
+    """The translator that matches the source the arguments asked for.
+
+    Separate from `main` because getting it wrong is silent. A record
+    stream read through the document grammar matches no document name,
+    so every scan becomes `Unmappable`, nothing is ever reported, and
+    the run ends with a tidy tally and a zero exit status. A reporter
+    that does nothing and says it went fine is worse than one that
+    crashes, so this pairing is somewhere a test can reach.
+    """
+    if arguments.records is not None:
+        return records_into(session)
+    return documents_into(session)
+
+
+def deliveries(arguments: argparse.Namespace) -> Iterator[Delivery]:
+    """The source the arguments asked for.
+
+    Named for what all three produce rather than for what the first one
+    produced. A TomoScan server publishes no documents, and calling the
+    thing that reads it a document source is how the engine's vocabulary
+    crosses back over a boundary drawn to keep it out.
+    """
     if arguments.replay is not None:
         return from_capture(arguments.replay)
+    if arguments.records is not None:
+        return from_tomoscan(arguments.records)
     return from_subscription(arguments.subscribe, prefix=arguments.prefix.encode())
 
 
@@ -194,6 +219,11 @@ def _parse(argv: Sequence[str] | None) -> argparse.Namespace:
         type=Path,
         metavar="PATH",
         help="path to captured documents, in the shape collect.py writes",
+    )
+    source.add_argument(
+        "--records",
+        metavar="PREFIX",
+        help="record prefix of a TomoScan server, such as 2bmb:TomoScan:",
     )
 
     parser.add_argument(

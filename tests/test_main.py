@@ -5,11 +5,12 @@ path in between is covered by the session and relay suites; what is left
 here is the wiring and the two ways a run can be over before it begins.
 """
 
+import argparse
 from collections.abc import Iterator
 from gc import collect
 from pathlib import Path
 from signal import SIGTERM, getsignal, signal
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 from weakref import ref
 
@@ -19,7 +20,9 @@ import pytest
 from reporter.__main__ import (
     Tally,
     dataset_leg,
+    deliveries,
     drive,
+    handle_for,
     main,
     stop_on_termination,
     store_that_does_not_answer,
@@ -27,8 +30,10 @@ from reporter.__main__ import (
 from reporter.adapters.bluesky_documents import documents_into
 from reporter.adapters.keeper_http import HttpReporting
 from reporter.adapters.store_http import HttpLocating
+from reporter.adapters.tomoscan_records import from_tomoscan
 from reporter.adapters.zmq_subscription import DecodeError
 from reporter.config import ReporterConfig, from_mapping
+from reporter.intents import Ignored, ReportStepRun
 from reporter.outcomes import Held, Outcome, Relayed, Skipped, Unchanged
 from reporter.relay import Relay
 from reporter.seams import Delivery
@@ -142,6 +147,88 @@ def test_a_source_is_one_or_the_other_and_never_both(tmp_path: Path) -> None:
                 "tcp://127.0.0.1:5568",
             ]
         )
+
+
+ENDED_SCAN = (
+    "ended",
+    {
+        "execution_id": "01a0f013-ce25-7670-8ffb-217d13a9318b",
+        "step_id": "01a0f013-ce25-7670-8ffb-218fa11f5741",
+        "status": "Scan complete",
+        "file": "/local1/scan_007.h5",
+        "origin": "corasim2bmb:TomoScan:StartScan",
+    },
+)
+"""One delivery in the shape a TomoScan server's records produce."""
+
+
+class _Recording:
+    """A session that keeps what it was asked to do instead of doing it."""
+
+    def __init__(self) -> None:
+        self.intents: list[Any] = []
+
+    def act(self, intent: Any) -> Any:
+        self.intents.append(intent)
+        return intent
+
+
+def _source_arguments(**chosen: Any) -> argparse.Namespace:
+    settings: dict[str, Any] = {"replay": None, "records": None, "subscribe": None, "prefix": ""}
+    settings.update(chosen)
+    return argparse.Namespace(**settings)
+
+
+def test_a_record_prefix_is_a_third_source_and_excludes_the_others(tmp_path: Path) -> None:
+    """A TomoScan beamline publishes no documents, so records are a source.
+
+    In the same exclusive group as the other two, because two streams
+    into one session is not a thing this can do.
+    """
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--config",
+                str(tmp_path / "absent.toml"),
+                "--records",
+                "2bmb:TomoScan:",
+                "--subscribe",
+                "tcp://127.0.0.1:5568",
+            ]
+        )
+
+
+def test_a_record_prefix_reads_from_the_engine_rather_than_a_socket() -> None:
+    """Which of the three sources the argument chose.
+
+    Checked by which generator comes back rather than by running it,
+    because opening it would dial Channel Access and the question here
+    is about the choice.
+    """
+    chosen = cast("Any", deliveries(_source_arguments(records="corasim2bmb:TomoScan:")))
+
+    assert chosen.gi_code is from_tomoscan.__code__
+
+
+def test_a_record_delivery_read_through_the_document_grammar_reports_nothing() -> None:
+    """The pairing that would look like a working reporter if it were wrong.
+
+    The two handles are shown disagreeing about the same delivery. The
+    record one produces something to report. The document one does not
+    even call it unreadable: there is no rule for a document named
+    `ended`, so it is `Ignored`, which is the outcome meaning nothing
+    was owed. A reporter wired to the second would run, hold nothing,
+    report nothing and exit zero, and the tally would look like a quiet
+    shift. That is why the choice is somewhere a test can reach rather
+    than inline in `main`.
+    """
+    records, documents = _Recording(), _Recording()
+
+    handle_for(_source_arguments(records="p:"), cast("Session", records))(*ENDED_SCAN)
+    handle_for(_source_arguments(subscribe="tcp://x"), cast("Session", documents))(*ENDED_SCAN)
+
+    assert isinstance(records.intents[0], ReportStepRun)
+    assert isinstance(documents.intents[0], Ignored)
 
 
 def test_a_prefix_without_a_subscription_is_refused(tmp_path: Path) -> None:

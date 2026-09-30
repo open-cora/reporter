@@ -40,6 +40,7 @@ The engine's own uid travels in the other direction, as a step's `engine_referen
 The scheme is a word, and two deployments have to pick the same one.
 
 - The reporter reads `external_ref_scheme` from the `[store]` table of its TOML configuration and sends it with every dataset it registers. What a given deployment settled on is written down in its beamline descriptor.
+- The conductor reads no such setting. Its engine adapter declares the scheme, because an engine answering with a location is what settles what kind of address that location is, which leaves a deployment nothing to choose. Which word a given adapter declares is written down with that adapter.
 - Anything that later resolves a dataset's address must read it under that same word.
 
 Nothing checks this. Two deployments configured differently file data under two vocabularies that look alike and are not, and nothing in the keeper can tell them apart, because the scheme names a vocabulary rather than an instance.

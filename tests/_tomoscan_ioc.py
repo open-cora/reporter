@@ -42,7 +42,6 @@ def _text(value: str, size: int = 256) -> Any:
         value=value,
         dtype=ChannelType.CHAR,
         max_length=size,
-        report_as_string=True,
         string_encoding="utf-8",
     )
 

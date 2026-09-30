@@ -71,11 +71,11 @@ a loader that imported an adapter would be a loader only one transport
 could ever use.
 """
 
-EXPECTED_ADAPTERS = 5
+EXPECTED_ADAPTERS = 6
 """Adapter modules under `adapters/`, excluding its `__init__`.
 
-Five: one engine's documents, a 0MQ subscription, a capture on disk, the
-keeper's HTTP API and a store's. The checks below were confirmed to range
+Six: one engine's documents, one engine's records, a 0MQ subscription, a
+capture on disk, the keeper's HTTP API and a store's. The checks below were confirmed to range
 over each when it arrived, which is what raising this number is supposed
 to mean.
 """
@@ -94,6 +94,36 @@ measurement rather than a principle: reading a published frame through
 the engine's own library drags in numpy to a process whose job is to
 forward six strings. An engine adapter that needs the library is a
 decision to make here, out loud.
+
+`TRANSPORT_LIBRARIES` below is that decision, taken once.
+"""
+
+TRANSPORT_LIBRARIES = frozenset({"epics"})
+"""Named in the set above, and permitted to an adapter for its transport.
+
+Taken deliberately rather than by loosening the ban, because the ban's
+argument still holds for everything else in it and would be lost if this
+were a deletion.
+
+Three things separate this from the case the ban describes.
+
+It is a transport and not an engine. Channel Access is a socket protocol
+in the way a 0MQ frame is, and this package already imports a client for
+that one. What `epics` hands over is a value from a named record; what
+`bluesky` or `tomoscan` would hand over is a model of a scan, which is
+the dependency the ban exists to refuse. `tomoscan` stays banned and the
+adapter that reads a TomoScan server does not import it.
+
+Decoding it by hand is not available. The 0MQ frame is a prefix, a name
+and a payload separated by spaces, which is why reading it by hand was
+the cheaper answer. Channel Access is not that, and a hand-written client
+for it would be a worse decision than the dependency.
+
+The cost falls only where it is wanted. `epics` is an extra, so a
+deployment reporting for a beamline that publishes documents installs
+neither it nor the numpy underneath it. The measurement in the ban above
+was about a cost every process paid; this one is paid by the processes
+that asked.
 """
 
 STORE_LIBRARIES = frozenset({"tiled"})
@@ -314,9 +344,8 @@ def test_a_module_in_the_core_keeps_engine_words_out_of_its_names(path: Path) ->
 def test_no_module_imports_an_engine_library(path: Path) -> None:
     """The dependency this package refuses, and the reason a published
     frame is decoded by hand."""
-    reached = sorted(
-        root for root in _imported_roots(path) if root.split(".")[0] in ENGINE_LIBRARIES
-    )
+    banned = ENGINE_LIBRARIES - (TRANSPORT_LIBRARIES if path in _adapter_paths() else frozenset())
+    reached = sorted(root for root in _imported_roots(path) if root.split(".")[0] in banned)
     assert not reached, f"`{path.name}` imports {reached}, which is an engine."
 
 

@@ -34,6 +34,12 @@ subscribe = [
 # the shape of a client and takes one, so acting on an intent costs no HTTP
 # library at all.
 service = ["httpx>=0.28,<1"]
+# Hearing about a scan from a TomoScan server, which publishes no documents
+# and is watched over Channel Access instead. Only
+# `adapters.tomo_scan_records` imports the name below, which is why it is an
+# extra: a deployment reporting for a bluesky beamline should not install a
+# control-system library to do it.
+epics = ["pyepics>=3.5,<4"]
 
 # Pinned to the same ranges as apps/keeper. Two projects linting under two ruff
 # versions is a drift source with no upside, and the pre-commit hook that
@@ -50,6 +56,11 @@ dev = [
     # adapter that no test could import would be an adapter nothing checks.
     "httpx>=0.28,<1",
     "pyzmq>=27,<28",
+    "pyepics>=3.5,<4",
+    # A soft IOC to hear scans from, the way apps/conductor tests its own
+    # Channel Access adapters. caproto serves from Python, so this needs no
+    # EPICS installation.
+    "caproto>=1.3,<2",
     "msgpack>=1.1,<2",
 ]
 
@@ -124,3 +135,9 @@ reportMissingTypeStubs = false
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib", "--strict-markers"]
 testpaths = ["tests"]
+markers = [
+    # Tests that serve a soft IOC and talk to it. They need no EPICS
+    # installation, caproto serves from Python, but they start a process and
+    # wait on a network round trip, so they are worth being able to skip.
+    "channel_access: drives a Channel Access server on the loopback",
+]

@@ -47,7 +47,7 @@ def _text(value: str, size: int = 256) -> Any:
     )
 
 
-class TomoScanIOC(PVGroup):
+class TomoscanIOC(PVGroup):
     """Only the records the source reads, plus the one it watches for."""
 
     StartScan = pvproperty(value=IDLE, enum_strings=[IDLE, BUSY], dtype=ChannelType.ENUM)
@@ -96,7 +96,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--prefix", required=True)
     arguments = parser.parse_args()
-    run(TomoScanIOC(prefix=arguments.prefix).pvdb, log_pv_names=False)
+    run(TomoscanIOC(prefix=arguments.prefix).pvdb, log_pv_names=False)
 
 
 if __name__ == "__main__":

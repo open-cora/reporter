@@ -36,7 +36,7 @@ subscribe = [
 service = ["httpx>=0.28,<1"]
 # Hearing about a scan from a TomoScan server, which publishes no documents
 # and is watched over Channel Access instead. Only
-# `adapters.tomo_scan_records` imports the name below, which is why it is an
+# `adapters.tomoscan_records` imports the name below, which is why it is an
 # extra: a deployment reporting for a bluesky beamline should not install a
 # control-system library to do it.
 epics = ["pyepics>=3.5,<4"]

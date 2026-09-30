@@ -6,20 +6,25 @@ boundary. This is that boundary, written narrow on purpose: a list of what
 this project depends on rather than a copy of what pyepics offers.
 
 Hand written, and pyright takes it on trust. Nothing here is checked
-against the installed package by the type checker, which is what
-`test_the_epics_stub_describes_the_package_it_stands_in_for` is for: it
-exercises each of these against a live soft IOC and asserts they behave as
-declared, so a release that moved a signature fails a test rather than
-quietly teaching pyright something untrue.
+against the installed package by the type checker, so a release that moved
+a signature would quietly teach pyright something untrue. What catches
+that in this project is `test_a_scan_returning_to_idle_is_what_the_source_reacts_to`,
+which drives every name below against a live soft IOC. That is a weaker
+guard than a test written for the purpose, because it exercises these
+calls on its way to something else and would report a moved signature as a
+source that stopped working. It is named here so the next reader knows
+which it is.
 
 Two return types are deliberately loose. `PV.get` really does return
-whatever the record holds, which is why `EpicsControl` narrows it before
+whatever the record holds, which is why a caller narrows it before
 arithmetic. `PV.put` returns 1 on success and None on timeout, which is
-why the adapter tests for None rather than for falsehood: a successful put
+why a caller tests for None rather than for falsehood: a successful put
 of the value 0 must not read as a failure.
 """
 
 from typing import Any
+
+from . import ca as ca
 
 class PV:
     pvname: str

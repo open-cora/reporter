@@ -85,7 +85,7 @@ whose ending nobody recognised did not demonstrably work.
 """
 
 
-def from_tomo_scan(prefix: str, poll_interval: float = 0.5) -> Iterator[Delivery]:
+def from_tomoscan(prefix: str, poll_interval: float = 0.5) -> Iterator[Delivery]:
     """Every scan that finishes on one TomoScan server, as it finishes.
 
     Does not end, the way a subscription does not end. The caller stops it.
@@ -140,7 +140,7 @@ def _report(status: str) -> Report:
     return REPORT_BY_STATUS.get(status.strip().lower(), "Failed")
 
 
-def _feed(name: str, record: Mapping[str, Any]) -> Intent:
+def translate(name: str, record: Mapping[str, Any]) -> Intent:
     """One delivery, as the thing it asks this reporter to do."""
     origin = str(record.get("origin", "tomoscan"))
     if name not in (ENDED, FILE):
@@ -181,9 +181,9 @@ def records_into(session: Session) -> Handle:
     """
 
     def handle(name: str, record: Mapping[str, Any]) -> Any:
-        return session.act(_feed(name, record))
+        return session.act(translate(name, record))
 
     return handle
 
 
-__all__ = ["ENDED", "FILE", "REPORT_BY_STATUS", "from_tomo_scan", "records_into"]
+__all__ = ["ENDED", "FILE", "REPORT_BY_STATUS", "from_tomoscan", "records_into"]

@@ -61,7 +61,7 @@ Both are implemented. `conductor.adapters.bluesky_engine` writes the pair into t
 The scheme is a word, and two deployments have to pick the same one.
 
 - The reporter reads `external_ref_scheme` from the `[store]` table of its TOML configuration and sends it with every dataset it registers. What a given deployment settled on is written down in its beamline descriptor.
-- The conductor reads no such setting. Its engine adapter declares the scheme, because an engine answering with a location is what settles what kind of address that location is, which leaves a deployment nothing to choose. Which word a given adapter declares is written down with that adapter.
+- The conductor registers no datasets and so names no scheme. It did once, for engines that answered with a location, and the seam was removed because reading an address needs no claim and no walk: whatever watches such an engine reads the same value from the same place.
 - Anything that later resolves a dataset's address must read it under that same word.
 
 Nothing checks this. Two deployments configured differently file data under two vocabularies that look alike and are not, and nothing in the keeper can tell them apart, because the scheme names a vocabulary rather than an instance.
@@ -76,7 +76,7 @@ Nothing checks this. Two deployments configured differently file data under two 
 
 The keeper owns every genesis, so a duplicate reference is a relay mistake on records that already existed rather than a second record of one fact.
 
-**The conductor calls the keeper, and `python -m conductor` is the process that does it.** It asks what has been dispatched to its beamline, claims one execution, walks it, and reports each step as the step ends, all over the same HTTP surface the reporter uses. An engine's own reference reaches a caller on a finished step, and it is a correlation hint rather than a key.
+**The conductor calls the keeper, and `python -m conductor` is the process that does it.** It asks what has been dispatched to its beamline, claims one execution, walks it, and reports each step as the step ends, all over the same HTTP surface the reporter uses. An engine's own reference reaches a caller of a walk on a finished step and goes no further: it is the reporter that sends one to the keeper, and it is a correlation hint rather than a key.
 
 ## When a client does start calling the keeper
 

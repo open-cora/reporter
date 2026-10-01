@@ -55,6 +55,14 @@ class TomoscanIOC(PVGroup):
     KeeperExecutionId = _text("")
     KeeperStepId = _text("")
 
+    ScanUUID = pvproperty(value="Unknown", dtype=ChannelType.STRING)
+    """What the engine calls one run.
+
+    A native string rather than the character waveform its neighbours
+    are, because upstream declares it `stringout` while TomoScan serves
+    its own text as waveforms. `Unknown` is upstream's initial value.
+    """
+
 
 def start() -> subprocess.Popen[bytes]:
     """Serve the records, and hand back the process serving them."""

@@ -34,6 +34,14 @@
 # the pair that says which step a scan belonged to. A reporter without them
 # still runs and ignores every scan for looking hand-started, which is the
 # same silence by a different route.
+#
+# It reads them through the virtualenv's own pyepics, under the EPICS
+# environment the unit is about to be given. This used to be caget, which
+# is a separate EPICS install a beamline account may not have on its PATH,
+# and that is what it turned out to be on the first host this ever ran on.
+# Asking the library the service uses, addressed the way the service will
+# be addressed, is both one fewer thing to install and the only version of
+# this question whose answer is about the service rather than about a shell.
 
 set -euo pipefail
 
@@ -91,16 +99,6 @@ fi
     'import epics' can succeed here against a directory of that name in the
     home, which is why this checks for a name pyepics defines."
 
-CAGET="${CAGET:-$(command -v caget || true)}"
-[ -x "${CAGET:-}" ] || die "caget not found, and the preflight cannot run without it."
-
-for suffix in StartScan ScanStatus FullFileName KeeperExecutionId KeeperStepId; do
-    "${CAGET}" -w 5 "${PREFIX}${suffix}" >/dev/null 2>&1 || die "${PREFIX}${suffix} does not
-    answer. A reporter that cannot see the engine starts, polls nothing and
-    reports nothing, which looks exactly like a beamline where nothing ran."
-done
-say "preflight   every record this will watch answers"
-
 EPICS_ENVIRONMENT=""
 if [ -r "${EPICS_ENV}" ]; then
     EPICS_ENVIRONMENT="EnvironmentFile=${EPICS_ENV}"
@@ -108,6 +106,39 @@ if [ -r "${EPICS_ENV}" ]; then
 else
     say "epics env   none, so the service inherits the user manager's"
 fi
+
+ABSENT="$("${APP_DIR}/.venv/bin/python3" - "${PREFIX}" "${EPICS_ENV}" <<'PREFLIGHT'
+import os
+import sys
+
+prefix, environment = sys.argv[1], sys.argv[2]
+
+# Read before pyepics is imported, because the Channel Access library
+# reads its addressing once as it loads and never looks again. Setting
+# these afterwards would leave the probe searching a different network
+# from the one the service will search, which is a preflight that can
+# pass for a beamline where nothing will answer.
+if os.path.isfile(environment):
+    with open(environment, encoding="utf-8") as settings:
+        for line in settings:
+            name, assigned, value = line.strip().partition("=")
+            if assigned and not name.startswith("#"):
+                os.environ[name.strip()] = value.strip()
+
+import epics  # noqa: E402
+
+absent = [
+    prefix + suffix
+    for suffix in ("StartScan", "ScanStatus", "FullFileName", "KeeperExecutionId", "KeeperStepId")
+    if not epics.PV(prefix + suffix, connection_timeout=5.0).wait_for_connection(timeout=5.0)
+]
+print(" ".join(absent))
+PREFLIGHT
+)"
+[ -z "${ABSENT}" ] || die "these records do not answer: ${ABSENT}.
+    A reporter that cannot see the engine starts, polls nothing and reports
+    nothing, which looks exactly like a beamline where nothing ran."
+say "preflight   every record this will watch answers"
 
 mkdir -p "${ETC}" "${UNIT_DIR}"
 

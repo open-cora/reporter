@@ -93,17 +93,21 @@ engine's messages, which is how a reporter knows what a run belongs to. Every
 report therefore names something already on the record, and a reporter creates
 nothing.
 
-**A redelivered message does not duplicate anything.** Both writes carry a key
-worked out from something the reporter can recompute after a restart, having
-saved nothing, so a redelivered opening returns the first run's id rather than
-recording a second.
+**A redelivered message does not duplicate anything, and only one of the two
+writes needs a key to manage it.** Filing sends a key worked out from the step
+and the store's address together, so a restarted reporter recomputes the same
+key having persisted nothing, and a second registration of one run's output
+returns the first dataset's id rather than making a second.
 
-The two keys name different things on purpose. One names the run, because an
-opening is identified by the run it began. The other names the store's address,
-because a dataset is identified by where the data is. They are the same string
-today, and they part company the day one run produces two datasets: keyed on
-the run, both registrations would carry one note and the second would quietly
-come back holding the first one's id.
+Both halves of that key are there, and for opposite reasons. Without the
+address, a run that wrote two datasets would record one. Without the step, two
+runs that wrote one address would record one, and the second would read forever
+as a run whose data nobody filed.
+
+The report of a run carries no key at all. The route it posts to is idempotent
+on an opening and deliberately lax about the deliveries after it, because a
+reporter draining an engine's stream repeats the same reference every time and
+refusing that would make the ordinary case an error.
 
 **The engine's thread never waits on this.** Submitting a report queues it and
 returns in microseconds, and a worker thread does the talking. The network this

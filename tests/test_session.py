@@ -282,10 +282,10 @@ A_DATASET = UUID("01a0ba66-1c41-7f02-9e48-5b7a0c6d2e19")
 STORE_CONFIG = from_mapping(
     {
         "keeper": {"base_url": "https://keeper.example", "token": "a-token"},
+        "dataset": {"external_ref_scheme": "tiled-node-path"},
         "store": {
             "base_url": "https://store.example",
             "root": "raw",
-            "external_ref_scheme": "tiled-node-path",
         },
     }
 )
@@ -304,9 +304,9 @@ def a_session_with_store(store: Store, **answers: list[Answer]) -> tuple[Session
         register=answers.get("register") or [Answer(201, {"dataset_id": str(A_DATASET)})],
     )
     reporting = HttpReporting(routed, STORE_CONFIG.base_url, STORE_CONFIG.token)
-    assert STORE_CONFIG.store is not None
+    assert STORE_CONFIG.external_ref_scheme is not None
     filing = HttpFiling(
-        routed, STORE_CONFIG.base_url, STORE_CONFIG.token, STORE_CONFIG.store.external_ref_scheme
+        routed, STORE_CONFIG.base_url, STORE_CONFIG.token, STORE_CONFIG.external_ref_scheme
     )
     return Session(reporting, filing, store), routed
 

@@ -296,23 +296,43 @@ def a_store_config(**overrides: str) -> ReporterConfig:
     return from_mapping(
         {
             "keeper": {"base_url": "https://keeper.example", "token": "a-token"},
+            "dataset": {"external_ref_scheme": "tiled-node-path"},
             "store": {
                 "base_url": "https://store.example",
                 "root": "raw",
-                "external_ref_scheme": "tiled-node-path",
                 **overrides,
             },
         }
     )
 
 
-def test_no_store_table_means_neither_capability_and_nothing_to_check() -> None:
-    """Both halves go together, which is what makes the half-configured
-    pair unconstructable rather than something a session has to reject."""
+def test_neither_table_means_neither_capability_and_nothing_to_check() -> None:
+    """Record runs, say nothing about data, and do not look anything up."""
     config = a_config()
 
     assert dataset_leg(Recorder([]), config) == (None, None)
     assert store_that_does_not_answer(None, config) is None
+
+
+def test_a_scheme_without_a_store_files_and_never_locates() -> None:
+    """The TomoScan shape, which the single table could not express.
+
+    Its engine answers with the path it wrote, so there is an address to
+    file and nothing to ask anyone. Nothing is probed at startup either,
+    because the probe is the store's and there is no store.
+    """
+    config = from_mapping(
+        {
+            "keeper": {"base_url": "https://keeper.example", "token": "a-token"},
+            "dataset": {"external_ref_scheme": "posix-file"},
+        }
+    )
+
+    filing, locating = dataset_leg(Recorder([]), config)
+
+    assert filing is not None
+    assert locating is None
+    assert store_that_does_not_answer(locating, config) is None
 
 
 def test_a_configured_store_produces_both_capabilities_over_one_client() -> None:

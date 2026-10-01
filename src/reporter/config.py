@@ -1,6 +1,7 @@
 """Everything this reporter has to be told, and nothing it can work out.
 
-Two facts about the keeper, and an optional group about a store.
+Two facts about the keeper, the vocabulary it files addresses in, and
+an optional group about a store.
 
 ## Why nothing here maps a routine or a reference
 
@@ -15,24 +16,32 @@ The engine's own run id still travels, as a step's `engine_reference`. It
 is a plain string over there rather than a scheme-and-value pair, so
 there is nothing to configure about it.
 
-## The store table, and why its absence is a setting
+## Two tables, because filing and locating are two capabilities
 
-`[store]` is optional and leaving it out switches the dataset leg off
-entirely. That is a real state rather than a degraded one: a deployment
-whose engine writes nowhere this reporter can see should record runs and
-say nothing about data, and it should do that without a store lookup that
-always answers nothing. `StoreConfig` is `None` in that case, and the
-difference between "not configured" and "configured and empty" stays
-visible.
+`[dataset]` carries `external_ref_scheme`, the vocabulary the addresses
+this reporter files belong to, and its presence switches filing on.
+`[store]` carries a store's `base_url` and `root`, and its presence
+switches locating on.
 
-Its `root` is where the writer points. A search does not descend, so a
-reporter cannot discover its own scope, and a misconfigured root finds
-nothing rather than finding the wrong thing.
+They were one table, on the reasoning that an address always comes from
+a store, so a deployment changing where its data is kept changes both
+together. That holds for an engine answering with a name, where
+something else has to be asked where the run went. It does not hold for
+an engine answering with a path: a TomoScan server reports the file it
+wrote, so there is an address to file and nothing to resolve. Bundling
+them meant describing a store that does not exist in order to file an
+address already in hand, and the store probe then refused to start.
 
-Its `external_ref_scheme` is the one scheme left. It names the vocabulary
-a store's addresses belong to, and it is on the store table rather than
-beside the keeper settings because it describes the store: a deployment
-that changes where its data is kept changes both together.
+Each absence is a setting rather than a degraded state. No `[dataset]`
+records runs and says nothing about data, without a lookup that always
+answers nothing. No `[store]` files what the engine already said and
+asks nobody.
+
+A `[store]` with no `[dataset]` is the one pairing refused, because
+locating an address this reporter has no vocabulary to file is a job it
+could only half finish. `root` is where the writer points: a search does
+not descend, so a reporter cannot discover its own scope, and a
+misconfigured root finds nothing rather than finding the wrong thing.
 """
 
 import tomllib
@@ -54,11 +63,10 @@ class ConfigError(ValueError):
 
 @dataclass(frozen=True)
 class StoreConfig:
-    """Which store holds the data, where its runs are, and what to call them."""
+    """Which store holds the data, and where its runs are."""
 
     base_url: str
     root: str
-    external_ref_scheme: str
 
 
 @dataclass(frozen=True)
@@ -67,6 +75,7 @@ class ReporterConfig:
 
     base_url: str
     token: str
+    external_ref_scheme: str | None = None
     store: StoreConfig | None = None
 
 
@@ -78,9 +87,9 @@ def load(path: Path) -> ReporterConfig:
     in the standard library so reading one costs no dependency.
 
     Two required settings is few enough to argue for environment
-    variables, and the store table is what keeps a file worth having. A
-    deployment that runs without a store has a two-line file, which is
-    not a burden.
+    variables, and the tables are what keep a file worth having. A
+    deployment that files what its engine reported and asks no store has
+    a four-line file, which is not a burden.
 
     The token is read from the file like everything else. A deployment
     that would rather inject it another way substitutes its own loader;
@@ -112,11 +121,39 @@ def from_mapping(settings: Mapping[str, Any], *, source: str = "configuration") 
             f"{source}: keeper.base_url must be an http or https URL, got {base_url!r}"
         )
 
+    store = _store(settings.get("store"), source)
+    scheme = _scheme(settings.get("dataset"), source)
+    if store is not None and scheme is None:
+        raise ConfigError(
+            f"{source}: there is a store table and no dataset table, so this reporter "
+            "could find where a run went and have no vocabulary to file the address in. "
+            "Add dataset.external_ref_scheme, or remove the store."
+        )
+
     return ReporterConfig(
         base_url=base_url.rstrip("/"),
         token=token,
-        store=_store(settings.get("store"), source),
+        external_ref_scheme=scheme,
+        store=store,
     )
+
+
+def _scheme(table: Any, source: str) -> str | None:
+    """Parse the dataset table, or say there is none.
+
+    A missing table switches filing off, which is the deployment that
+    records runs and says nothing about data. A table that is present
+    and wrong is an error, for the reason the store table is: a typo
+    found on the first run that ended is an outage, and one found at
+    load is a message.
+    """
+    if table is None:
+        return None
+    if not isinstance(table, Mapping):
+        raise ConfigError(f"{source}: dataset must be a table, or left out entirely")
+
+    known: Mapping[str, Any] = cast("Mapping[str, Any]", table)
+    return _required_string(known, "external_ref_scheme", source, table_name="dataset")
 
 
 def _store(table: Any, source: str) -> StoreConfig | None:
@@ -146,13 +183,7 @@ def _store(table: Any, source: str) -> StoreConfig | None:
     if not isinstance(root, str):
         raise ConfigError(f"{source}: store.root must be a string, and may be empty")
 
-    return StoreConfig(
-        base_url=base_url.rstrip("/"),
-        root=root.strip("/"),
-        external_ref_scheme=_required_string(
-            known, "external_ref_scheme", source, table_name="store"
-        ),
-    )
+    return StoreConfig(base_url=base_url.rstrip("/"), root=root.strip("/"))
 
 
 def _required_string(

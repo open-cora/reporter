@@ -54,7 +54,7 @@ from reporter.adapters.store_http import HttpLocating
 store = config.store
 session = Session(
     HttpReporting(http, config.base_url, config.token),
-    HttpFiling(http, config.base_url, config.token, store.external_ref_scheme),
+    HttpFiling(http, config.base_url, config.token, config.external_ref_scheme),
     HttpLocating(http, store.base_url, store.root),
 )
 ```
@@ -88,25 +88,43 @@ working.
 base_url = "https://keeper.example"
 token = "..."
 
+[dataset]
+external_ref_scheme = "tiled-node-path"
+
 [store]
 base_url = "https://store.example"
 root = "raw"
-external_ref_scheme = "tiled-node-path"
 ```
 
-Two settings and an optional section.
+Two settings and two optional sections, one per capability.
 
-**The store section is what switches the dataset half on.** Leave it out and the
-reporter files runs and says nothing about data.
+**`[dataset]` switches filing on.** Leave it out and the reporter records runs
+and says nothing about data. **`[store]` switches locating on.** Leave that out
+and the reporter files the address its engine already reported and asks nobody,
+which is the whole configuration a TomoScan beamline needs:
+
+```toml
+[keeper]
+base_url = "https://keeper.example"
+token = "..."
+
+[dataset]
+external_ref_scheme = "posix-file"
+```
+
+A store with no dataset section is the one pairing refused at load, because
+finding where a run went and having no vocabulary to file it in is a job the
+reporter could only half finish.
 
 **`root` is where the writer points.** It is configuration because it cannot be
 discovered: a search does not descend, so a reporter cannot find a run by id
 without already knowing where to look. A wrong root finds nothing rather than
 finding the wrong thing, which is the better failure.
 
-**`external_ref_scheme`** names the vocabulary the store's addresses belong to.
-It sits on the store section because it describes the store: a deployment that
-changes where its data is kept changes both together.
+**`external_ref_scheme`** names the vocabulary the addresses this reporter files
+belong to. It sat on the store section while every address came from a store. An
+engine that answers with a path supplies its own, so the vocabulary is the
+reporter's to declare and the store is a separate question.
 
 There is no token for the store. Nothing has needed one, and adding the field
 before something asks would be inventing an authentication scheme on a store's

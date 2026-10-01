@@ -60,7 +60,7 @@ Both are implemented. `conductor.adapters.bluesky_engine` writes the pair into t
 
 The scheme is a word, and two deployments have to pick the same one.
 
-- The reporter reads `external_ref_scheme` from the `[store]` table of its TOML configuration and sends it with every dataset it registers. What a given deployment settled on is written down in its beamline descriptor.
+- The reporter reads `external_ref_scheme` from the `[dataset]` table of its TOML configuration and sends it with every dataset it registers. It is separate from the `[store]` table because an engine that answers with a path supplies the address itself, so a deployment can file without having a store to ask. What a given deployment settled on is written down in its beamline descriptor.
 - The conductor registers no datasets and so names no scheme. It did once, for engines that answered with a location, and the seam was removed because reading an address needs no claim and no walk: whatever watches such an engine reads the same value from the same place.
 - Anything that later resolves a dataset's address must read it under that same word.
 

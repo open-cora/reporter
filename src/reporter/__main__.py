@@ -249,26 +249,34 @@ class Transport(HttpClient, StoreHttpClient, Protocol):
 
 
 def dataset_leg(http: Transport, config: ReporterConfig) -> tuple[Filing | None, Locating | None]:
-    """Both halves of the dataset leg, or neither of them.
+    """Each half of the dataset leg, switched on by its own table.
 
-    Two capabilities from one table, returned together because they are
-    switched on together. Filing needs the scheme a store's addresses
-    belong to and locating needs the store itself, so a deployment with
-    no `[store]` table can do neither, and one with a table can do both.
-    Building them in one place is what makes the half-configured pair
-    unconstructable rather than something `Session` has to reject.
+    Filing needs the vocabulary an address belongs to and locating needs
+    a store to ask, and those are different facts. An engine answering
+    with a path gives an address and nothing to resolve, so that
+    deployment files and never locates; one answering with a name
+    resolves first and then files, so it does both. Either may be absent,
+    and absence is a configuration this reporter supports rather than a
+    degraded one.
 
-    Two `None`s switch the leg off, which is a configuration this
-    reporter supports rather than a degraded one. One HTTP client serves
-    both the keeper and the store, so timeouts and the connection pool
-    are set in a single place.
+    The pairing a `Session` cannot finish, locating with nothing to file,
+    is still unconstructable, but it is `load` that refuses it now rather
+    than the shape of this function.
+
+    One HTTP client serves both the keeper and the store, so timeouts and
+    the connection pool are set in a single place.
     """
-    if config.store is None:
-        return None, None
-    return (
-        HttpFiling(http, config.base_url, config.token, config.store.external_ref_scheme),
-        HttpLocating(http, config.store.base_url, config.store.root),
+    filing = (
+        None
+        if config.external_ref_scheme is None
+        else HttpFiling(http, config.base_url, config.token, config.external_ref_scheme)
     )
+    locating = (
+        None
+        if config.store is None
+        else HttpLocating(http, config.store.base_url, config.store.root)
+    )
+    return filing, locating
 
 
 def store_that_does_not_answer(store: Locating | None, config: ReporterConfig) -> str | None:

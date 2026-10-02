@@ -175,6 +175,13 @@ fi
 if [ -n "${ETC:-}" ]; then
   SETTINGS="${SETTINGS} ETC='${ETC}'"
 fi
+# Separately from ETC, because the two come apart on a host that keeps a
+# directory for logs. In a home the log belongs beside the configuration
+# and ETC decides both; where something else already writes logs to one
+# place, a second convention putting them under etc is just wrong.
+if [ -n "${LOG:-}" ]; then
+  SETTINGS="${SETTINGS} LOG='${LOG}'"
+fi
 if [ -n "${PREFIX:-}" ]; then
   SETTINGS="${SETTINGS} PREFIX='${PREFIX}'"
 fi

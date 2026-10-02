@@ -82,7 +82,7 @@ say "config      ${CONFIG}, mode ${mode}"
 
 if [ "${SYNC:-0}" = "1" ]; then
     command -v uv >/dev/null || die "SYNC=1 needs uv on PATH"
-    (cd "${APP_DIR}" && uv sync --locked --extra service --extra epics)
+    (cd "${APP_DIR}" && uv sync --locked --no-dev --extra service --extra epics)
 fi
 [ -x "${APP_DIR}/.venv/bin/python3" ] || die "no virtualenv at ${APP_DIR}/.venv.
     Run again with SYNC=1, or share one built on a machine that can reach a

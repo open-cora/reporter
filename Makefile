@@ -4,7 +4,14 @@
 # One project, one lockfile, one virtualenv. Every target runs here rather
 # than looping over a tree, which is the difference between this Makefile and
 # the one it was split out of.
-STYLED := src tests typings
+# Every tracked Python file in the project, not a list of the directories
+# somebody remembered. Each of these was a hand-written list once, and
+# each had Python outside it: the conductor's simulator, the keeper's two
+# deploy scripts, the reporter's two collectors. A simulator shipped a
+# docstring citing a test file that has never existed in any branch, and
+# no lane here was looking at it. ruff honours the ignore rules, so the
+# virtualenv and the built site stay out without being named.
+STYLED := .
 
 help:
 	@echo "Common targets:"

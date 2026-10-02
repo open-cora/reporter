@@ -42,6 +42,7 @@ import re
 from typing import TYPE_CHECKING
 
 from tests._tracked import (
+    tracked_other_python_files,
     tracked_prose_files,
     tracked_source_files,
     tracked_test_files,
@@ -97,7 +98,12 @@ def test_the_scan_catches_a_citation_and_leaves_ordinary_prose_alone() -> None:
 
 
 def test_no_tracked_file_cites_a_spike() -> None:
-    hits = _offenders(tracked_source_files() | tracked_test_files() | tracked_prose_files())
+    hits = _offenders(
+        tracked_source_files()
+        | tracked_test_files()
+        | tracked_other_python_files()
+        | tracked_prose_files()
+    )
     assert not hits, (
         "A published file cites a spike. A spike is not re-run and does not "
         "ship with this project, so a claim resting on one cannot be checked "

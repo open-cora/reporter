@@ -16,7 +16,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests._tracked import tracked_prose_files, tracked_source_files, tracked_test_files
+from tests._tracked import (
+    tracked_other_python_files,
+    tracked_prose_files,
+    tracked_source_files,
+    tracked_test_files,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -41,7 +46,7 @@ def test_the_dash_scan_reaches_both_source_and_prose() -> None:
 
 
 def test_tracked_source_carries_no_em_dashes() -> None:
-    hits = _offenders(tracked_source_files() | tracked_test_files())
+    hits = _offenders(tracked_source_files() | tracked_test_files() | tracked_other_python_files())
     assert not hits, "Em or en dash in source:\n" + "\n".join(hits)
 
 

@@ -17,7 +17,12 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from tests._tracked import tracked_prose_files, tracked_source_files, tracked_test_files
+from tests._tracked import (
+    tracked_other_python_files,
+    tracked_prose_files,
+    tracked_source_files,
+    tracked_test_files,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -49,5 +54,10 @@ def test_the_emoji_scan_would_catch_one() -> None:
 
 
 def test_tracked_source_and_prose_carry_no_emoji() -> None:
-    hits = _offenders(tracked_source_files() | tracked_test_files() | tracked_prose_files())
+    hits = _offenders(
+        tracked_source_files()
+        | tracked_test_files()
+        | tracked_other_python_files()
+        | tracked_prose_files()
+    )
     assert not hits, "Emoji in source or prose:\n" + "\n".join(hits)

@@ -44,6 +44,17 @@ particular. `ScanUUID` is autosaved upstream and nothing blanks it
 between scans, so "it is not empty" would be true of the previous run's
 id for the whole of this one. Only the change is news.
 
+Which leaves what the change is measured against, and that is the part
+that was wrong here. Each baseline is read from the half of the cycle
+that cannot contain the write it exists to notice: the identifier while
+the server is idle, the address while a scan is running. Reusing the
+answer to the previous wait instead reads as the same thing and is not,
+because a wait that runs out never saw the write it waited for. The
+baseline then sits one write behind the record for good, and every scan
+after it is reported under the name, or filed under the path, of the one
+before. Measured at a beamline, where a run was recorded under a uuid
+its own scan did not mint.
+
 A wait that runs out yields anyway rather than dropping the scan. A run
 nobody can name is still a run that happened, and an ending nobody
 reported is the silence this whole source exists to break.
@@ -209,21 +220,20 @@ def from_tomoscan(
     # late records are read for the same reason: what they hold now is a
     # baseline to notice movement against, not news.
     was_idle = True
-    run_id = text(SCAN_UUID)
-    address = text(FULL_FILE_NAME)
+    run_id = ""
+    before_run = text(SCAN_UUID)
+    during_run = text(FULL_FILE_NAME)
 
     while True:
         idle = text(START_SCAN) == IDLE
 
         if not idle and was_idle:
-            minted = changed(SCAN_UUID, run_id, identifier_seconds)
+            minted = changed(SCAN_UUID, before_run, identifier_seconds)
             run_id = minted if minted is not None else ""
             yield (STARTED, {**whose(), "run_id": run_id})
 
         if idle and not was_idle:
-            written = changed(FULL_FILE_NAME, address, address_seconds)
-            if written is not None:
-                address = written
+            written = changed(FULL_FILE_NAME, during_run, address_seconds)
             ended: dict[str, Any] = {
                 **whose(),
                 "status": text(SCAN_STATUS),
@@ -233,6 +243,23 @@ def from_tomoscan(
             yield (ENDED, ended)
             if ended["file"]:
                 yield (FILE, ended)
+
+        # Each baseline is taken from the half of the cycle that cannot
+        # contain the write it exists to notice. The identifier is minted
+        # just after a scan begins, so what the record holds while the
+        # server is idle is always the previous run's name; the address
+        # is written just after a scan ends, so what it holds while a scan
+        # is running is always the previous run's path.
+        #
+        # Taking either from the answer to the last wait instead reads as
+        # equivalent and is not. A wait that ran out never saw the write
+        # it was waiting for, so the baseline stays behind the record from
+        # then on, and every scan after it is reported under the name, or
+        # filed under the path, of the one before.
+        if idle:
+            before_run = text(SCAN_UUID)
+        else:
+            during_run = text(FULL_FILE_NAME)
 
         was_idle = idle
         time.sleep(poll_interval)

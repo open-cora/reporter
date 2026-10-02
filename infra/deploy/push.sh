@@ -188,6 +188,21 @@ fi
 if [ -n "${SYNC:-}" ]; then
   SETTINGS="${SETTINGS} SYNC='${SYNC}'"
 fi
+# Forwarded even when it is empty, which none of the others are, because
+# three states have to survive the hop and only two of them have a value.
+# An installer that reads this back from the file it is about to rewrite
+# takes unset to mean "keep what this host is already enforcing", a value
+# to mean "enforce that one", and empty to mean "go permissive", which is
+# how an authorization rollback is spelled.
+#
+# Testing the value with -n would collapse empty into unset, so the
+# rollback would rewrite the file with the old setting still in it and
+# report success. A rollback that silently does nothing is worse than one
+# that fails, because it is run exactly when somebody has stopped reading
+# carefully.
+if [ -n "${AUTHZ_POLICY_ID+set}" ]; then
+  SETTINGS="${SETTINGS} AUTHZ_POLICY_ID='${AUTHZ_POLICY_ID}'"
+fi
 
 echo "Install"
 ssh "${HOST}" "cd ${REMOTE}/infra/deploy && ${SETTINGS} ./install.sh"

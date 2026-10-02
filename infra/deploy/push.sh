@@ -1,13 +1,27 @@
 #!/usr/bin/env bash
-# Ships this app to one beamline host from a revision, and records which.
+# Ships this app to one host from a revision, and records which.
 #
 #   BEAMLINE=19-bm HOST=radon ./push.sh c7a5a55
 #   BEAMLINE=7-bm  HOST=karman PREFIX=corasim7bm:TomoScan: ./push.sh v0.4.0
+#   HOST=lyra ./push.sh HEAD
 #
 # Which app is read from where this script sits rather than written into
 # it, so the same bytes serve every app that deploys into a home directory.
 # A mirror carries its own copy, as it carries its own licence, and a test
 # in the tree proves the copies identical.
+#
+# ## Why the beamline is optional and the host is not
+#
+# A host is what this ships to and there is always one. A beamline is what
+# the thing being shipped belongs to, and not everything here belongs to
+# one: a thinker is handed an execution and reads where that ran off the
+# record, so it has no beamline setting to be told and asking for one
+# would mean writing a fiction into the revision file.
+#
+# It is not merely defaulted, because the apps that do need it need it
+# absolutely. Each of their installers requires it on its own, so pushing
+# one without it stops at the install step with that installer's own
+# message, after a copy that changed nothing a service reads.
 #
 # The revision is required rather than defaulting to HEAD. It defaulted
 # once, and the day a commit landed that must not reach a beamline, the
@@ -42,7 +56,7 @@
 
 set -euo pipefail
 
-BEAMLINE="${BEAMLINE:?BEAMLINE is required, for example BEAMLINE=19-bm}"
+BEAMLINE="${BEAMLINE:-}"
 HOST="${HOST:?HOST is required, for example HOST=radon}"
 REF="${1:?a revision is required, for example c7a5a55 or HEAD. It is named rather than defaulted because a default is whatever happened to be committed last}"
 
@@ -62,7 +76,11 @@ SHA="$(git rev-parse --verify --quiet "${REF}^{commit}")" \
 SUBJECT="$(git log -1 --format=%s "${SHA}")"
 DESCRIBED="$(git describe --tags --always "${SHA}" 2>/dev/null || echo "${SHA}")"
 
-echo "Shipping ${APP} for ${BEAMLINE} to ${HOST}"
+if [ -n "${BEAMLINE}" ]; then
+  echo "Shipping ${APP} for ${BEAMLINE} to ${HOST}"
+else
+  echo "Shipping ${APP} to ${HOST}"
+fi
 say "revision  ${DESCRIBED} (${SHA})"
 say "subject   ${SUBJECT}"
 echo
@@ -119,7 +137,14 @@ revision ${SHA}
 described ${DESCRIBED}
 ref ${REF}
 subject ${SUBJECT}
-beamline ${BEAMLINE}
+REV
+# Left out entirely rather than written empty, so somebody reading this
+# file for a beamline gets no answer instead of one that looks like a
+# name that went missing on the way.
+if [ -n "${BEAMLINE}" ]; then
+  echo "beamline ${BEAMLINE}" >> "${STAGING}/REVISION"
+fi
+cat >> "${STAGING}/REVISION" <<REV
 pushed $(date -u '+%Y-%m-%dT%H:%M:%SZ') by $(whoami)@$(hostname -s)
 REV
 say "ok"
@@ -137,7 +162,10 @@ echo
 # Forwarded rather than guessed, because what an installer needs differs by
 # app: a reporter is told which records to watch and a conductor is not.
 # Anything not set here is left for the installer's own default.
-SETTINGS="BEAMLINE='${BEAMLINE}'"
+SETTINGS=""
+if [ -n "${BEAMLINE}" ]; then
+  SETTINGS="BEAMLINE='${BEAMLINE}'"
+fi
 if [ -n "${PREFIX:-}" ]; then
   SETTINGS="${SETTINGS} PREFIX='${PREFIX}'"
 fi

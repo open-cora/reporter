@@ -166,6 +166,15 @@ SETTINGS=""
 if [ -n "${BEAMLINE}" ]; then
   SETTINGS="BEAMLINE='${BEAMLINE}'"
 fi
+# Where the configuration, the CA bundle and the log live, which every
+# installer here derives from one directory. It is forwarded because a
+# host that is not a beamline wants them somewhere other than the home:
+# the central host's home is NFS and mounted by a dozen machines, so a
+# token at mode 600 in it is readable by all of them, where the same file
+# on that host's local disk is readable on one.
+if [ -n "${ETC:-}" ]; then
+  SETTINGS="${SETTINGS} ETC='${ETC}'"
+fi
 if [ -n "${PREFIX:-}" ]; then
   SETTINGS="${SETTINGS} PREFIX='${PREFIX}'"
 fi

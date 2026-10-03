@@ -162,7 +162,7 @@ MANIFEST_MAX_ENTRIES = 64
 
 Derived from a real file rather than chosen. The 12 GB DXchange file at
 19-BM holds 140 nodes, 109 of them datasets, and the useful description
-of it is five entries: three arrays and two regions named and counted.
+of it is eight entries: three arrays and five regions named and counted.
 The bound has to leave a real container comfortable and make dumping a
 tree impossible, and 64 sits inside that gap.
 

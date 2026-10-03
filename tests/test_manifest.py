@@ -75,9 +75,26 @@ def test_a_capacity_records_what_a_container_reserved_beside_what_it_holds() -> 
     assert flats.capacity[0] == 100
 
 
+def test_a_dtype_is_what_says_whether_a_shape_is_dimensions_or_a_count() -> None:
+    """The discriminator that lets one field carry both cases."""
+    array = Extent(shape=(100, 6380, 9568), capacity=None, dtype="uint16")
+    region = Extent(shape=(29,), capacity=None, dtype=None)
+    assert array.dtype is not None
+    assert region.dtype is None and len(region.shape) == 1
+
+
+def test_a_container_counted_by_more_than_one_number_is_refused() -> None:
+    with pytest.raises(InvalidManifestError, match="counted by one number"):
+        Extent(shape=(6380, 9568), capacity=None, dtype=None)
+
+
+def test_a_scalar_array_keeps_its_empty_shape_because_it_has_a_dtype() -> None:
+    assert Extent(shape=(), capacity=None, dtype="float64").shape == ()
+
+
 def test_a_capacity_of_a_different_rank_than_its_shape_is_refused() -> None:
     with pytest.raises(InvalidManifestError, match="same number of dimensions"):
-        Extent(shape=(1, 6380), capacity=(100,), dtype=None)
+        Extent(shape=(1, 6380), capacity=(100,), dtype="uint16")
 
 
 def test_a_shape_counting_a_negative_number_of_things_is_refused() -> None:

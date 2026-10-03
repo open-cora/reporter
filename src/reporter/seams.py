@@ -198,11 +198,18 @@ class InvalidManifestError(ValueError):
 class Extent:
     """How much of something there is, and of what.
 
-    `shape` means what the container means by it: an array's dimensions,
-    how many files a set holds, how many children a region has. One
-    field rather than three because a reader that knows the convention
-    knows which it is reading, and three fields would be two empty ones
-    at every entry.
+    `shape` carries one of two things and `dtype` says which. With a
+    dtype this describes an array and the shape is its dimensions.
+    Without one it describes a container and the shape is a single
+    number: how many files a set holds, how many children a region has.
+    That is checked below rather than left as a reading convention,
+    because a container counted by two numbers is nobody's intent.
+
+    One field rather than two because a set of files and a region of a
+    tree are the same case, a thing and how many are in it, so a second
+    field would sit empty on every array and this one would sit empty
+    on every container. The real file that settled this holds three
+    arrays and five regions, so both halves are ordinary.
 
     `capacity` is what the container reserved, when the container says.
     It is the difference between a scan that collected one flat field
@@ -223,6 +230,11 @@ class Extent:
         if any(dimension < 0 for dimension in self.shape):
             raise InvalidManifestError(
                 f"a shape counts things, so {self.shape} cannot hold a negative"
+            )
+        if self.dtype is None and len(self.shape) != 1:
+            raise InvalidManifestError(
+                f"without a dtype this describes a container, and a container is counted "
+                f"by one number rather than by {self.shape}"
             )
         if self.capacity is not None and len(self.capacity) != len(self.shape):
             raise InvalidManifestError(

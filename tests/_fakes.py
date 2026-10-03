@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from reporter.adapters.store_http import Location
+from reporter.seams import Manifest
 
 
 @dataclass(frozen=True)
@@ -155,4 +156,29 @@ class Store:
         return self.locations.get(run_reference)
 
 
-__all__ = ["Answer", "Recorder", "Routed", "Sent", "Store"]
+@dataclass
+class Reader:
+    """Something that can say what is inside what a store holds.
+
+    Keyed by the address, which is what `Describing` is given. An
+    address with no entry answers `None`, the way an adapter answers for
+    a container it does not understand, and `asked` lets a test show the
+    reader was never consulted rather than inferring it.
+
+    The parameter is spelled the way `Describing` spells it, for the
+    reason `Store` gives: a structural protocol compares parameter
+    names, so a fake naming it differently would satisfy nothing.
+    """
+
+    manifests: dict[str, Manifest] = field(default_factory=dict["str", "Manifest"])
+    refusal: Exception | None = None
+    asked: list[str] = field(default_factory=list["str"])
+
+    def describe(self, address: str) -> Manifest | None:
+        self.asked.append(address)
+        if self.refusal is not None:
+            raise self.refusal
+        return self.manifests.get(address)
+
+
+__all__ = ["Answer", "Reader", "Recorder", "Routed", "Sent", "Store"]

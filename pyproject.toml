@@ -40,6 +40,13 @@ service = ["httpx>=0.28,<1"]
 # extra: a deployment reporting for a bluesky beamline should not install a
 # control-system library to do it.
 epics = ["pyepics>=3.5,<4"]
+# Saying what is inside a tomography file written to the DXchange convention.
+# Only `adapters.dxchange_hdf5` imports the name below, and a deployment whose
+# store answers structure over HTTP, or whose data is a folder of images, needs
+# no format library to describe either.
+describe-hdf5 = [
+    "h5py>=3.11,<4",
+]
 
 # Pinned to the same ranges as apps/keeper. Two projects linting under two ruff
 # versions is a drift source with no upside, and the pre-commit hook that

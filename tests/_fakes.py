@@ -18,6 +18,7 @@ drifting from the real one with nothing comparing them.
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
+from uuid import UUID
 
 from reporter.adapters.store_http import Location
 from reporter.seams import Manifest
@@ -181,4 +182,28 @@ class Reader:
         return self.manifests.get(address)
 
 
-__all__ = ["Answer", "Reader", "Recorder", "Routed", "Sent", "Store"]
+@dataclass
+class Catalogue:
+    """Somewhere to send what a reader found, standing in for the keeper.
+
+    `filed` is every description it was handed, in order, so a test can
+    show a second look landed beside the first rather than replacing it
+    on the way out. A `refusal` is what the far side raising looks like
+    from here.
+
+    The parameters are spelled the way `Cataloguing` spells them, for
+    the reason the two fakes above give.
+    """
+
+    filed: list[tuple[UUID, str, Manifest]] = field(
+        default_factory=list["tuple[UUID, str, Manifest]"]
+    )
+    refusal: Exception | None = None
+
+    def record(self, dataset_id: UUID, address: str, manifest: Manifest) -> None:
+        if self.refusal is not None:
+            raise self.refusal
+        self.filed.append((dataset_id, address, manifest))
+
+
+__all__ = ["Answer", "Catalogue", "Reader", "Recorder", "Routed", "Sent", "Store"]

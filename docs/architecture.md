@@ -16,7 +16,7 @@ store's API or the record's HTTP lives under `reporter/adapters/`, and one
 module names both sides.
 
 `tests/test_the_core_names_no_seam.py` holds that, and pins the membership on
-both sides: `EXPECTED_CORE_MODULES` is five and `EXPECTED_ADAPTERS` is six, so
+both sides: `EXPECTED_CORE_MODULES` is five and `EXPECTED_ADAPTERS` is seven, so
 neither list can quietly stop being the list. It also refuses an engine
 library, a transport library or a store library imported anywhere above the
 adapters.
@@ -26,11 +26,13 @@ adapters.
 ```
    the core: five modules, the standard library, and each other
    ---------------------------------------------------------------------
-   seams.py                    intents.py           outcomes.py
-     Delivering  what arrives    ReportStepRun        Relayed   Kept
-     Reporting   file a report   RegisterDataset      Unchanged
-     Filing      file a dataset  Ignored              Skipped   Held
-     Locating    ask a store     Unmappable
+   seams.py                      intents.py           outcomes.py
+     Delivering   what arrives     ReportStepRun        Relayed   Kept
+     Reporting    file a report    RegisterDataset      Unchanged
+     Filing       file a dataset   Ignored              Skipped   Held
+     Cataloguing  file a manifest  Unmappable
+     Locating     ask a store
+     Describing   ask a container
 
               \                      |                     /
                +-------> session.py <+--------------------+
@@ -40,14 +42,14 @@ adapters.
                +-------> relay.py
                            a queue and a worker thread
 
-   the adapters: one outside system each, six of them
+   the adapters: one outside system each, seven of them
    ---------------------------------------------------------------------
-   knows one engine's grammar       knows the record, or the store
-   --------------------------       -------------------------------
-   bluesky_documents.py             keeper_http.py   Reporting, Filing
-   tomoscan_records.py              store_http.py    Locating
-   zmq_subscription.py
-   capture_replay.py
+   knows one engine's grammar   knows the record, the store, or a format
+   --------------------------   ----------------------------------------
+   bluesky_documents.py         keeper_http.py    Reporting, Filing,
+   tomoscan_records.py                            Cataloguing
+   zmq_subscription.py          store_http.py     Locating
+   capture_replay.py            dxchange_hdf5.py  Describing
 
    in between
    ---------------------------------------------------------------------
@@ -88,6 +90,7 @@ coupling the right column to the left was a function signature.
    Session acts on one intent
      Reporting.record(intent)                        into Execution
      Locating.locate(ref) then Filing.record(intent) into Custody
+     Describing.describe(address) then Cataloguing.record(...)
          |
          v
    an Outcome:  Relayed | Kept | Unchanged | Skipped | Held

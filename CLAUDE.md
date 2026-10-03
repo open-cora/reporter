@@ -20,13 +20,14 @@ from that point on. A fix here does not reach there.
 
 ## The split this package is built around
 
-`seams` declares five capabilities and nothing that satisfies them:
+`seams` declares six capabilities and nothing that satisfies them:
 `Reporting` records what an engine did to one step's run, `Filing` records
-where the data it produced is kept, `Locating` asks a store where that data
-went, `Describing` asks what is inside it, and `Delivering` is where
-deliveries come from. Each is named for what this reporter needs rather than
-for what answers it, so two of them reaching one keeper today is a fact about
-a deployment and not about the shape here.
+where the data it produced is kept, `Cataloguing` records what is inside it,
+`Locating` asks a store where that data went, `Describing` asks a container
+what it holds, and `Delivering` is where deliveries come from. Each is named
+for what this reporter needs rather than for what answers it, so three of
+them reaching one keeper today is a fact about a deployment and not about
+the shape here.
 
 `session`, `relay`, `intents` and `outcomes` sit above that line with
 `seams`, and between them they import the standard library and each other.

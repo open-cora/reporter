@@ -1,13 +1,14 @@
-"""Reporting and Filing, over the keeper's own HTTP API.
+"""Reporting, Filing and Cataloguing, over the keeper's own HTTP API.
 
-Two classes for two capabilities, against one service. They could have
-been one object with two methods, and they are not, because the two are
-switched on separately: a deployment with nowhere to keep data has a
-`Reporting` and no `Filing`, and one object would have to be passed as
-both and then told to refuse half of itself.
+Three classes for three capabilities, against one service. They could
+have been one object with three methods, and they are not, because they
+are switched on separately: a deployment with nowhere to keep data has
+a `Reporting` and neither of the others, and one object would have to
+be passed as all three and then told to refuse most of itself.
 
     POST /executions/{id}/steps/{step}/run   an engine did something
     POST /datasets                           and it produced data
+    POST /datasets/{id}/manifests            and this is what is in it
 
 Two calls where there were five. The three that are gone all served one
 job, bringing a run into existence here and finding it again afterwards.
@@ -87,6 +88,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from reporter.intents import RegisterDataset, ReportStepRun
+    from reporter.seams import Entry, Manifest
 
 _NO_CONTENT: Final = 204
 _CREATED: Final = 201
@@ -228,6 +230,73 @@ class HttpFiling:
 
     def _headers(self, extra: Mapping[str, str]) -> dict[str, str]:
         return {"Authorization": f"Bearer {self._token}", **extra}
+
+
+class HttpCataloguing:
+    """Tells the keeper what is inside the data a run produced.
+
+    Holds `scheme` for the same reason filing does, and holds the same
+    one: this names the copy that was opened, and the copy that was
+    opened is the copy that was filed.
+    """
+
+    def __init__(self, http: HttpClient, base_url: str, token: str, scheme: str) -> None:
+        self._http = http
+        self._base_url = base_url
+        self._token = token
+        self._scheme = scheme
+
+    def record(self, dataset_id: UUID, address: str, manifest: Manifest) -> None:
+        """Record what was found inside one copy of a run's output.
+
+        No `occurred_at`. The other two calls carry one because they
+        relay a moment that happened elsewhere, at a beamline this
+        process was not watching. A description was taken here, a
+        moment ago, so the keeper stamping its arrival is not an
+        approximation of anything and sending a clock reading of our
+        own would only be a second opinion about now.
+
+        No idempotency key either. The far side refuses a description
+        that repeats what it already holds, which is what a redelivery
+        sends, and admits one that differs, which is what a second look
+        sends. A key would have to be derived from the contents to tell
+        those apart, which is the distinction the far side is already
+        making from the contents themselves.
+        """
+        path = f"/datasets/{dataset_id}/manifests"
+        body: dict[str, Any] = {
+            "external_ref": {"scheme": self._scheme, "value": address},
+            "convention": manifest.convention,
+            "entries": [_entry(entry) for entry in manifest.entries],
+        }
+        response = _posted(self._http, f"{self._base_url}{path}", body, self._headers({}), path)
+        if response.status_code != _NO_CONTENT:
+            raise _refusal(response.status_code, response.text, method="POST", path=path)
+
+    def _headers(self, extra: Mapping[str, str]) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._token}", **extra}
+
+
+def _entry(entry: Entry) -> dict[str, Any]:
+    """One entry as the keeper takes it.
+
+    An absent extent travels as null rather than as an object of
+    nulls, because the far side reads the absence as nobody having
+    measured and an object of nulls as somebody having measured
+    nothing.
+    """
+    extent = entry.extent
+    return {
+        "path": entry.path,
+        "role": entry.role,
+        "extent": None
+        if extent is None
+        else {
+            "shape": list(extent.shape),
+            "capacity": None if extent.capacity is None else list(extent.capacity),
+            "dtype": extent.dtype,
+        },
+    }
 
 
 def _posted(

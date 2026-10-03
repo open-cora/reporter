@@ -59,6 +59,31 @@ session = Session(
 )
 ```
 
+Saying what is inside the data as well as where it is takes two more, and
+they go on together: a reader with nowhere to send what it found records
+nothing, and a sender with nothing to send never sends. The reader needs a
+format library, so it is an extra and the key that turns it on is optional.
+
+```python
+from reporter.adapters.dxchange_hdf5 import DxchangeHdf5Describing
+from reporter.adapters.keeper_http import HttpCataloguing
+
+session = Session(
+    HttpReporting(http, config.base_url, config.token),
+    HttpFiling(http, config.base_url, config.token, config.external_ref_scheme),
+    HttpLocating(http, store.base_url, store.root),
+    DxchangeHdf5Describing(),
+    HttpCataloguing(http, config.base_url, config.token, config.external_ref_scheme),
+)
+```
+
+The description is asked for after the address is filed, and nothing it does
+can cost that. A container nothing can open, a keeper that refuses the
+description, a format library raising something nobody mapped: each leaves
+the dataset recorded and puts the reason on the outcome, where the tally
+prints it. A dataset nobody described is also visible in the record, so a
+description missed is a thing to ask for again rather than a thing lost.
+
 **Start the reporter before the engine, either way.** A publisher drops what it
 sends while nothing is listening.
 

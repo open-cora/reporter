@@ -1,4 +1,4 @@
-"""The five outward seams, named for what this reporter does through them.
+"""The six outward seams, named for what this reporter does through them.
 
 A seam is a Protocol here and an adapter under `reporter.adapters`, so
 which engine publishes, which store keeps the data, and how the keeper is
@@ -6,7 +6,7 @@ reached are choices a deployment makes at its entrypoint. That is the
 arrangement `apps/conductor` and `apps/thinker` both use, and the reason
 is the same one three times over.
 
-Five seams and four Protocols, because `Delivering` is an alias rather
+Six seams and five Protocols, because `Delivering` is an alias rather
 than a Protocol for the reason given where it is defined.
 
 None of the Protocols carries a Port suffix. Everything in this module is
@@ -36,10 +36,18 @@ of the three places the answer mattered. There is nothing left to
 disagree with itself: a session that cannot file was not given the
 capability.
 
-`Describing` is absent on its own terms rather than with those two. A
-deployment can know where data landed and still have nothing able to
-read the format it landed in, which is the ordinary case at a beamline
-whose files are a kind nothing here has an adapter for yet.
+`Describing` and `Cataloguing` are absent on their own terms rather
+than with those two, and they are absent together. A deployment can
+know where data landed and still have nothing able to read the format
+it landed in, which is the ordinary case at a beamline whose files are
+a kind nothing here has an adapter for yet.
+
+Together, because neither is worth anything alone: a reader with
+nowhere to send what it found, or a sender with nothing to send. They
+are still two Protocols, because they are two capabilities answered by
+two different services, and the day a keeper too old to hold a
+description is the thing that is missing, that is the half a deployment
+turns off.
 
 ## What can go wrong, in three kinds and no status codes
 
@@ -371,6 +379,32 @@ class Filing(Protocol):
 
 
 @runtime_checkable
+class Cataloguing(Protocol):
+    """Recording what is inside the data a run produced."""
+
+    def record(self, dataset_id: UUID, address: str, manifest: Manifest) -> None:
+        """Say what was found inside one copy, or raise one of the three.
+
+        `dataset_id` is what filing returned, so this is always a second
+        act on a record that already exists. `address` is the copy that
+        was opened, which is the same value that was filed, because a
+        description of a copy nobody recorded connects to nothing.
+
+        Nothing here carries the scheme, for the reason filing does not:
+        it is a fact about the store this deployment keeps its data in
+        and was settled when this was built.
+
+        Sending the same description twice is refused on the far side
+        rather than absorbed, and that is the right way round. A
+        description that says something new is a second observation and
+        belongs in the record; one that repeats what is already there is
+        a delivery arriving twice, and the two are told apart by what
+        they say rather than by anything this could track.
+        """
+        ...
+
+
+@runtime_checkable
 class Locating(Protocol):
     """Asking where a run's output ended up."""
 
@@ -444,6 +478,7 @@ __all__ = [
     "ENTRY_PATH_MAX_LENGTH",
     "LABEL_MAX_LENGTH",
     "MANIFEST_MAX_ENTRIES",
+    "Cataloguing",
     "Delivering",
     "Delivery",
     "Describing",

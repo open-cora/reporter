@@ -184,6 +184,43 @@ def test_a_store_with_no_scheme_is_refused_rather_than_half_built() -> None:
         from_mapping({**WELL_FORMED, "store": WITH_STORE["store"]})
 
 
+def test_a_dataset_table_with_no_describer_files_addresses_and_describes_nothing() -> None:
+    """The ordinary beamline: one adapter exists and it reads one format."""
+    config = from_mapping({**WELL_FORMED, "dataset": {"external_ref_scheme": "posix-file"}})
+
+    assert config.external_ref_scheme == "posix-file"
+    assert config.describer is None
+
+
+def test_a_describer_nothing_answers_to_is_refused_at_load_not_at_the_first_scan() -> None:
+    """A month of looking configured and recording nothing is the alternative."""
+    with pytest.raises(ConfigError, match="dxchange-hdf5"):
+        from_mapping(
+            {
+                **WELL_FORMED,
+                "dataset": {"external_ref_scheme": "posix-file", "describer": "hdf5"},
+            }
+        )
+
+
+def test_a_describer_that_is_not_a_string_is_refused_by_name() -> None:
+    with pytest.raises(ConfigError, match=re.escape("dataset.describer")):
+        from_mapping(
+            {**WELL_FORMED, "dataset": {"external_ref_scheme": "posix-file", "describer": 7}}
+        )
+
+
+def test_a_known_describer_is_carried_through_to_the_configuration() -> None:
+    config = from_mapping(
+        {
+            **WELL_FORMED,
+            "dataset": {"external_ref_scheme": "posix-file", "describer": "dxchange-hdf5"},
+        }
+    )
+
+    assert config.describer == "dxchange-hdf5"
+
+
 def test_a_dataset_table_missing_the_scheme_is_refused_by_name() -> None:
     with pytest.raises(ConfigError, match=re.escape("dataset.external_ref_scheme")):
         from_mapping({**WELL_FORMED, "dataset": {}})

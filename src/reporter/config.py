@@ -19,9 +19,10 @@ there is nothing to configure about it.
 ## Two tables, because filing and locating are two capabilities
 
 `[dataset]` carries `external_ref_scheme`, the vocabulary the addresses
-this reporter files belong to, and its presence switches filing on.
-`[store]` carries a store's `base_url` and `root`, and its presence
-switches locating on.
+this reporter files belong to, and its presence switches filing on. It
+also carries an optional `describer`, which switches on saying what is
+inside the data as well as where it is. `[store]` carries a store's
+`base_url` and `root`, and its presence switches locating on.
 
 They were one table, on the reasoning that an address always comes from
 a store, so a deployment changing where its data is kept changes both
@@ -48,7 +49,7 @@ import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Final, cast
 
 
 class ConfigError(ValueError):
@@ -59,6 +60,22 @@ class ConfigError(ValueError):
     turned a typo into an outage; one that refuses to start has turned it
     into a message.
     """
+
+
+DESCRIBERS: Final[frozenset[str]] = frozenset({"dxchange-hdf5"})
+"""What `dataset.describer` may name.
+
+Names only. What each one builds lives at the entrypoint, because
+building one means importing a format library and this module is read
+before anything has decided whether that library is wanted. Keeping the
+names here is what lets a typo be refused at load rather than on the
+first scan that ends.
+
+The two sides are checked against each other by a test, because a name
+listed here that the entrypoint cannot build would pass configuration
+and then describe nothing, which is the failure mode that is hardest to
+see from either side alone.
+"""
 
 
 @dataclass(frozen=True)
@@ -76,6 +93,7 @@ class ReporterConfig:
     base_url: str
     token: str
     external_ref_scheme: str | None = None
+    describer: str | None = None
     store: StoreConfig | None = None
 
 
@@ -122,7 +140,7 @@ def from_mapping(settings: Mapping[str, Any], *, source: str = "configuration") 
         )
 
     store = _store(settings.get("store"), source)
-    scheme = _scheme(settings.get("dataset"), source)
+    scheme, describer = _dataset(settings.get("dataset"), source)
     if store is not None and scheme is None:
         raise ConfigError(
             f"{source}: there is a store table and no dataset table, so this reporter "
@@ -134,11 +152,12 @@ def from_mapping(settings: Mapping[str, Any], *, source: str = "configuration") 
         base_url=base_url.rstrip("/"),
         token=token,
         external_ref_scheme=scheme,
+        describer=describer,
         store=store,
     )
 
 
-def _scheme(table: Any, source: str) -> str | None:
+def _dataset(table: Any, source: str) -> tuple[str | None, str | None]:
     """Parse the dataset table, or say there is none.
 
     A missing table switches filing off, which is the deployment that
@@ -146,14 +165,39 @@ def _scheme(table: Any, source: str) -> str | None:
     and wrong is an error, for the reason the store table is: a typo
     found on the first run that ended is an outage, and one found at
     load is a message.
+
+    `describer` is optional where the scheme is required, and the two
+    are different kinds of fact. A deployment that files has to say
+    what vocabulary its addresses are in, because the address is
+    meaningless without it. A deployment that files does not have to
+    be able to read its own data, and most cannot: there is an adapter
+    for one format so far.
+
+    A name nothing answers to is an error rather than a shrug. The
+    alternative is a reporter that runs for a month looking configured
+    and recording nothing about any of it, which is the shape of
+    failure this whole file exists to turn into a message at load.
     """
     if table is None:
-        return None
+        return None, None
     if not isinstance(table, Mapping):
         raise ConfigError(f"{source}: dataset must be a table, or left out entirely")
 
     known: Mapping[str, Any] = cast("Mapping[str, Any]", table)
-    return _required_string(known, "external_ref_scheme", source, table_name="dataset")
+    scheme = _required_string(known, "external_ref_scheme", source, table_name="dataset")
+    describer = known.get("describer")
+    if describer is None:
+        return scheme, None
+    if not isinstance(describer, str) or not describer.strip():
+        raise ConfigError(f"{source}: dataset.describer must be a non-empty string")
+    if describer not in DESCRIBERS:
+        known_names = ", ".join(sorted(DESCRIBERS))
+        raise ConfigError(
+            f"{source}: dataset.describer is {describer!r}, which nothing here answers to. "
+            f"Use one of: {known_names}. Leave it out to file addresses and say "
+            "nothing about what is in the data."
+        )
+    return scheme, describer
 
 
 def _store(table: Any, source: str) -> StoreConfig | None:

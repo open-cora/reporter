@@ -23,6 +23,11 @@
 # beamline whose host cannot reach one builds the virtualenv on a machine
 # that can and shares it, which is what the shared home is for.
 #
+# EXTRAS adds to that pair rather than replacing it, and the one thing it is
+# for today is `--extra describe-hdf5`, which a configuration setting
+# `dataset.describer` needs. It is not in the default pair because it pulls
+# a format library onto every host that would never open a file.
+#
 # ## Why it reads the records before it starts anything
 #
 # A reporter that cannot see the engine is not an error anybody notices. It
@@ -82,7 +87,9 @@ say "config      ${CONFIG}, mode ${mode}"
 
 if [ "${SYNC:-0}" = "1" ]; then
     command -v uv >/dev/null || die "SYNC=1 needs uv on PATH"
-    (cd "${APP_DIR}" && uv sync --locked --no-dev --extra service --extra epics)
+    # Unquoted on purpose: EXTRAS is a list of flags, not one argument.
+    # shellcheck disable=SC2086
+    (cd "${APP_DIR}" && uv sync --locked --no-dev --extra service --extra epics ${EXTRAS:-})
 fi
 [ -x "${APP_DIR}/.venv/bin/python3" ] || die "no virtualenv at ${APP_DIR}/.venv.
     Run again with SYNC=1, or share one built on a machine that can reach a

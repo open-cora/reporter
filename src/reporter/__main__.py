@@ -51,7 +51,7 @@ import argparse
 import signal
 import sys
 from collections import Counter
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
 from types import FrameType
 from typing import Protocol
@@ -60,14 +60,27 @@ import httpx
 
 from reporter.adapters.bluesky_documents import documents_into
 from reporter.adapters.capture_replay import from_capture
-from reporter.adapters.keeper_http import HttpClient, HttpFiling, HttpReporting
+from reporter.adapters.keeper_http import (
+    HttpCataloguing,
+    HttpClient,
+    HttpFiling,
+    HttpReporting,
+)
 from reporter.adapters.store_http import HttpLocating, StoreHttpClient
 from reporter.adapters.tomoscan_records import from_tomoscan, records_into
 from reporter.adapters.zmq_subscription import DecodeError, from_subscription
 from reporter.config import ConfigError, ReporterConfig, load
-from reporter.outcomes import Held, Outcome
+from reporter.outcomes import Held, Kept, Outcome
 from reporter.relay import Handle, Relay
-from reporter.seams import Delivery, Filing, Locating, RefusedError, UnavailableError
+from reporter.seams import (
+    Cataloguing,
+    Delivery,
+    Describing,
+    Filing,
+    Locating,
+    RefusedError,
+    UnavailableError,
+)
 from reporter.session import Session
 
 REQUEST_TIMEOUT_SECONDS = 10.0
@@ -89,9 +102,15 @@ class Tally:
     the engine does and a list of every document it ever saw is a leak
     with a summary attached.
 
-    `Held` is printed when it happens rather than at the end. It is the
-    only outcome worth somebody's attention, and a process that reports it
-    on shutdown reports it to nobody.
+    `Held` is printed when it happens rather than at the end, because a
+    process that reports it on shutdown reports it to nobody.
+
+    A `Kept` that could not say what is inside the data is printed too,
+    and it is deliberately not a `Held`. The run is recorded and so is
+    where its output went, so nothing is lost that cannot be asked for
+    again; what would be lost is anybody knowing to ask. A tally that
+    counted it and said nothing would leave a reporter describing
+    nothing for a month while every number looked right.
 
     Written from the relay's single worker thread and read after that
     thread has been joined, which is what makes a plain `Counter` enough.
@@ -104,6 +123,8 @@ class Tally:
         self._counts[type(outcome).__name__] += 1
         if isinstance(outcome, Held):
             print(f"  held ({outcome.origin}): {outcome.reason}", file=sys.stderr)
+        if isinstance(outcome, Kept) and outcome.undescribed is not None:
+            print(f"  kept, undescribed: {outcome.undescribed}", file=sys.stderr)
 
     def report(self) -> int:
         """Print what happened, and fail the run if anything was held."""
@@ -130,8 +151,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         if unreachable is not None:
             print(f"configuration: {unreachable}", file=sys.stderr)
             return 2
+        try:
+            describing, cataloguing = contents_leg(http, config)
+        except ConfigError as problem:
+            print(f"configuration: {problem}", file=sys.stderr)
+            return 2
 
-        session = Session(reporting, filing, locating)
+        session = Session(reporting, filing, locating, describing, cataloguing)
         relay = Relay(handle_for(arguments, session), tally.record)
         relay.start()
         try:
@@ -277,6 +303,48 @@ def dataset_leg(http: Transport, config: ReporterConfig) -> tuple[Filing | None,
         else HttpLocating(http, config.store.base_url, config.store.root)
     )
     return filing, locating
+
+
+def contents_leg(
+    http: Transport, config: ReporterConfig
+) -> tuple[Describing | None, Cataloguing | None]:
+    """Reading what is inside the data, and telling the keeper, or neither.
+
+    Switched on by one key, because the two halves are useless apart. A
+    reader with nowhere to send what it found records nothing, and a
+    sender with nothing to send never sends.
+
+    The describer is imported here rather than at the top of this
+    module. Its library is an extra, this module is imported whatever a
+    deployment is running, and a top-level import would make every
+    reporter at every beamline need a format library to start. That is
+    not a hypothetical: the subscription adapter was written that way
+    and stopped the process booting on the extras the deploy script
+    passes.
+
+    Which leaves one failure this has to name rather than raise: a
+    deployment that asks for a describer and did not install the extra
+    it needs. Configuration cannot catch that, because the name is
+    perfectly good and it is the virtualenv that is short. So it is
+    refused here, at startup, with the extra to re-sync named, rather
+    than on the first scan that ends.
+    """
+    if config.describer is None or config.external_ref_scheme is None:
+        return None, None
+    try:
+        from reporter.adapters.dxchange_hdf5 import DxchangeHdf5Describing
+    except ImportError as missing:
+        raise ConfigError(
+            f"dataset.describer is {config.describer!r} and this virtualenv cannot "
+            f"build one. Re-sync with --extra describe-hdf5, or remove the key to "
+            f"file addresses and say nothing about what is in the data. ({missing})"
+        ) from missing
+
+    built: dict[str, Callable[[], Describing]] = {"dxchange-hdf5": DxchangeHdf5Describing}
+    return (
+        built[config.describer](),
+        HttpCataloguing(http, config.base_url, config.token, config.external_ref_scheme),
+    )
 
 
 def store_that_does_not_answer(store: Locating | None, config: ReporterConfig) -> str | None:

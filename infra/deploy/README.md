@@ -24,6 +24,13 @@ It needs a `[dataset]` table as well as a `[keeper]` one, or the reporter
 runs and files nothing. That is the difference between a reporter watching a
 beamline and a reporter that is installed at one.
 
+`[dataset]` may also carry `describer`, which turns on saying what is inside
+the data as well as where it is. It is off unless the key is there, because
+there is one format adapter so far and most beamlines are not writing that
+format yet. A deployment that sets it needs `--extra describe-hdf5` in the
+sync as well, and the process says so at startup rather than on the first
+scan that ends.
+
 **A CA bundle at `~/.config/cora/ca-bundle.crt`**, carrying the system
 anchors plus the keeper's own CA. Pointing the client at the bare CA would
 work and would also make the process distrust every other endpoint, which is
@@ -44,10 +51,13 @@ than the experiment.
 deployment watches is a choice made at its entrypoint. So a plain `uv sync`
 installs one package and the process will not start. It needs
 `--extra service` for the HTTP client and `--extra epics` for Channel
-Access:
+Access, and `EXTRAS` for anything beyond those two:
 
 ```bash
 SYNC=1 BEAMLINE=7-bm PREFIX=corasim7bm:TomoScan: ./install.sh
+
+# and where dataset.describer is set
+SYNC=1 EXTRAS="--extra describe-hdf5" BEAMLINE=2-bm PREFIX=2bm:TomoScan: ./install.sh
 ```
 
 which needs a package index. A beamline whose host cannot reach one builds

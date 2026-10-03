@@ -7,9 +7,10 @@ a no.
 ## Two bounded contexts, one session
 
 It reports into Execution, what an engine did to one step's run, and
-into Custody, where the data that step produced is being kept. The
-second is optional: no `Filing` and no `Locating` means no dataset leg
-and everything else unchanged.
+into Custody, where the data that step produced is being kept and what
+is inside it. The second is optional: no `Filing` and no `Locating`
+means no dataset leg and everything else unchanged, and no `Describing`
+means the leg runs and says nothing about contents.
 
 The two are in one session rather than two because they name the same
 step. A dataset cites the run that produced it, which is exactly the run
@@ -18,7 +19,7 @@ that knows where to ask about its data.
 
 ## It is given capabilities, not a client and a configuration
 
-Three seams in, and which service answers them is a question this file
+Five seams in, and which service answers them is a question this file
 cannot ask. It used to take one client object and the whole
 configuration, and that configuration was consulted at three separate
 places to work out whether the dataset leg was on. A session that cannot file is now a
@@ -58,6 +59,7 @@ it; `UnavailableError` means the opposite.
 """
 
 from typing import Final
+from uuid import UUID
 
 from reporter.intents import (
     Ignored,
@@ -68,7 +70,15 @@ from reporter.intents import (
     Unmappable,
 )
 from reporter.outcomes import Held, Kept, Outcome, Relayed, Skipped, Unchanged
-from reporter.seams import DisagreedError, Filing, Locating, RefusedError, Reporting
+from reporter.seams import (
+    Cataloguing,
+    Describing,
+    DisagreedError,
+    Filing,
+    Locating,
+    RefusedError,
+    Reporting,
+)
 
 ENDINGS: Final[frozenset[Report]] = frozenset({"Completed", "Aborted", "Failed"})
 """The three reports that mean a run is over and its data is worth asking about.
@@ -86,10 +96,14 @@ class Session:
         reporting: Reporting,
         filing: Filing | None = None,
         locating: Locating | None = None,
+        describing: Describing | None = None,
+        cataloguing: Cataloguing | None = None,
     ) -> None:
         self._reporting = reporting
         self._filing = filing
         self._locating = locating
+        self._describing = describing
+        self._cataloguing = cataloguing
 
     def act(self, intent: Intent) -> Outcome:
         """Do whatever one intent asks for, and say what came of it.
@@ -209,7 +223,62 @@ class Session:
             reported,
             dataset_id,
             intent.external_ref_value,
+            self._describe(dataset_id, intent.external_ref_value),
         )
+
+    def _describe(self, dataset_id: UUID, address: str) -> str | None:
+        """Ask what is inside the data, and tell the record, risking neither.
+
+        Returns why nothing was recorded, or `None` when a description
+        landed and when this deployment describes nothing. Runs after
+        filing rather than instead of it, because it needs the id filing
+        returns and because a record of where the data is must not
+        depend on anything being able to read it.
+
+        ## Why this asks now
+
+        The delivery that ends a run is the delivery that knows the work
+        is over, and the end of the work is the trigger a description
+        wants: a file being closed is not the same moment. A scan engine
+        at some beamlines reopens its finished file to append the
+        rotation angle of each frame, and a description taken before
+        that reports angles that are missing, which is also what the
+        real failure looks like.
+
+        Whether that gap is open here is not knowable from this side.
+        The engine appends inside the routine that ends a scan, so it
+        turns on whether this hears the ending before or after that
+        routine returns, which is a measurement at a live beamline
+        rather than a thing to reason out. A second description is an
+        ordinary later fact on the far side, so an early one costs a
+        row rather than the truth.
+
+        ## Why nothing here escapes
+
+        Every failure becomes a reason on the outcome, including the
+        kind that would otherwise mean "ask again". Letting one
+        propagate would retry the whole delivery, so a file nothing can
+        open would re-send a report and re-file an address that both
+        landed the first time, and then report the delivery held, which
+        hides a leg that worked behind one that is optional.
+
+        The catch is wide and its scope is one pair of calls. The seams
+        promise three classes and a describer reaching into a format
+        library is the most likely place in this package for a fourth
+        to arrive. One escaping here would kill the relay's worker, and
+        a reporter whose worker has died looks exactly like a beamline
+        that is not running.
+        """
+        if self._describing is None or self._cataloguing is None:
+            return None
+        try:
+            manifest = self._describing.describe(address)
+            if manifest is None:
+                return f"{address} is not a container anything here can describe"
+            self._cataloguing.record(dataset_id, address, manifest)
+        except Exception as failed:
+            return f"what is inside {address} was not recorded: {failed}"
+        return None
 
 
 __all__ = ["ENDINGS", "Session"]

@@ -245,13 +245,18 @@ class Session:
         that reports angles that are missing, which is also what the
         real failure looks like.
 
-        Whether that gap is open here is not knowable from this side.
-        The engine appends inside the routine that ends a scan, so it
-        turns on whether this hears the ending before or after that
-        routine returns, which is a measurement at a live beamline
-        rather than a thing to reason out. A second description is an
-        ordinary later fact on the far side, so an early one costs a
-        row rather than the truth.
+        For the engine watched over records, that gap is closed, and it
+        was read off the engine rather than assumed. The ending here is
+        the busy record returning to its idle value, the engine puts
+        that record back inside the base routine that ends a scan, and
+        every station that appends angles does so before calling it. The
+        address this then waits on is written later still.
+
+        It is a property of that engine and not of this code, so a
+        second engine has to be checked rather than inherited. What
+        makes an early look survivable either way is that a later
+        description is an ordinary later fact on the far side, so it
+        costs a row rather than the truth.
 
         ## Why nothing here escapes
 

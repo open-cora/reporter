@@ -408,6 +408,34 @@ class Describing(Protocol):
         report its mean would make a reader able to skip reading, which
         is the one thing a description is not for, and `Entry` is shaped
         so that there is nowhere to put the answer.
+
+        ## A closed file is not a finished one
+
+        Ask this when the work that produced the data has ended, not
+        when the file was closed. The two are not the same moment. A
+        scan engine at three of the four beamlines here reopens its
+        file after the writing plugin has closed it and appends the
+        rotation angle of each projection, which it works out from the
+        per-frame identifiers the plugin left behind.
+
+        A description taken in that gap is wrong in the worst available
+        way: it reports a file whose angles are missing, which is also
+        exactly what a real and documented failure looks like, so the
+        two become indistinguishable.
+
+        ## Absence is reported, never filled in
+
+        Report what the container has. Something a convention expects
+        and the container does not hold is said by not being in the
+        entries, and an adapter must not supply it from what it knows
+        the convention should contain. That absence is the most useful
+        thing a description can carry: a complete set of frames whose
+        angles were never written is unreconstructable, and today
+        nothing notices until somebody tries.
+
+        The same rule the other way: something present and not
+        understood is named and counted with no role, rather than left
+        out for being unrecognised.
         """
         ...
 

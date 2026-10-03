@@ -32,9 +32,6 @@ from __future__ import annotations
 from contextlib import closing
 from typing import TYPE_CHECKING, Any, Final, cast
 
-import msgpack
-import zmq
-
 if TYPE_CHECKING:
     from collections.abc import Generator
 
@@ -48,6 +45,16 @@ while nobody is asking. It is how often the loop reaches a point where
 an interrupt can land, which is the difference between a process that
 stops on Ctrl-C and one that has to be killed.
 """
+
+
+class LibrariesAbsentError(ImportError):
+    """A subscription was asked for without the libraries it is an extra for."""
+
+    def __init__(self, missing: ImportError) -> None:
+        super().__init__(
+            "Reading a published document stream needs the subscribe extra. "
+            f"Re-sync with --extra subscribe. ({missing})"
+        )
 
 
 class DecodeError(Exception):
@@ -76,6 +83,7 @@ def from_subscription(
     plain iterator for that reason: it holds a socket, and `close()` is
     how a caller on another thread gives it back.
     """
+    zmq = _zmq()
     context = zmq.Context()
     socket = context.socket(zmq.SUB)
     try:
@@ -87,6 +95,37 @@ def from_subscription(
                     yield decode(socket.recv())
     finally:
         context.term()
+
+
+def _zmq() -> Any:
+    """The socket library, imported where it is reached rather than above.
+
+    Both libraries below belong to an extra, and `__main__` imports this
+    module whichever source a deployment is running. Importing them at
+    the top therefore made the whole process need them, so a reporter
+    installed for a Channel Access beamline could not start at all.
+    Measured, not reasoned: `python -m reporter` raised
+    `ModuleNotFoundError: msgpack` on an install carrying the two extras
+    the deploy script actually passes.
+
+    The pairing the pyproject describes is unchanged. This module is
+    still the only one that names either library, and a deployment that
+    never subscribes still installs neither.
+    """
+    try:
+        import zmq
+    except ImportError as missing:
+        raise LibrariesAbsentError(missing) from missing
+    return zmq
+
+
+def _msgpack() -> Any:
+    """The encoding, imported where it is reached. See the note above."""
+    try:
+        import msgpack
+    except ImportError as missing:
+        raise LibrariesAbsentError(missing) from missing
+    return msgpack
 
 
 def decode(frame: bytes) -> Delivery:
@@ -118,7 +157,7 @@ def decode(frame: bytes) -> Delivery:
         ) from malformed
 
     try:
-        body = msgpack.unpackb(payload)
+        body = _msgpack().unpackb(payload)
     except Exception as unreadable:
         raise DecodeError(
             f"The payload of a {name.decode(errors='replace')!r} frame is not msgpack. "

@@ -150,7 +150,7 @@ sed -e "s|@BEAMLINE@|${BEAMLINE}|g" \
     -e "s|@PREFIX@|${PREFIX}|g" \
     -e "s|@EPICS_ENVIRONMENT@|${EPICS_ENVIRONMENT}|g" \
     -e "s|@LOG@|${LOG}|g" \
-    "${SCRIPT_DIR}/reporter.service.in" > "${UNIT_DIR}/${UNIT}"
+    "${SCRIPT_DIR}/cora-reporter.service.in" > "${UNIT_DIR}/${UNIT}"
 say "unit        ${UNIT_DIR}/${UNIT}"
 
 systemctl --user daemon-reload

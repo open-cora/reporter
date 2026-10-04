@@ -188,6 +188,19 @@ fi
 if [ -n "${SYNC:-}" ]; then
   SETTINGS="${SETTINGS} SYNC='${SYNC}'"
 fi
+# What a virtualenv needs beyond the pair every installer syncs. One
+# installer here reads it and the other three ignore it, and it is
+# forwarded from all four because these scripts are one file: an app that
+# grows an optional library needs no change here when it does.
+#
+# It was not forwarded at all until a deploy that passed it appeared to
+# succeed and installed nothing. That is the quietest shape this can fail
+# in: the variable is accepted by the shell, the installer documents it,
+# and the only thing missing is a library nothing asks for until the
+# configuration names it.
+if [ -n "${EXTRAS:-}" ]; then
+  SETTINGS="${SETTINGS} EXTRAS='${EXTRAS}'"
+fi
 # Forwarded even when it is empty, which none of the others are, because
 # three states have to survive the hop and only two of them have a value.
 # An installer that reads this back from the file it is about to rewrite

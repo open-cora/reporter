@@ -420,6 +420,14 @@ class Cataloguing(Protocol):
         was opened, which is the same value that was filed, because a
         description of a copy nobody recorded connects to nothing.
 
+        Three arguments rather than an intent, which is the shape the
+        other two keeper seams take. An intent is what translating one
+        delivery produced, and this is not that: `dataset_id` exists
+        only because filing returned it a moment ago, so no delivery
+        could have carried these three together. An intent for them
+        would put a value in `intents` that nothing translates into,
+        which is the one thing that file is.
+
         Nothing here carries the scheme, for the reason filing does not:
         it is a fact about the store this deployment keeps its data in
         and was settled when this was built.
@@ -475,17 +483,22 @@ class Describing(Protocol):
 
         ## A closed file is not a finished one
 
-        Ask this when the work that produced the data has ended, not
-        when the file was closed. The two are not the same moment. A
-        scan engine at three of the four beamlines here reopens its
-        file after the writing plugin has closed it and appends the
-        rotation angle of each projection, which it works out from the
-        per-frame identifiers the plugin left behind.
+        What reaches this has finished being written, and that is a
+        precondition the caller carries rather than a rule whatever
+        implements this could follow. A scan engine at three of the
+        four beamlines here reopens its file after the writing plugin
+        has closed it and appends the rotation angle of each
+        projection, which it works out from the per-frame identifiers
+        the plugin left behind. A description taken in that gap reports
+        a file whose angles are missing, which is also exactly what a
+        real and documented failure looks like, so the two become
+        indistinguishable.
 
-        A description taken in that gap is wrong in the worst available
-        way: it reports a file whose angles are missing, which is also
-        exactly what a real and documented failure looks like, so the
-        two become indistinguishable.
+        So an implementation describes what it is given and says
+        nothing about when. Which moment that is, why it is the end of
+        the work rather than the closing of the file, and how it was
+        checked against the one engine watched here are argued where
+        `Session` makes the call.
 
         ## Absence is reported, never filled in
 

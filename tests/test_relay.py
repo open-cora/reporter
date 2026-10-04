@@ -227,3 +227,80 @@ def test_the_queue_is_bounded_by_the_capacity_it_was_given() -> None:
     assert relay.submit("start", A_START)
     assert relay.submit("start", dict(A_START, uid="r2"))
     assert not relay.submit("start", dict(A_START, uid="r3"))
+
+
+def test_stopping_bounds_itself_by_its_timeout_even_with_the_queue_full() -> None:
+    """A full queue is what a long outage leaves behind, so it is the state a
+    stop is most likely to arrive in.
+
+    The sentinel alone could not be put on a queue with no room, and that
+    put blocked, so a stop waited on the worker it was ending and never
+    reached its own timeout.
+    """
+    wedged = threading.Event()
+
+    def never_answers(_name: str, _payload: Any) -> Outcome:
+        wedged.set()
+        threading.Event().wait(600)
+        raise AssertionError("unreachable")
+
+    relay = Relay(never_answers, lambda _outcome: None, capacity=2, retry_delays=())
+    relay.start()
+    relay.submit("start", A_START)
+    assert wedged.wait(5), "the worker never picked up the first delivery"
+    while relay.submit("start", dict(A_START, uid="filler")):
+        pass
+
+    returned = threading.Event()
+
+    def shutdown() -> None:
+        relay.stop(timeout=0.5)
+        returned.set()
+
+    threading.Thread(target=shutdown, daemon=True).start()
+    assert returned.wait(10), "stop ignored its timeout and waited on a wedged worker"
+
+
+def test_a_delivery_submitted_after_stopping_is_refused_rather_than_swallowed() -> None:
+    """Nothing drains the queue once the worker is gone.
+
+    An engine goes on calling this whenever a process stops the relay
+    without unsubscribing, and an accepted delivery would then sit
+    unreported while the caller was told it had been taken.
+    """
+    relay, seen, _ = relay_over()
+    relay.start()
+    relay.stop(timeout=5)
+
+    assert not relay.submit("start", A_START)
+    assert [outcome for outcome in seen if isinstance(outcome, Held)], (
+        "a refused delivery is reported, the way a dropped one is"
+    )
+
+
+def test_an_outcome_sink_that_raises_kills_neither_thread() -> None:
+    """`on_outcome` has no stated contract and is called on both threads.
+
+    On the worker a raising sink would kill the thread, and a reporter
+    whose worker has died looks exactly like a beamline that is not
+    running. On the engine's own thread it would reach the scan.
+    """
+    handled: list[str] = []
+
+    def exploding(_outcome: Outcome) -> None:
+        raise RuntimeError("the stream this printed to has gone away")
+
+    def note(name: str, _payload: Any) -> Outcome:
+        handled.append(name)
+        return Skipped("nothing to do")
+
+    worker_side = Relay(note, exploding, capacity=4)
+    worker_side.start()
+    assert worker_side.submit("one", A_START)
+    assert worker_side.submit("two", A_START)
+    worker_side.stop(timeout=5)
+    assert handled == ["one", "two"], "the worker died on the first outcome it reported"
+
+    engine_side = Relay(note, exploding, capacity=1)
+    assert engine_side.submit("a", A_START)
+    assert not engine_side.submit("b", A_START), "the drop path reports through the same sink"

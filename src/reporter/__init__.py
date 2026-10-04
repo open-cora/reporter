@@ -15,13 +15,15 @@ being.
 A delivery with no keeper reference is work somebody ran by hand. It is
 skipped, and the translator says why that is quiet rather than loud.
 
-## Four capabilities, and nothing here names what provides them
+## Six capabilities, and nothing here names what provides them
 
 `seams` holds them. `Reporting` records what an engine did to one step's
-run and `Filing` records where the data that run produced is being kept,
-which are two bounded contexts and therefore two Protocols even though
-one service answers both today. `Locating` asks a store where a run's
-output went. `Delivering` is where deliveries come from.
+run, `Filing` records where the data that run produced is being kept,
+and `Cataloguing` records what is inside it. Those are two bounded
+contexts and therefore separate Protocols even though one service
+answers all three today. `Locating` asks a store where a run's output
+went, `Describing` asks a container what it holds, and `Delivering` is
+where deliveries come from.
 
 Under `reporter.adapters` is what satisfies them, one module per outside
 system, and nothing above that directory imports any of it. That is why

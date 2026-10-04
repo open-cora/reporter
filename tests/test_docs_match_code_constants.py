@@ -94,6 +94,27 @@ def test_the_architecture_page_counts_the_adapters_its_own_diagram_lists() -> No
     assert len(drawn) == EXPECTED_ADAPTERS, f"the diagram draws {sorted(drawn)}"
 
 
+def test_the_seams_module_opens_by_counting_the_seams_it_declares() -> None:
+    """The first line a reader of this package meets, against the module.
+
+    The sibling projects carry this as a file of its own, because the
+    claim is repeated in their test prose and the scan has to range
+    over more than one file to find it. Here it is written once, so it
+    sits with the other counts rather than alone.
+    """
+    page = (PROJECT_ROOT / "src" / "reporter" / "seams.py").read_text(encoding="utf-8")
+    found = re.search(r"The (\w+) outward seams", page)
+    assert found is not None, "the module stopped counting them, so this guards nothing"
+    assert found.group(1) == _SPELLED[_declared_capabilities()]
+
+
+def test_the_package_front_door_counts_the_capabilities_the_seams_module_declares() -> None:
+    page = (PROJECT_ROOT / "src" / "reporter" / "__init__.py").read_text(encoding="utf-8")
+    found = re.search(r"## (\w+) capabilities", page)
+    assert found is not None, "the front door stopped counting them, so this guards nothing"
+    assert found.group(1).lower() == _SPELLED[_declared_capabilities()]
+
+
 def test_the_repo_guidance_counts_the_capabilities_the_seams_module_declares() -> None:
     found = re.search(r"`seams` declares (\w+) capabilities", _page("CLAUDE.md"))
     assert found is not None, "the guidance stopped naming the count, so this guards nothing"

@@ -179,4 +179,10 @@ def decode(frame: bytes) -> Delivery:
     return (name.decode(), cast("dict[str, Any]", body))
 
 
-__all__ = ["DEFAULT_POLL_MILLISECONDS", "DecodeError", "decode", "from_subscription"]
+__all__ = [
+    "DEFAULT_POLL_MILLISECONDS",
+    "DecodeError",
+    "LibrariesAbsentError",
+    "decode",
+    "from_subscription",
+]

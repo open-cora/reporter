@@ -342,4 +342,11 @@ def _instant(moment: datetime | None) -> str | None:
     return None if moment is None else moment.isoformat()
 
 
-__all__ = ["HttpClient", "HttpFiling", "HttpReporting", "Response", "dataset_key_for"]
+__all__ = [
+    "HttpCataloguing",
+    "HttpClient",
+    "HttpFiling",
+    "HttpReporting",
+    "Response",
+    "dataset_key_for",
+]

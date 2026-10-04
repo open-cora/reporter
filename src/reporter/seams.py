@@ -15,13 +15,26 @@ suffix for that reason.
 
 ## Named for the need, not for what answers it
 
-`Reporting` and `Filing` both reach the keeper today, and one adapter
-implements both. They are two Protocols anyway, because they are two
-capabilities: one records what an engine did to a step's run, the other
-records where the data that run produced is being kept. The keeper
-serving both is a fact about the deployment rather than about what this
-reporter needs, and a single Protocol carrying both verbs would hand
-every caller a verb it must never call.
+`Reporting`, `Filing` and `Cataloguing` all reach the keeper today, and
+one adapter module holds all three. They are three Protocols anyway,
+because they are three capabilities: one records what an engine did to a
+step's run, the second records where the data that run produced is being
+kept, and the third records what is inside it. The keeper serving all
+three is a fact about the deployment rather than about what this reporter
+needs.
+
+One module and three classes, and the three is not a choice. All three
+spell their verb `record`, so no class can satisfy two of them and the
+type checker says so while the adapter is being written. One Protocol
+carrying a second capability's verb would hand every caller a verb it
+must never call, and here that is not a rule to follow but a thing that
+cannot be written down.
+
+It is also why counting adapters needs the word beside it. An adapter is
+a module under `reporter.adapters`, one per outside system, and whatever
+inside it satisfies a seam is called one too. Those usually coincide, and
+here they do not, so a sentence counting adapters has to say which it
+means.
 
 A name that says what is on the other side goes stale the moment
 something else answers. A name that says what the caller needs cannot,

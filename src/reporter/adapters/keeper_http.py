@@ -10,11 +10,12 @@ be passed as all three and then told to refuse most of itself.
     POST /datasets                           and it produced data
     POST /datasets/{id}/manifests            and this is what is in it
 
-Two calls where there were five. The three that are gone all served one
-job, bringing a run into existence here and finding it again afterwards.
-The keeper composes and dispatches the work, so there is nothing to
-create, nothing to resolve, and no configured routine to check at
-startup.
+Three calls, and not three of the original five. The three that are gone
+all served one job, bringing a run into existence here and finding it
+again afterwards. The keeper composes and dispatches the work, so there
+is nothing to create, nothing to resolve, and no configured routine to
+check at startup. That left two, and the manifests route arrived later
+than either of them.
 
 `POST /operations` was already deliberately absent and stays absent for a
 stronger reason than before. Whatever opens a run describes one

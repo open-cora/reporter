@@ -13,9 +13,13 @@ whether to advance its checkpoint, and whether to wake somebody.
     Skipped      the delivery said nothing this system asked for
     Held         it said something and could not be acted on
 
-Advance the checkpoint on all five. Every one of them is settled: sending
-the same delivery again produces the same outcome, so there is nothing to
-come back for. Only `Held` is worth waking somebody, and only some of them
+Advance the checkpoint on all five. Every one of them is settled: the
+delivery has been acted on as far as it ever will be, so there is nothing
+to come back for. That is not the same as a redelivery producing the same
+outcome, and usually it does not produce one: a second send of a report
+the record already holds comes back `Unchanged` where the first was
+`Relayed`. What makes advancing safe is that nothing is recorded twice,
+not that the answer repeats. Only `Held` is worth waking somebody, and only some of them
 urgently.
 
 There is no outcome for a record brought into existence, because this

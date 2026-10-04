@@ -80,7 +80,7 @@ The keeper owns every genesis, so a duplicate reference is a relay mistake on re
 
 ## When a client does start calling the keeper
 
-The reporter has already settled the four questions any keeper client meets. A second client should answer them the same way rather than differently.
+The reporter has already settled the five questions any keeper client meets. A second client should answer them the same way rather than differently.
 
 | question | the answer |
 | --- | --- |

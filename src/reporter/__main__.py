@@ -1,16 +1,17 @@
-"""Run the reporter, against a live engine or against a capture.
+"""Run the reporter, against a live engine, a scan server, or a capture.
 
     python -m reporter --config reporter.toml --subscribe tcp://127.0.0.1:5568
+    python -m reporter --config reporter.toml --records 2bmb:TomoScan:
     python -m reporter --config reporter.toml --replay documents.json
 
-One command and two sources, because the second one is how the first is
-tested. A replay proves the whole path with only the engine simulated, and
-it keeps doing that after a live subscription exists: it needs no beamline
-and it is the same shipped code either way.
+One command and three sources, because the last one is how the other two
+are tested. A replay proves the whole path with only the engine simulated,
+and it keeps doing that after a live subscription exists: it needs no
+beamline and it is the same shipped code either way.
 
-The difference between them is only that a subscription does not end.
-Both load configuration, check a configured store answers, and put each
-document through the translator and the relay.
+The difference between them is only that a capture runs out and neither of
+the others does. All three load configuration, check a configured store
+answers, and put each delivery through the translator and the relay.
 
 ## A third way to run this, which is not a command
 
@@ -244,7 +245,7 @@ def _parse(argv: Sequence[str] | None) -> argparse.Namespace:
         "--replay",
         type=Path,
         metavar="PATH",
-        help="path to captured documents, in the shape collect.py writes",
+        help="path to captured documents, in the shape collect_documents.py writes",
     )
     source.add_argument(
         "--records",
@@ -286,8 +287,9 @@ def dataset_leg(http: Transport, config: ReporterConfig) -> tuple[Filing | None,
     degraded one.
 
     The pairing a `Session` cannot finish, locating with nothing to file,
-    is still unconstructable, but it is `load` that refuses it now rather
-    than the shape of this function.
+    is not built here, and it is `load` that refuses it rather than the
+    shape of this function. A session handed it anyway is not rejected:
+    it degrades into an alert naming what it was not given.
 
     One HTTP client serves both the keeper and the store, so timeouts and
     the connection pool are set in a single place.

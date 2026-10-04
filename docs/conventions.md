@@ -28,11 +28,12 @@ they drift. The split:
 A docstring that restates the general rule is duplication. Link instead: open by
 naming the convention page, then explain only what this seam adds.
 
-**A fact may appear in both; a rationale may not.** The idempotency cache key
-is stated in `patterns.md` and again on the port, because a reader of the port
-must see the contract without leaving the file. What must NOT appear twice is
-the reason for it: two explanations of one decision become two decisions the
-first time someone edits one.
+**A fact may appear in both; a rationale may not.** The key that makes a
+redelivered registration harmless is stated in [Contract](client-contract.md)
+and again on the seam, because a reader of the seam must see the contract
+without leaving the file. What must NOT appear twice is the reason for it: two
+explanations of one decision become two decisions the first time someone edits
+one.
 
 When they do conflict, the page wins and the docstring is the bug.
 It is the page a reader consults before writing code, so a stale rule there

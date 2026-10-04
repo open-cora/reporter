@@ -1,7 +1,7 @@
 """Drive a real acquisition engine and record everything it emits.
 
 Writes `tests/documents.json`, which most of this project's tests read
-instead of an engine. Six scenarios against an engine with no hardware:
+instead of an engine. Seven scenarios against an engine with no hardware:
 every document, every state transition, every interruption.
 
 This script knows nothing about the reporter. That is what makes the

@@ -18,13 +18,12 @@ import json
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
     from pathlib import Path
 
-    from reporter.seams import Delivery
+    from reporter.seams import Delivering
 
 
-def from_capture(path: Path) -> Iterator[Delivery]:
+def from_capture(path: Path) -> Delivering:
     """Every delivery in a capture, flattened into one stream.
 
     The capture groups its contents by scenario, because the collector

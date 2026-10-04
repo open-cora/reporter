@@ -68,6 +68,25 @@ def tracked_test_files() -> frozenset[Path]:
 
 
 @cache
+def tracked_other_python_files() -> frozenset[Path]:
+    """Tracked `.py` files this project ships outside `src` and `tests`.
+
+    A simulator, a deploy script, a collector. They are part of the
+    repository and their prose rots like any other, but every lane here
+    enumerated a hand-written list of directories and none of them was
+    on it. What that cost was a simulator docstring citing a test file
+    that has never existed in any branch, through a check written to
+    catch exactly that.
+
+    By subtraction rather than by naming a directory, so a project that
+    grows one does not also have to remember this.
+    """
+    known = tracked_source_files() | tracked_test_files()
+    every = frozenset(PROJECT_ROOT / line for line in _ls_files() if line.endswith(".py"))
+    return every - known
+
+
+@cache
 def tracked_prose_files() -> frozenset[Path]:
     """Absolute paths to every tracked `.md` file in the project.
 

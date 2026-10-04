@@ -7,8 +7,15 @@ separate because the reasons are opposite: one is the design working and
 the other is the design out of date.
 
 The first two cover two bounded contexts, and that is deliberate. This
-file is the description of everything the reporter can ask the keeper for, so a
-command missing from it is a command nobody reading this knows about.
+file is the description of every command a delivery can turn into, so one
+missing from here is one nobody reading this knows about.
+
+It is not the whole of what this reporter asks the keeper for, and the
+difference is worth drawing because the sentence above used to claim it
+was. Recording what is inside a dataset is a third command, and it is
+reached through `Cataloguing` rather than from here, because it needs
+the id filing returned and no delivery carries that. Whoever wants the
+reporter's whole keeper surface wants this file and that seam.
 
 ## Every intent carries the keeper's own ids, and none carries a name
 

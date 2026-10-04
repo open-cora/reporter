@@ -1,19 +1,21 @@
-"""Reporting and Filing, over the keeper's own HTTP API.
+"""Reporting, Filing and Cataloguing, over the keeper's own HTTP API.
 
-Two classes for two capabilities, against one service. They could have
-been one object with two methods, and they are not, because the two are
-switched on separately: a deployment with nowhere to keep data has a
-`Reporting` and no `Filing`, and one object would have to be passed as
-both and then told to refuse half of itself.
+Three classes for three capabilities, against one service. They could
+have been one object with three methods, and they are not, because they
+are switched on separately: a deployment with nowhere to keep data has
+a `Reporting` and neither of the others, and one object would have to
+be passed as all three and then told to refuse most of itself.
 
     POST /executions/{id}/steps/{step}/run   an engine did something
     POST /datasets                           and it produced data
+    POST /datasets/{id}/manifests            and this is what is in it
 
-Two calls where there were five. The three that are gone all served one
-job, bringing a run into existence here and finding it again afterwards.
-The keeper composes and dispatches the work, so there is nothing to
-create, nothing to resolve, and no configured routine to check at
-startup.
+Three calls, and not three of the original five. The three that are gone
+all served one job, bringing a run into existence here and finding it
+again afterwards. The keeper composes and dispatches the work, so there
+is nothing to create, nothing to resolve, and no configured routine to
+check at startup. That left two, and the manifests route arrived later
+than either of them.
 
 `POST /operations` was already deliberately absent and stays absent for a
 stronger reason than before. Whatever opens a run describes one
@@ -44,19 +46,23 @@ question of which library is in use stops being one it can get wrong.
 
 ## Redelivery, and why only one call carries a key
 
-`Filing` sends an `Idempotency-Key` derived from the store's address. The
-keeper keys its cache on `(principal_id, key, surface_id)`, so a restarted
-reporter recomputes the same key having persisted nothing, and the second
-registration of one address returns the first one's dataset id rather
-than recording a second dataset.
+`Filing` sends an `Idempotency-Key` derived from the step and the
+store's address together. The keeper keys its cache on
+`(principal_id, key, surface_id)`, so a restarted reporter recomputes
+the same key having persisted nothing, and the second registration of
+one run's output returns the first one's dataset id rather than
+recording a second dataset.
 
-The address rather than the step, because one run may write more than
-one. A key naming the step would give both registrations one note, so the
-second would come back holding the first dataset's id and would never be
-recorded at all. The keeper deliberately did not derive a dataset's
-identity from the step that produced it, so that one-per-step would not
-be frozen into the schema, and keying the retry note on the step would
-put it back somewhere no migration announces.
+Both halves, for opposite reasons. Without the address, a run that
+wrote two datasets would record one. Without the step, two runs that
+wrote one address would record one, and the second would read forever
+as a run whose data nobody filed. See `dataset_key_for`.
+
+Naming the step in the key is not the same as deriving a dataset's
+identity from it. The keeper deliberately did not do the second, so
+that one-per-step would not be frozen into the schema, and it is not
+frozen here: the address is in the key beside the step, so a run that
+writes several still records several.
 
 `Reporting` carries no key, deliberately. A repeated report is already
 refused by the aggregate with a 409 naming the engine state it holds,
@@ -83,6 +89,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from reporter.intents import RegisterDataset, ReportStepRun
+    from reporter.seams import Entry, Manifest
 
 _NO_CONTENT: Final = 204
 _CREATED: Final = 201
@@ -91,18 +98,31 @@ _TOO_MANY: Final = 429
 _SERVER_ERROR: Final = 500
 
 
-def dataset_key_for(external_ref_value: str) -> str:
+def dataset_key_for(step_id: UUID, external_ref_value: str) -> str:
     """The key that makes a redelivered registration harmless.
 
     Derived rather than remembered, which is the whole point. The keeper
     keys on `(principal_id, key, surface_id)`, so a reporter running as
     one actor recomputes this after any restart having persisted nothing.
 
-    A dataset is identified by where the data is, so this names an
-    address. Prefixed because a bare path in that table says nothing
-    about what it was for, and somebody will eventually read the table.
+    Both halves, and each is load-bearing in a different direction.
+
+    The address, because one run may write more than one dataset. A key
+    naming only the step would give both registrations one note, so the
+    second would come back holding the first's id and would never be
+    recorded at all.
+
+    The step, because more than one run may write one address. It is
+    the same failure read the other way and it is the quieter of the
+    two: the registration returns a success and an id, appends no
+    event, and leaves that run recorded as having produced data nobody
+    filed. The keeper does not treat an external reference as unique
+    and says so, and a key that did was quietly making it so.
+
+    Prefixed because a bare path in that table says nothing about what
+    it was for, and somebody will eventually read the table.
     """
-    return f"register-dataset:{external_ref_value}"
+    return f"register-dataset:{step_id}:{external_ref_value}"
 
 
 class Response(Protocol):
@@ -201,7 +221,9 @@ class HttpFiling:
             "external_ref": {"scheme": self._scheme, "value": intent.external_ref_value},
             "occurred_at": _instant(intent.occurred_at),
         }
-        headers = self._headers({"Idempotency-Key": dataset_key_for(intent.external_ref_value)})
+        headers = self._headers(
+            {"Idempotency-Key": dataset_key_for(intent.step_id, intent.external_ref_value)}
+        )
         response = _posted(self._http, f"{self._base_url}{path}", body, headers, path)
         if response.status_code != _CREATED:
             raise _refusal(response.status_code, response.text, method="POST", path=path)
@@ -209,6 +231,73 @@ class HttpFiling:
 
     def _headers(self, extra: Mapping[str, str]) -> dict[str, str]:
         return {"Authorization": f"Bearer {self._token}", **extra}
+
+
+class HttpCataloguing:
+    """Tells the keeper what is inside the data a run produced.
+
+    Holds `scheme` for the same reason filing does, and holds the same
+    one: this names the copy that was opened, and the copy that was
+    opened is the copy that was filed.
+    """
+
+    def __init__(self, http: HttpClient, base_url: str, token: str, scheme: str) -> None:
+        self._http = http
+        self._base_url = base_url
+        self._token = token
+        self._scheme = scheme
+
+    def record(self, dataset_id: UUID, address: str, manifest: Manifest) -> None:
+        """Record what was found inside one copy of a run's output.
+
+        No `occurred_at`. The other two calls carry one because they
+        relay a moment that happened elsewhere, at a beamline this
+        process was not watching. A description was taken here, a
+        moment ago, so the keeper stamping its arrival is not an
+        approximation of anything and sending a clock reading of our
+        own would only be a second opinion about now.
+
+        No idempotency key either. The far side refuses a description
+        that repeats what it already holds, which is what a redelivery
+        sends, and admits one that differs, which is what a second look
+        sends. A key would have to be derived from the contents to tell
+        those apart, which is the distinction the far side is already
+        making from the contents themselves.
+        """
+        path = f"/datasets/{dataset_id}/manifests"
+        body: dict[str, Any] = {
+            "external_ref": {"scheme": self._scheme, "value": address},
+            "convention": manifest.convention,
+            "entries": [_entry(entry) for entry in manifest.entries],
+        }
+        response = _posted(self._http, f"{self._base_url}{path}", body, self._headers({}), path)
+        if response.status_code != _NO_CONTENT:
+            raise _refusal(response.status_code, response.text, method="POST", path=path)
+
+    def _headers(self, extra: Mapping[str, str]) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._token}", **extra}
+
+
+def _entry(entry: Entry) -> dict[str, Any]:
+    """One entry as the keeper takes it.
+
+    An absent extent travels as null rather than as an object of
+    nulls, because the far side reads the absence as nobody having
+    measured and an object of nulls as somebody having measured
+    nothing.
+    """
+    extent = entry.extent
+    return {
+        "path": entry.path,
+        "role": entry.role,
+        "extent": None
+        if extent is None
+        else {
+            "shape": list(extent.shape),
+            "capacity": None if extent.capacity is None else list(extent.capacity),
+            "dtype": extent.dtype,
+        },
+    }
 
 
 def _posted(
@@ -254,4 +343,11 @@ def _instant(moment: datetime | None) -> str | None:
     return None if moment is None else moment.isoformat()
 
 
-__all__ = ["HttpClient", "HttpFiling", "HttpReporting", "Response", "dataset_key_for"]
+__all__ = [
+    "HttpCataloguing",
+    "HttpClient",
+    "HttpFiling",
+    "HttpReporting",
+    "Response",
+    "dataset_key_for",
+]

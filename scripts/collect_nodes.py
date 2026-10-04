@@ -65,8 +65,10 @@ IDENTIFIER_VALUE_MAX_LENGTH = 200
 
 Copied rather than imported, because importing it would mean
 `--project apps/keeper` and that is the environment this half cannot have.
-resolve.py imports the real one and checks this copy against it, so the
-duplication cannot drift silently.
+The copy is compared against the keeper's own constant by a check in the
+tree that holds both projects, which is the only place able to see the
+two at once: a check here would have nothing to compare against, and one
+in the keeper would not know this file exists.
 """
 
 WRITER_ROOT = "raw"

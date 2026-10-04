@@ -40,6 +40,7 @@ rather than blocking, and the refusal is reported as `Held` like any other
 delivery that could not be acted on.
 """
 
+import contextlib
 import queue
 import threading
 from collections.abc import Callable, Mapping, Sequence
@@ -68,9 +69,9 @@ outcome by the time the worker sees it.
 
 Bounded rather than forever, because a worker retrying one delivery
 forever is a worker not draining the queue behind it, and an outage then
-costs every later delivery as well as this one. Four attempts over about
-twenty seconds rides out a restart; anything longer is what the durable
-transport above is for.
+costs every later delivery as well as this one. One attempt and these
+four delays, so five over about twenty seconds, which rides out a
+restart; anything longer is what the durable transport above is for.
 """
 
 _STOP: Final = object()
@@ -107,19 +108,36 @@ class Relay:
         self._retry_delays = tuple(retry_delays)
         self._queue: queue.Queue[Any] = queue.Queue(maxsize=capacity)
         self._worker: threading.Thread | None = None
+        self._stopping = threading.Event()
 
     def submit(self, name: str, payload: Mapping[str, Any]) -> bool:
         """Hand over one delivery. Never blocks, never raises.
 
         Returns whether it was accepted. A caller running inside an engine
         has nothing useful to do with a `False` except carry on, which is
-        why the drop is reported through `on_outcome` here rather than
-        left for the caller to notice.
+        why both ways of refusing one are reported through `on_outcome`
+        here rather than left for the caller to notice.
+
+        A stopped relay refuses rather than accepts. Nothing drains the
+        queue once the worker is gone, so an accepted delivery would sit
+        in it unreported while the caller was told it had been taken. An
+        engine outlives this object whenever a process stops the relay
+        without unsubscribing, and the recipe for running one inside an
+        engine does not unsubscribe.
         """
+        if self._stopping.is_set():
+            self._report(
+                Held(
+                    "this relay has stopped, so the delivery was refused "
+                    "and whatever it said about a run is lost",
+                    name,
+                )
+            )
+            return False
         try:
             self._queue.put_nowait((name, dict(payload)))
         except queue.Full:
-            self._on_outcome(
+            self._report(
                 Held(
                     "the relay queue is full, so this delivery was dropped "
                     "and whatever it said about a run is lost",
@@ -133,6 +151,7 @@ class Relay:
         """Begin draining, on a thread of this relay's own."""
         if self._worker is not None:
             raise RuntimeError("This relay is already running.")
+        self._stopping.clear()
         self._worker = threading.Thread(target=self._drain, name="reporter-relay", daemon=True)
         self._worker.start()
 
@@ -144,10 +163,21 @@ class Relay:
         A `timeout` bounds that: past it the worker is left to its daemon
         status and the process exits, which loses the remainder and is
         still better than refusing to shut down.
+
+        The flag is what makes that last part true, and the sentinel
+        alone did not. Putting one on a bounded queue blocks while the
+        queue is full, and a full queue is precisely what a long outage
+        leaves behind, so a stop arriving at the worst moment waited on
+        the worker it was trying to end and never reached its own
+        timeout. The worker reads the flag too, and stops once it has
+        nothing left rather than only once it reaches a sentinel that may
+        not have fitted.
         """
         if self._worker is None:
             return
-        self._queue.put(_STOP)
+        self._stopping.set()
+        with contextlib.suppress(queue.Full):
+            self._queue.put_nowait(_STOP)
         self._worker.join(timeout)
         self._worker = None
 
@@ -157,7 +187,27 @@ class Relay:
             if item is _STOP:
                 return
             name, payload = item
-            self._on_outcome(self._attempt(name, payload))
+            self._report(self._attempt(name, payload))
+            if self._stopping.is_set() and self._queue.empty():
+                return
+
+    def _report(self, outcome: Outcome) -> None:
+        """Hand one outcome to the caller's sink, surviving a sink that raises.
+
+        What `on_outcome` may do is nowhere specified, where `Handle` is
+        specified closely, and it is called on both of the threads this
+        module exists to keep alive. On the worker a raising sink kills
+        the thread, and a reporter whose worker has died looks exactly
+        like a beamline that is not running. On the engine's own thread
+        it reaches whoever subscribed, which is the scan.
+
+        Suppressed rather than reported onward, because a sink that just
+        failed is not a sink a failure can be reported through. The one
+        this ships with prints, and printing fails when the stream a
+        service manager handed the process goes away.
+        """
+        with contextlib.suppress(Exception):
+            self._on_outcome(outcome)
 
     def _attempt(self, name: str, payload: Mapping[str, Any]) -> Outcome:
         """One delivery, retried while retrying could still help.

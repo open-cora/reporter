@@ -1,0 +1,140 @@
+/                        Group
+/defaults                Group
+/defaults/ColorMode      Dataset {100/Inf}
+/defaults/HDF5FrameLocation Dataset {100/Inf}
+/defaults/NDArrayEpicsTSSec Dataset {100/Inf}
+/defaults/NDArrayEpicsTSnSec Dataset {100/Inf}
+/defaults/NDArrayTimeStamp Dataset {100/Inf}
+/defaults/NDArrayUniqueId Dataset {100/Inf}
+/defaults/timestamp      Dataset {100/Inf, 5/Inf}
+/exchange                Group
+/exchange/data           Dataset {100, 6380, 9568}
+/exchange/data_dark      Dataset {1/100, 6380, 9568}
+/exchange/data_white     Dataset {1/100, 6380, 9568}
+/measurement             Group
+/measurement/ancillary   Group
+/measurement/ancillary/BarometricPressure Dataset {1/Inf}
+/measurement/instrument  Group
+/measurement/instrument/attenuator_1 Group
+/measurement/instrument/attenuator_1/name Dataset {1}
+/measurement/instrument/attenuator_1/setup Group
+/measurement/instrument/attenuator_1/setup/filter_position Dataset {1/Inf}
+/measurement/instrument/attenuator_2 Group
+/measurement/instrument/attenuator_2/name Dataset {1}
+/measurement/instrument/attenuator_2/setup Group
+/measurement/instrument/attenuator_2/setup/filter_position Dataset {1/Inf}
+/measurement/instrument/detection_system Group
+/measurement/instrument/detection_system/objective Group
+/measurement/instrument/detection_system/objective/magnification Dataset {1/Inf}
+/measurement/instrument/detection_system/objective/resolution Dataset {1/Inf}
+/measurement/instrument/detection_system/objective/tube_length Dataset {1/Inf}
+/measurement/instrument/detection_system/scintillator Group
+/measurement/instrument/detection_system/scintillator/active_thickness Dataset {1/Inf}
+/measurement/instrument/detection_system/scintillator/type Dataset {1/Inf}
+/measurement/instrument/detector Group
+/measurement/instrument/detector/acquire_period Dataset {1/Inf}
+/measurement/instrument/detector/adcore_version Dataset {1/Inf}
+/measurement/instrument/detector/array_counter Dataset {1/Inf}
+/measurement/instrument/detector/array_size_x Dataset {1/Inf}
+/measurement/instrument/detector/array_size_y Dataset {1/Inf}
+/measurement/instrument/detector/binning_x Dataset {1/Inf}
+/measurement/instrument/detector/binning_y Dataset {1/Inf}
+/measurement/instrument/detector/convert_pixel_format Dataset {1/Inf}
+/measurement/instrument/detector/data_type Dataset {1/Inf}
+/measurement/instrument/detector/driver_version Dataset {1/Inf}
+/measurement/instrument/detector/exposure_auto Dataset {1/Inf}
+/measurement/instrument/detector/exposure_time Dataset {1/Inf}
+/measurement/instrument/detector/firmware_version Dataset {1/Inf}
+/measurement/instrument/detector/frame_rate Dataset {1/Inf}
+/measurement/instrument/detector/frame_rate_enable Dataset {1/Inf}
+/measurement/instrument/detector/gain Dataset {1/Inf}
+/measurement/instrument/detector/gain_auto Dataset {1/Inf}
+/measurement/instrument/detector/hdf_plugin_version Dataset {1/Inf}
+/measurement/instrument/detector/manufacturer Dataset {1/Inf}
+/measurement/instrument/detector/max_size_x Dataset {1/Inf}
+/measurement/instrument/detector/max_size_y Dataset {1/Inf}
+/measurement/instrument/detector/model Dataset {1/Inf}
+/measurement/instrument/detector/pixel_format Dataset {1/Inf}
+/measurement/instrument/detector/pixel_size Dataset {1/Inf}
+/measurement/instrument/detector/roi Group
+/measurement/instrument/detector/roi/min_x Dataset {1/Inf}
+/measurement/instrument/detector/roi/min_y Dataset {1/Inf}
+/measurement/instrument/detector/roi/size_x Dataset {1/Inf}
+/measurement/instrument/detector/roi/size_y Dataset {1/Inf}
+/measurement/instrument/detector/sdk_version Dataset {1/Inf}
+/measurement/instrument/detector/serial_number Dataset {1/Inf}
+/measurement/instrument/detector/temperature Dataset {1/Inf}
+/measurement/instrument/monochromator Group
+/measurement/instrument/monochromator/energy Dataset {1/Inf}
+/measurement/instrument/monochromator/mode Dataset {1/Inf}
+/measurement/instrument/name Dataset {1}
+/measurement/instrument/sample_motor_stack Group
+/measurement/instrument/sample_motor_stack/detector_distance Dataset {1/Inf}
+/measurement/instrument/sample_motor_stack/name Dataset {1}
+/measurement/instrument/sample_motor_stack/setup Group
+/measurement/instrument/sample_motor_stack/setup/theta Dataset {1/Inf}
+/measurement/instrument/slits Group
+/measurement/instrument/slits/name Dataset {1}
+/measurement/instrument/slits/setup Group
+/measurement/instrument/slits/setup/WB_Slit_H_Center Dataset {1/Inf}
+/measurement/instrument/slits/setup/WB_Slit_H_Size Dataset {1/Inf}
+/measurement/instrument/slits/setup/WB_Slit_V_Center Dataset {1/Inf}
+/measurement/instrument/slits/setup/WB_Slit_V_Size Dataset {1/Inf}
+/measurement/instrument/source Group
+/measurement/instrument/source/beamline Dataset {1}
+/measurement/instrument/source/current Dataset {1/Inf}
+/measurement/instrument/source/fill_mode Dataset {1/Inf}
+/measurement/instrument/source/injection_status Dataset {1/Inf}
+/measurement/instrument/source/lifetime Dataset {1/Inf}
+/measurement/instrument/source/machine_status Dataset {1/Inf}
+/measurement/instrument/source/name Dataset {1}
+/measurement/instrument/source/operating_mode Dataset {1/Inf}
+/measurement/instrument/source/source_type Dataset {1}
+/measurement/sample      Group
+/measurement/sample/description_1 Dataset {1/Inf}
+/measurement/sample/description_2 Dataset {1/Inf}
+/measurement/sample/description_3 Dataset {1/Inf}
+/measurement/sample/experiment Group
+/measurement/sample/experiment/proposal Dataset {1/Inf}
+/measurement/sample/experiment/safety_id Dataset {1/Inf}
+/measurement/sample/experiment/title Dataset {1/Inf}
+/measurement/sample/experimenter Group
+/measurement/sample/experimenter/email Dataset {1/Inf}
+/measurement/sample/experimenter/institution Dataset {1/Inf}
+/measurement/sample/experimenter/name Dataset {1/Inf}
+/measurement/sample/experimenter/user_id Dataset {1/Inf}
+/measurement/sample/file Group
+/measurement/sample/file/full_name Dataset {1/Inf}
+/measurement/sample/file/name Dataset {1/Inf}
+/measurement/sample/file/path Dataset {1/Inf}
+/measurement/sample/name Dataset {1/Inf}
+/process                 Group
+/process/acquisition     Group
+/process/acquisition/dark_fields Group
+/process/acquisition/dark_fields/mode Dataset {1/Inf}
+/process/acquisition/dark_fields/number Dataset {1/Inf}
+/process/acquisition/dark_fields/value Dataset {1/Inf}
+/process/acquisition/end_date Dataset {1/Inf}
+/process/acquisition/flat_fields Group
+/process/acquisition/flat_fields/axis Dataset {1/Inf}
+/process/acquisition/flat_fields/different_flat_exposure Dataset {1/Inf}
+/process/acquisition/flat_fields/flat_exposure_time Dataset {1/Inf}
+/process/acquisition/flat_fields/mode Dataset {1/Inf}
+/process/acquisition/flat_fields/number Dataset {1/Inf}
+/process/acquisition/flat_fields/sample Group
+/process/acquisition/flat_fields/sample/in_x Dataset {1/Inf}
+/process/acquisition/flat_fields/sample/in_y Dataset {1/Inf}
+/process/acquisition/flat_fields/sample/out_x Dataset {1/Inf}
+/process/acquisition/flat_fields/sample/out_y Dataset {1/Inf}
+/process/acquisition/flat_fields/sample_out_angle Dataset {1/Inf}
+/process/acquisition/flat_fields/sample_out_angle_enable Dataset {1/Inf}
+/process/acquisition/flat_fields/value Dataset {1/Inf}
+/process/acquisition/flip_stitch Dataset {1/Inf}
+/process/acquisition/rotation Group
+/process/acquisition/rotation/num_angles Dataset {1/Inf}
+/process/acquisition/rotation/return Dataset {1/Inf}
+/process/acquisition/rotation/speed Dataset {1/Inf}
+/process/acquisition/rotation/start Dataset {1/Inf}
+/process/acquisition/rotation/step Dataset {1/Inf}
+/process/acquisition/scan_type Dataset {1/Inf}
+/process/acquisition/start_date Dataset {1/Inf}

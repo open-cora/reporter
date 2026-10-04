@@ -24,10 +24,22 @@ from uuid import UUID
 
 import pytest
 
-from reporter.adapters.keeper_http import HttpFiling, HttpReporting, dataset_key_for
+from reporter.adapters.keeper_http import (
+    HttpCataloguing,
+    HttpFiling,
+    HttpReporting,
+    dataset_key_for,
+)
 from reporter.config import from_mapping
 from reporter.intents import RegisterDataset, Report, ReportStepRun
-from reporter.seams import DisagreedError, RefusedError, UnavailableError
+from reporter.seams import (
+    DisagreedError,
+    Entry,
+    Extent,
+    Manifest,
+    RefusedError,
+    UnavailableError,
+)
 from tests._fakes import Answer, Recorder
 
 AN_EXECUTION = UUID("01a0ba64-8f95-7ad1-a7a7-44124ff3afd5")
@@ -48,6 +60,11 @@ def reporting_answering(*answers: Answer) -> tuple[HttpReporting, Recorder]:
 def filing_answering(*answers: Answer) -> tuple[HttpFiling, Recorder]:
     recorder = Recorder(answers=list(answers))
     return HttpFiling(recorder, CONFIG.base_url, CONFIG.token, A_SCHEME), recorder
+
+
+def cataloguing_answering(*answers: Answer) -> tuple[HttpCataloguing, Recorder]:
+    recorder = Recorder(answers=list(answers))
+    return HttpCataloguing(recorder, CONFIG.base_url, CONFIG.token, A_SCHEME), recorder
 
 
 def a_report(reported: Report = "Started", **overrides: Any) -> ReportStepRun:
@@ -226,32 +243,45 @@ def test_register_dataset_names_the_acquisition_and_not_the_traversal() -> None:
     assert body["step_id"] == str(A_STEP)
 
 
-def test_register_dataset_sends_a_key_derived_from_the_address_not_the_step() -> None:
+def test_register_dataset_sends_a_key_derived_from_the_step_and_the_address() -> None:
     filing, recorder = filing_answering(Answer(201, {"dataset_id": str(A_DATASET)}))
 
     filing.record(a_dataset())
 
     sent = recorder.sent[0]
     assert sent.headers is not None
-    assert sent.headers["Idempotency-Key"] == dataset_key_for(A_PATH)
+    assert sent.headers["Idempotency-Key"] == dataset_key_for(A_STEP, A_PATH)
     assert sent.headers["Authorization"] == "Bearer a-token"
 
 
 def test_two_datasets_from_one_acquisition_are_keyed_apart() -> None:
-    """The whole reason the key names an address. Keyed on the step, the
+    """Why the address is in the key. Keyed on the step alone, the
     second of these would come back holding the first one's id."""
-    primary = dataset_key_for(f"{A_PATH}/primary")
-    darks = dataset_key_for(f"{A_PATH}/darkfields")
+    primary = dataset_key_for(A_STEP, f"{A_PATH}/primary")
+    darks = dataset_key_for(A_STEP, f"{A_PATH}/darkfields")
 
     assert primary != darks
+
+
+def test_two_runs_writing_one_address_are_keyed_apart() -> None:
+    """Why the step is in the key, which it was not until a run showed it.
+
+    An engine whose scan number resets writes over yesterday's name.
+    Keyed on the address alone the second registration returns the
+    first record's id and appends no event, so that run is recorded as
+    having produced data nobody filed, and the caller sees a success.
+    """
+    another_step = UUID("01a0ba65-df83-7501-aa5d-3e2318ef9570")
+
+    assert dataset_key_for(A_STEP, A_PATH) != dataset_key_for(another_step, A_PATH)
 
 
 def test_the_dataset_key_is_the_same_on_every_recomputation() -> None:
     """Derived rather than remembered, which is what makes a redelivery safe
     after a restart that persisted nothing."""
-    assert dataset_key_for("raw/5b4f40e7") == dataset_key_for("raw/5b4f40e7")
-    assert dataset_key_for("raw/5b4f40e7") != dataset_key_for("raw/5b4f40e8")
-    assert "raw/5b4f40e7" in dataset_key_for("raw/5b4f40e7")
+    assert dataset_key_for(A_STEP, "raw/5b4f40e7") == dataset_key_for(A_STEP, "raw/5b4f40e7")
+    assert dataset_key_for(A_STEP, "raw/5b4f40e7") != dataset_key_for(A_STEP, "raw/5b4f40e8")
+    assert "raw/5b4f40e7" in dataset_key_for(A_STEP, "raw/5b4f40e7")
 
 
 def test_register_dataset_sends_no_moment_when_the_store_held_no_ending() -> None:
@@ -306,3 +336,107 @@ def test_every_write_carries_the_bearer_token(path: str, success: Answer) -> Non
         filing.record(a_dataset())
 
     assert (recorder.sent[0].headers or {})["Authorization"] == "Bearer a-token"
+
+
+A_MANIFEST = Manifest(
+    convention="dxchange",
+    entries=(
+        Entry(
+            path="/exchange/data",
+            extent=Extent(shape=(1800, 2048, 2048), capacity=(2000, 2048, 2048), dtype="uint16"),
+            role="projections",
+        ),
+        Entry(path="/measurement/sample", extent=None, role="experiment-context"),
+    ),
+)
+
+
+def test_a_description_posts_to_the_dataset_filing_returned() -> None:
+    cataloguing, recorder = cataloguing_answering(Answer(204, {}))
+
+    cataloguing.record(A_DATASET, A_PATH, A_MANIFEST)
+
+    sent = recorder.sent[0]
+    assert sent.method == "POST"
+    assert sent.url == f"https://keeper.example/datasets/{A_DATASET}/manifests"
+
+
+def test_a_description_names_the_copy_that_was_opened_in_the_configured_scheme() -> None:
+    cataloguing, recorder = cataloguing_answering(Answer(204, {}))
+
+    cataloguing.record(A_DATASET, A_PATH, A_MANIFEST)
+
+    sent = recorder.sent[0]
+    assert sent.json is not None
+    assert sent.json["external_ref"] == {"scheme": A_SCHEME, "value": A_PATH}
+
+
+def test_an_entry_nobody_measured_sends_a_null_extent_rather_than_nulls_inside_one() -> None:
+    """The far side reads the two differently and so should the wire.
+
+    No extent is nobody having measured. An extent of nulls would be
+    somebody having measured nothing, which is a claim this never makes.
+    """
+    cataloguing, recorder = cataloguing_answering(Answer(204, {}))
+
+    cataloguing.record(A_DATASET, A_PATH, A_MANIFEST)
+
+    sent = recorder.sent[0]
+    assert sent.json is not None
+    assert sent.json["entries"] == [
+        {
+            "path": "/exchange/data",
+            "role": "projections",
+            "extent": {
+                "shape": [1800, 2048, 2048],
+                "capacity": [2000, 2048, 2048],
+                "dtype": "uint16",
+            },
+        },
+        {"path": "/measurement/sample", "role": "experiment-context", "extent": None},
+    ]
+
+
+def test_a_description_carries_no_time_because_it_was_taken_here_and_now() -> None:
+    """The other two relay a moment from elsewhere. This one does not."""
+    cataloguing, recorder = cataloguing_answering(Answer(204, {}))
+
+    cataloguing.record(A_DATASET, A_PATH, A_MANIFEST)
+
+    sent = recorder.sent[0]
+    assert sent.json is not None
+    assert "occurred_at" not in sent.json
+
+
+def test_a_description_sends_no_idempotency_key() -> None:
+    """The far side tells a retry from a second look by what it says."""
+    cataloguing, recorder = cataloguing_answering(Answer(204, {}))
+
+    cataloguing.record(A_DATASET, A_PATH, A_MANIFEST)
+
+    sent = recorder.sent[0]
+    assert sent.headers is not None
+    assert "Idempotency-Key" not in sent.headers
+
+
+def test_a_description_the_record_already_holds_raises_disagreed() -> None:
+    cataloguing, _recorder = cataloguing_answering(Answer(409, {}))
+
+    with pytest.raises(DisagreedError):
+        cataloguing.record(A_DATASET, A_PATH, A_MANIFEST)
+
+
+@pytest.mark.parametrize("status", [403, 404, 422])
+def test_a_description_answered_with_a_settled_no_is_refused(status: int) -> None:
+    cataloguing, _recorder = cataloguing_answering(Answer(status, {}))
+
+    with pytest.raises(RefusedError):
+        cataloguing.record(A_DATASET, A_PATH, A_MANIFEST)
+
+
+@pytest.mark.parametrize("status", [429, 500, 503])
+def test_a_description_answered_with_a_passing_no_is_unavailable(status: int) -> None:
+    cataloguing, _recorder = cataloguing_answering(Answer(status, {}))
+
+    with pytest.raises(UnavailableError):
+        cataloguing.record(A_DATASET, A_PATH, A_MANIFEST)

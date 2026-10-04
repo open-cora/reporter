@@ -37,6 +37,7 @@ from typing import TYPE_CHECKING
 from tests._tracked import (
     PROJECT_ROOT,
     tracked_file_basenames,
+    tracked_other_python_files,
     tracked_source_files,
     tracked_test_files,
 )
@@ -128,6 +129,12 @@ EXTERNAL_FILES: frozenset[str] = frozenset(
         # see it, and a file this project must not ship: it holds a base
         # URL and a token.
         "reporter.toml",
+        # Not a file. It is the module path of Tiled's SQL adapter, inside
+        # a transcribed RuntimeError that a collector quotes to say what
+        # the catalog refused. The shape rule reads anything ending in a
+        # known suffix as a path, and a dotted module ending in `sql`
+        # looks exactly like one.
+        "tiled.adapters.sql",
     }
 )
 """Files a docstring may name although this project does not hold them.
@@ -157,7 +164,7 @@ def _cited_names(doc: str) -> list[str]:
 
 
 def _all_python_files() -> list[Path]:
-    return sorted(tracked_source_files() | tracked_test_files())
+    return sorted(tracked_source_files() | tracked_test_files() | tracked_other_python_files())
 
 
 def _defined_names() -> frozenset[str]:

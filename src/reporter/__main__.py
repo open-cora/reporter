@@ -1,16 +1,17 @@
-"""Run the reporter, against a live engine or against a capture.
+"""Run the reporter, against a live engine, a scan server, or a capture.
 
     python -m reporter --config reporter.toml --subscribe tcp://127.0.0.1:5568
+    python -m reporter --config reporter.toml --records 2bmb:TomoScan:
     python -m reporter --config reporter.toml --replay documents.json
 
-One command and two sources, because the second one is how the first is
-tested. A replay proves the whole path with only the engine simulated, and
-it keeps doing that after a live subscription exists: it needs no beamline
-and it is the same shipped code either way.
+One command and three sources, because the last one is how the other two
+are tested. A replay proves the whole path with only the engine simulated,
+and it keeps doing that after a live subscription exists: it needs no
+beamline and it is the same shipped code either way.
 
-The difference between them is only that a subscription does not end.
-Both load configuration, check a configured store answers, and put each
-document through the translator and the relay.
+The difference between them is only that a capture runs out and neither of
+the others does. All three load configuration, check a configured store
+answers, and put each delivery through the translator and the relay.
 
 ## A third way to run this, which is not a command
 
@@ -51,7 +52,7 @@ import argparse
 import signal
 import sys
 from collections import Counter
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from types import FrameType
 from typing import Protocol
@@ -60,13 +61,27 @@ import httpx
 
 from reporter.adapters.bluesky_documents import documents_into
 from reporter.adapters.capture_replay import from_capture
-from reporter.adapters.keeper_http import HttpClient, HttpFiling, HttpReporting
+from reporter.adapters.keeper_http import (
+    HttpCataloguing,
+    HttpClient,
+    HttpFiling,
+    HttpReporting,
+)
 from reporter.adapters.store_http import HttpLocating, StoreHttpClient
+from reporter.adapters.tomoscan_records import from_tomoscan, records_into
 from reporter.adapters.zmq_subscription import DecodeError, from_subscription
 from reporter.config import ConfigError, ReporterConfig, load
-from reporter.outcomes import Held, Outcome
-from reporter.relay import Relay
-from reporter.seams import Delivery, Filing, Locating, RefusedError, UnavailableError
+from reporter.outcomes import Held, Kept, Outcome
+from reporter.relay import Handle, Relay
+from reporter.seams import (
+    Cataloguing,
+    Delivering,
+    Describing,
+    Filing,
+    Locating,
+    RefusedError,
+    UnavailableError,
+)
 from reporter.session import Session
 
 REQUEST_TIMEOUT_SECONDS = 10.0
@@ -88,9 +103,15 @@ class Tally:
     the engine does and a list of every document it ever saw is a leak
     with a summary attached.
 
-    `Held` is printed when it happens rather than at the end. It is the
-    only outcome worth somebody's attention, and a process that reports it
-    on shutdown reports it to nobody.
+    `Held` is printed when it happens rather than at the end, because a
+    process that reports it on shutdown reports it to nobody.
+
+    A `Kept` that could not say what is inside the data is printed too,
+    and it is deliberately not a `Held`. The run is recorded and so is
+    where its output went, so nothing is lost that cannot be asked for
+    again; what would be lost is anybody knowing to ask. A tally that
+    counted it and said nothing would leave a reporter describing
+    nothing for a month while every number looked right.
 
     Written from the relay's single worker thread and read after that
     thread has been joined, which is what makes a plain `Counter` enough.
@@ -103,6 +124,8 @@ class Tally:
         self._counts[type(outcome).__name__] += 1
         if isinstance(outcome, Held):
             print(f"  held ({outcome.origin}): {outcome.reason}", file=sys.stderr)
+        if isinstance(outcome, Kept) and outcome.undescribed is not None:
+            print(f"  kept, undescribed: {outcome.undescribed}", file=sys.stderr)
 
     def report(self) -> int:
         """Print what happened, and fail the run if anything was held."""
@@ -129,11 +152,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         if unreachable is not None:
             print(f"configuration: {unreachable}", file=sys.stderr)
             return 2
+        try:
+            describing, cataloguing = contents_leg(http, config)
+        except ConfigError as problem:
+            print(f"configuration: {problem}", file=sys.stderr)
+            return 2
 
-        relay = Relay(documents_into(Session(reporting, filing, locating)), tally.record)
+        session = Session(reporting, filing, locating, describing, cataloguing)
+        relay = Relay(handle_for(arguments, session), tally.record)
         relay.start()
         try:
-            unreadable = drive(_documents(arguments), relay)
+            unreadable = drive(deliveries(arguments), relay)
         finally:
             relay.stop(timeout=DRAIN_TIMEOUT_SECONDS)
 
@@ -144,14 +173,37 @@ def main(argv: Sequence[str] | None = None) -> int:
     return status
 
 
-def _documents(arguments: argparse.Namespace) -> Iterator[Delivery]:
-    """The source the arguments asked for."""
+def handle_for(arguments: argparse.Namespace, session: Session) -> Handle:
+    """The translator that matches the source the arguments asked for.
+
+    Separate from `main` because getting it wrong is silent. A record
+    stream read through the document grammar matches no document name,
+    so every scan becomes `Unmappable`, nothing is ever reported, and
+    the run ends with a tidy tally and a zero exit status. A reporter
+    that does nothing and says it went fine is worse than one that
+    crashes, so this pairing is somewhere a test can reach.
+    """
+    if arguments.records is not None:
+        return records_into(session)
+    return documents_into(session)
+
+
+def deliveries(arguments: argparse.Namespace) -> Delivering:
+    """The source the arguments asked for.
+
+    Named for what all three produce rather than for what the first one
+    produced. A TomoScan server publishes no documents, and calling the
+    thing that reads it a document source is how the engine's vocabulary
+    crosses back over a boundary drawn to keep it out.
+    """
     if arguments.replay is not None:
         return from_capture(arguments.replay)
+    if arguments.records is not None:
+        return from_tomoscan(arguments.records)
     return from_subscription(arguments.subscribe, prefix=arguments.prefix.encode())
 
 
-def drive(documents: Iterator[Delivery], relay: Relay) -> str | None:
+def drive(documents: Delivering, relay: Relay) -> str | None:
     """Hand every document over, until they run out or somebody stops it.
 
     Returns what made the stream unreadable, or `None` for either of the
@@ -193,7 +245,12 @@ def _parse(argv: Sequence[str] | None) -> argparse.Namespace:
         "--replay",
         type=Path,
         metavar="PATH",
-        help="path to captured documents, in the shape collect.py writes",
+        help="path to captured documents, in the shape collect_documents.py writes",
+    )
+    source.add_argument(
+        "--records",
+        metavar="PREFIX",
+        help="record prefix of a TomoScan server, such as 2bmb:TomoScan:",
     )
 
     parser.add_argument(
@@ -219,25 +276,76 @@ class Transport(HttpClient, StoreHttpClient, Protocol):
 
 
 def dataset_leg(http: Transport, config: ReporterConfig) -> tuple[Filing | None, Locating | None]:
-    """Both halves of the dataset leg, or neither of them.
+    """Each half of the dataset leg, switched on by its own table.
 
-    Two capabilities from one table, returned together because they are
-    switched on together. Filing needs the scheme a store's addresses
-    belong to and locating needs the store itself, so a deployment with
-    no `[store]` table can do neither, and one with a table can do both.
-    Building them in one place is what makes the half-configured pair
-    unconstructable rather than something `Session` has to reject.
+    Filing needs the vocabulary an address belongs to and locating needs
+    a store to ask, and those are different facts. An engine answering
+    with a path gives an address and nothing to resolve, so that
+    deployment files and never locates; one answering with a name
+    resolves first and then files, so it does both. Either may be absent,
+    and absence is a configuration this reporter supports rather than a
+    degraded one.
 
-    Two `None`s switch the leg off, which is a configuration this
-    reporter supports rather than a degraded one. One HTTP client serves
-    both the keeper and the store, so timeouts and the connection pool
-    are set in a single place.
+    The pairing a `Session` cannot finish, locating with nothing to file,
+    is not built here, and it is `load` that refuses it rather than the
+    shape of this function. A session handed it anyway is not rejected:
+    it degrades into an alert naming what it was not given.
+
+    One HTTP client serves both the keeper and the store, so timeouts and
+    the connection pool are set in a single place.
     """
-    if config.store is None:
+    filing = (
+        None
+        if config.external_ref_scheme is None
+        else HttpFiling(http, config.base_url, config.token, config.external_ref_scheme)
+    )
+    locating = (
+        None
+        if config.store is None
+        else HttpLocating(http, config.store.base_url, config.store.root)
+    )
+    return filing, locating
+
+
+def contents_leg(
+    http: Transport, config: ReporterConfig
+) -> tuple[Describing | None, Cataloguing | None]:
+    """Reading what is inside the data, and telling the keeper, or neither.
+
+    Switched on by one key, because the two halves are useless apart. A
+    reader with nowhere to send what it found records nothing, and a
+    sender with nothing to send never sends.
+
+    The describer is imported here rather than at the top of this
+    module. Its library is an extra, this module is imported whatever a
+    deployment is running, and a top-level import would make every
+    reporter at every beamline need a format library to start. That is
+    not a hypothetical: the subscription adapter was written that way
+    and stopped the process booting on the extras the deploy script
+    passes.
+
+    Which leaves one failure this has to name rather than raise: a
+    deployment that asks for a describer and did not install the extra
+    it needs. Configuration cannot catch that, because the name is
+    perfectly good and it is the virtualenv that is short. So it is
+    refused here, at startup, with the extra to re-sync named, rather
+    than on the first scan that ends.
+    """
+    if config.describer is None or config.external_ref_scheme is None:
         return None, None
+    try:
+        from reporter.adapters.dxchange_hdf5 import DxchangeHdf5Describing
+    except ImportError as missing:
+        raise ConfigError(
+            f"dataset.describer is {config.describer!r} and this virtualenv cannot "
+            f"build one. Re-sync with --extra describe-hdf5, or remove the key to "
+            f"file addresses and say nothing about what is in the data. ({missing})"
+        ) from missing
+
+    built: dict[str, Callable[[], Describing]] = {"dxchange-hdf5": DxchangeHdf5Describing}
     return (
-        HttpFiling(http, config.base_url, config.token, config.store.external_ref_scheme),
-        HttpLocating(http, config.store.base_url, config.store.root),
+        built[config.describer](),
+        HttpCataloguing(http, config.base_url, config.token, config.external_ref_scheme),
     )
 
 

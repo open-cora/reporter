@@ -18,8 +18,10 @@ drifting from the real one with nothing comparing them.
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
+from uuid import UUID
 
 from reporter.adapters.store_http import Location
+from reporter.seams import Manifest
 
 
 @dataclass(frozen=True)
@@ -155,4 +157,53 @@ class Store:
         return self.locations.get(run_reference)
 
 
-__all__ = ["Answer", "Recorder", "Routed", "Sent", "Store"]
+@dataclass
+class Reader:
+    """Something that can say what is inside what a store holds.
+
+    Keyed by the address, which is what `Describing` is given. An
+    address with no entry answers `None`, the way an adapter answers for
+    a container it does not understand, and `asked` lets a test show the
+    reader was never consulted rather than inferring it.
+
+    The parameter is spelled the way `Describing` spells it, for the
+    reason `Store` gives: a structural protocol compares parameter
+    names, so a fake naming it differently would satisfy nothing.
+    """
+
+    manifests: dict[str, Manifest] = field(default_factory=dict["str", "Manifest"])
+    refusal: Exception | None = None
+    asked: list[str] = field(default_factory=list["str"])
+
+    def describe(self, address: str) -> Manifest | None:
+        self.asked.append(address)
+        if self.refusal is not None:
+            raise self.refusal
+        return self.manifests.get(address)
+
+
+@dataclass
+class Catalogue:
+    """Somewhere to send what a reader found, standing in for the keeper.
+
+    `filed` is every description it was handed, in order, so a test can
+    show a second look landed beside the first rather than replacing it
+    on the way out. A `refusal` is what the far side raising looks like
+    from here.
+
+    The parameters are spelled the way `Cataloguing` spells them, for
+    the reason the two fakes above give.
+    """
+
+    filed: list[tuple[UUID, str, Manifest]] = field(
+        default_factory=list["tuple[UUID, str, Manifest]"]
+    )
+    refusal: Exception | None = None
+
+    def record(self, dataset_id: UUID, address: str, manifest: Manifest) -> None:
+        if self.refusal is not None:
+            raise self.refusal
+        self.filed.append((dataset_id, address, manifest))
+
+
+__all__ = ["Answer", "Catalogue", "Reader", "Recorder", "Routed", "Sent", "Store"]

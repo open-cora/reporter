@@ -13,9 +13,13 @@ whether to advance its checkpoint, and whether to wake somebody.
     Skipped      the delivery said nothing this system asked for
     Held         it said something and could not be acted on
 
-Advance the checkpoint on all five. Every one of them is settled: sending
-the same delivery again produces the same outcome, so there is nothing to
-come back for. Only `Held` is worth waking somebody, and only some of them
+Advance the checkpoint on all five. Every one of them is settled: the
+delivery has been acted on as far as it ever will be, so there is nothing
+to come back for. That is not the same as a redelivery producing the same
+outcome, and usually it does not produce one: a second send of a report
+the record already holds comes back `Unchanged` where the first was
+`Relayed`. What makes advancing safe is that nothing is recorded twice,
+not that the answer repeats. Only `Held` is worth waking somebody, and only some of them
 urgently.
 
 There is no outcome for a record brought into existence, because this
@@ -98,6 +102,21 @@ class Kept:
 
     `external_ref_value` is the address the store gave, carried so a
     caller can print what it filed without asking the keeper back.
+
+    `undescribed` is why nothing was recorded about what is inside,
+    when something tried and could not. It is `None` both when a
+    description landed and when this deployment describes nothing,
+    because neither is anybody's problem and a field that fired on
+    every reporter at every beamline without a describer would be
+    noise rather than news.
+
+    A failed description does not turn this into `Held`, where a failed
+    registration does. The two are not the same kind of loss: the
+    record of what a run produced is the thing this leg exists for, and
+    a description is a second act on a record that is already correct
+    without it. A missing one is also recoverable by asking again
+    later, where a missing dataset is not, and the gap is visible in
+    the record as a dataset nobody has described.
     """
 
     execution_id: UUID
@@ -105,6 +124,7 @@ class Kept:
     reported: Report | None
     dataset_id: UUID
     external_ref_value: str
+    undescribed: str | None = None
 
 
 @dataclass(frozen=True)

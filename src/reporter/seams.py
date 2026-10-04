@@ -62,6 +62,13 @@ two different services, and the day a keeper too old to hold a
 description is the thing that is missing, that is the half a deployment
 turns off.
 
+Together is enforced rather than expected, which the other pair's
+absence is not. `Session` refuses one without the other at
+construction, because that is the misconfiguration with no symptom: a
+describer nothing can send for is never called at all, so the outcome
+carries no reason, the tally counts nothing, and a reporter that was
+asked to describe its data reads exactly like one that was not.
+
 ## What can go wrong, in three kinds and no status codes
 
 An adapter raises `UnavailableError`, `RefusedError` or `DisagreedError`, and nothing
@@ -395,11 +402,17 @@ class Filing(Protocol):
     def record(self, intent: RegisterDataset) -> UUID:
         """File one address, and return the id of the record it made.
 
-        Filing the same address twice must return the first record's id
+        Refiling one step's address must return the first record's id
         rather than making a second one. A reporter that is restarted
-        re-sends whatever was in flight, and a store address is the one
-        thing both attempts agree on, so the far side is where that
-        agreement has to be turned into one record.
+        re-sends whatever was in flight, and the step and the address
+        together are what both attempts agree on, so the far side is
+        where that agreement has to be turned into one record.
+
+        Both halves, and neither alone. One run may write more than one
+        dataset, and more than one run may write one address, so an
+        implementation matching on either by itself records one where
+        there are two. Which of the two it loses, and which way round is
+        the quieter failure, is argued where that agreement is built.
 
         Nothing here carries the scheme the address belongs to. That is a
         fact about the store a deployment keeps its data in, so whatever

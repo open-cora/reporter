@@ -61,8 +61,12 @@ session = Session(
 
 Saying what is inside the data as well as where it is takes two more, and
 they go on together: a reader with nowhere to send what it found records
-nothing, and a sender with nothing to send never sends. The reader needs a
-format library, so it is an extra and the key that turns it on is optional.
+nothing, and a sender with nothing to send never sends. A `Session` given
+one without the other refuses to be built, because half the pair is the
+quietest way to be misconfigured: the reader is never called, no outcome
+carries a reason, and the deployment reads as one that was never asked to
+describe anything. The reader needs a format library, so it is an extra and
+the key that turns it on is optional.
 
 ```python
 from reporter.adapters.dxchange_hdf5 import DxchangeHdf5Describing

@@ -114,14 +114,26 @@ def test_a_deployment_that_describes_nothing_files_the_address_and_says_so() -> 
     assert outcome.undescribed is None, "describing nothing is not a thing to report"
 
 
-def test_half_a_contents_leg_describes_nothing_rather_than_reading_for_nobody() -> None:
-    reader = Reader(manifests={ADDRESS: _manifest()})
-    session, _filing = _session(reader, None)
+@pytest.mark.parametrize("half", ["reader", "catalogue"], ids=["reader only", "catalogue only"])
+def test_half_a_contents_leg_is_refused_at_construction_rather_than_doing_nothing(
+    half: str,
+) -> None:
+    """Either half alone used to build and then sit silent.
 
-    outcome = session.act(_registration())
+    A reader with nowhere to send what it finds was never asked, so the
+    outcome carried no reason and the tally counted nothing. That reads
+    exactly like a deployment that was never asked to describe anything,
+    which is the one failure shape the rest of this leg is built to turn
+    into a message.
+    """
+    reader = Reader(manifests={ADDRESS: _manifest()}) if half == "reader" else None
+    catalogue = Catalogue() if half == "catalogue" else None
 
-    assert isinstance(outcome, Kept)
-    assert reader.asked == [], "a reader with nowhere to send what it finds is not asked"
+    with pytest.raises(ValueError, match="together or not at all"):
+        _session(reader, catalogue)
+
+    if reader is not None:
+        assert reader.asked == [], "a reader with nowhere to send what it finds is not asked"
 
 
 def test_a_container_the_reader_does_not_understand_is_reported_not_invented() -> None:

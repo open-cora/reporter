@@ -99,6 +99,13 @@ class Session:
         describing: Describing | None = None,
         cataloguing: Cataloguing | None = None,
     ) -> None:
+        if (describing is None) != (cataloguing is None):
+            raise ValueError(
+                "Describing and Cataloguing are given together or not at all. Half the "
+                "pair is the quietest way to be misconfigured: the describer is never "
+                "called, the outcome carries no reason, and the deployment reads as one "
+                "that was never asked to describe anything."
+            )
         self._reporting = reporting
         self._filing = filing
         self._locating = locating

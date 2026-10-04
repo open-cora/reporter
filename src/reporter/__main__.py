@@ -51,7 +51,7 @@ import argparse
 import signal
 import sys
 from collections import Counter
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from types import FrameType
 from typing import Protocol
@@ -74,7 +74,7 @@ from reporter.outcomes import Held, Kept, Outcome
 from reporter.relay import Handle, Relay
 from reporter.seams import (
     Cataloguing,
-    Delivery,
+    Delivering,
     Describing,
     Filing,
     Locating,
@@ -187,7 +187,7 @@ def handle_for(arguments: argparse.Namespace, session: Session) -> Handle:
     return documents_into(session)
 
 
-def deliveries(arguments: argparse.Namespace) -> Iterator[Delivery]:
+def deliveries(arguments: argparse.Namespace) -> Delivering:
     """The source the arguments asked for.
 
     Named for what all three produce rather than for what the first one
@@ -202,7 +202,7 @@ def deliveries(arguments: argparse.Namespace) -> Iterator[Delivery]:
     return from_subscription(arguments.subscribe, prefix=arguments.prefix.encode())
 
 
-def drive(documents: Iterator[Delivery], relay: Relay) -> str | None:
+def drive(documents: Delivering, relay: Relay) -> str | None:
     """Hand every document over, until they run out or somebody stops it.
 
     Returns what made the stream unreadable, or `None` for either of the

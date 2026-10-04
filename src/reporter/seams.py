@@ -69,6 +69,7 @@ doing it there is what leaves one place where that mapping is written.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
@@ -88,7 +89,7 @@ engine-shaped does. A published document is one thing that fits and not
 the only one, which is why neither word here says document.
 """
 
-Delivering = "Iterator[Delivery]"
+type Delivering = Iterator[Delivery]
 """Where deliveries come from, until they run out or somebody stops them.
 
 An alias rather than a Protocol, deliberately. The capability is exactly
@@ -97,6 +98,22 @@ one `__iter__` on it would be inventing a name for something the standard
 library has. What the alias buys is the name: a source is `Delivering`
 wherever one is passed, so the seam is findable even though the type
 behind it is borrowed.
+
+A `type` statement rather than a plain assignment, which is the whole of
+what makes the sentence above true. Written as an assignment this was a
+string naming a type the module had not imported, so it resolved against
+nothing and every annotation that reached for it was refused. The name
+was exported, documented and counted as one of the six while no caller
+could write it, and each of them spelled the structural type out
+instead.
+
+`Iterator` is imported at runtime rather than under `TYPE_CHECKING`,
+which is the one import here that is. A `type` statement holds its value
+unevaluated until something asks for it, so a typing-only import type
+checks perfectly and then raises the moment anything reads the alias
+back. That is a worse failure than the one above, because it waits for
+whatever introspects types rather than meeting whoever writes the
+annotation.
 
 It is also the one seam nothing here calls. A subscription is pulled from
 and an engine in the same process pushes into `Relay.submit` instead, so

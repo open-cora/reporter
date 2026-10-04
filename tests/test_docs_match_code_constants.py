@@ -20,6 +20,7 @@ somebody else did.
 from __future__ import annotations
 
 import re
+from typing import TypeAliasType
 
 import pytest
 
@@ -42,17 +43,22 @@ def _declared_capabilities() -> int:
 
     Read off `__all__` rather than by listing names here, so the
     comparison has a side that moves on its own. A capability is a
-    Protocol or the one alias standing in for one, which is how the
-    module itself counts them.
+    Protocol or the one type alias standing in for one, which is how
+    the module itself counts them.
+
+    Counted by what each name is rather than by matching the alias's
+    own spelling. The spelling matched while `Delivering` was a plain
+    string that no annotation could resolve, so the count read six and
+    one of the six was unusable. A kind is the side of this that the
+    module cannot drift away from.
     """
     published = set(seams.__all__)
-    return sum(
-        1 for name in published if name == "Delivering" or _is_protocol(getattr(seams, name, None))
-    )
+    return sum(1 for name in published if _is_capability(getattr(seams, name, None)))
 
 
-def _is_protocol(candidate: object) -> bool:
-    return bool(getattr(candidate, "_is_protocol", False))
+def _is_capability(candidate: object) -> bool:
+    """A Protocol, or an alias an annotation can be written in."""
+    return isinstance(candidate, TypeAliasType) or bool(getattr(candidate, "_is_protocol", False))
 
 
 def _page(name: str) -> str:

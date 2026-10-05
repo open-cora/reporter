@@ -63,3 +63,9 @@ logs/
 
 # Built docs site (make docs-build)
 site/
+
+# A deployment address book: which machine each role is, and who it runs as.
+# Roles are public and coordinates are not, so the filled-in copy stays out
+# of every repository published from this tree. The `.example` beside it is
+# tracked and shows the shape.
+hosts.toml

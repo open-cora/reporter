@@ -119,7 +119,7 @@ executions stay open at the keeper and nothing says why.
 ## Shipping a revision
 
 ```bash
-BEAMLINE=7-bm HOST=karman PREFIX=corasim7bm:TomoScan: ./push.sh v0.4.0
+BEAMLINE=7-bm HOST=<beamline-host> PREFIX=corasim7bm:TomoScan: ./push.sh v0.4.0
 ```
 
 `push.sh` exports a named commit rather than the working tree, writes a

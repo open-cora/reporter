@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Ships this app to one host from a revision, and records which.
 #
-#   BEAMLINE=19-bm HOST=radon ./push.sh c7a5a55
-#   BEAMLINE=7-bm  HOST=karman PREFIX=corasim7bm:TomoScan: ./push.sh v0.4.0
-#   HOST=lyra ./push.sh HEAD
+#   BEAMLINE=19-bm HOST=<beamline-host> ./push.sh c7a5a55
+#   BEAMLINE=7-bm  HOST=<beamline-host> PREFIX=corasim7bm:TomoScan: ./push.sh v0.4.0
+#   HOST=<central-host> ./push.sh HEAD
 #
 # Which app is read from where this script sits rather than written into
 # it, so the same bytes serve every app that deploys into a home directory.
@@ -57,7 +57,7 @@
 set -euo pipefail
 
 BEAMLINE="${BEAMLINE:-}"
-HOST="${HOST:?HOST is required, for example HOST=radon}"
+HOST="${HOST:?HOST is required. It names a machine, and this tree writes no machine names: read one from the deployment address book}"
 REF="${1:?a revision is required, for example c7a5a55 or HEAD. It is named rather than defaulted because a default is whatever happened to be committed last}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -180,6 +180,19 @@ def _offenders(paths: frozenset[Path], machines: re.Pattern[str] | None) -> list
     return hits
 
 
+def test_the_home_segment_is_the_path_it_claims_to_be() -> None:
+    """The constant restated without sharing a fragment with it.
+
+    Every sample below derives from `_HOME_SEGMENT`, so a wrong constant
+    would leave them passing against a pattern that polices nothing, which
+    is the hole this file was just repaired for in the other direction.
+    This is the one assertion that does not derive from it, split at a
+    different point on purpose so a scrub replacing the whole literal
+    matches neither spelling.
+    """
+    assert _HOME_SEGMENT == "/home" + "/" + "beams"
+
+
 def test_each_coordinate_pattern_still_matches_a_sample() -> None:
     """Guard all four: a pattern matching nothing is a rule matching nothing.
 

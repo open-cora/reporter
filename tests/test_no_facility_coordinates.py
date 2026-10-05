@@ -37,9 +37,11 @@ run at all, and the three that do are the ones a stranger could act on.
 
 EPICS record prefixes stay. `19bmSoft:m1` is a protocol name, meaningless
 off the beamline's own network, and carrying one is what a device register
-is for. At this facility a beamline's account name and its record prefix are
-sometimes the same word, so banning the account would ban the prefix; that
-residue is accepted rather than overlooked.
+is for. At this facility two of the four beamline accounts are spelled the
+same as their record prefix, so banning those would ban every record name in
+the registers. Those two are left out of the address book's account list and
+the residue is accepted; the two that are not prefixes are refused like any
+other name.
 
 The one allow-listed string is below, and it is meant to be arguable.
 """
@@ -123,12 +125,22 @@ def _machine_pattern(names: frozenset[str]) -> re.Pattern[str] | None:
 
 @cache
 def _declared_machines() -> frozenset[str]:
-    """Host names the address book declares, or an empty set if it is absent."""
+    """Names the address book declares, or an empty set if it is absent.
+
+    Two lists, because two kinds of name locate something and only one of
+    them is a host. An account names whose home a token sits in, which is
+    the other half of reaching a machine, and the one that slipped through
+    first: an uppercase account name survived a sweep that only knew hosts.
+
+    An account whose name is also a record prefix belongs in neither list.
+    See the scope note in the module docstring.
+    """
     for candidate in (PROJECT_ROOT, *(d for d in PROJECT_ROOT.iterdir() if d.is_dir())):
         book = candidate / ADDRESS_BOOK_NAME
         if book.is_file():
             facility = tomllib.loads(book.read_text(encoding="utf-8")).get("facility", {})
-            return frozenset(str(n) for n in facility.get("machines", ()) if str(n).strip())
+            declared = (*facility.get("machines", ()), *facility.get("accounts", ()))
+            return frozenset(str(n) for n in declared if str(n).strip())
     return frozenset()
 
 

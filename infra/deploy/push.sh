@@ -218,4 +218,11 @@ if [ -n "${AUTHZ_POLICY_ID+set}" ]; then
 fi
 
 echo "Install"
-ssh "${HOST}" "cd ${REMOTE}/infra/deploy && ${SETTINGS} ./install.sh"
+# Through `bash -lc` rather than as a bare remote command, because `VAR=value
+# cmd` is not a thing every login shell can parse. One of these beamlines runs
+# tcsh, where that line fails with "BEAMLINE=32-id: Command not found", after
+# a copy that already landed. So the deploy reports a failure having changed
+# the source on the host and nothing else, which is the worst of the three
+# outcomes available. `-l` because uv is on PATH only for a login shell on
+# that same host, and SYNC=1 needs it.
+ssh "${HOST}" "bash -lc 'cd ${REMOTE}/infra/deploy && ${SETTINGS} ./install.sh'"

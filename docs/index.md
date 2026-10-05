@@ -43,7 +43,7 @@ It sits next to the engine rather than inside it. A bug here cannot take a scan 
 
 ## Where it stands today
 
-Subscribe mode has read a real engine's stream and filed reports from it. It also replays a recording, which is how it is tested without a beamline. What is still missing is durability: there is nothing behind the transport to ask again, so the at-most-once above is a cost rather than a bug.
+Records mode runs at four beamlines, watching a TomoScan engine a conductor is driving and filing a described dataset for each scan it finishes. Subscribe mode has read a real engine's stream and filed reports from it. It also replays a recording, which is how it is tested without a beamline. What is still missing is durability: there is nothing behind the transport to ask again, so the at-most-once above is a cost rather than a bug. The document path has not yet carried a conducted scan.
 
 ## The pages
 

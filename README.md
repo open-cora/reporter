@@ -57,9 +57,13 @@ most once, known rather than accidental, and named in
 
 ## Where it stands today
 
+`python -m reporter --records` watches a TomoScan engine's own records and
+files the dataset each scan leaves behind, describing what is inside the file
+rather than only where it is. Four run that way at beamlines today.
 `python -m reporter --subscribe` reads messages off a real engine's stream and
-reports them, and it has. It also replays a recording, which is how it is tested
-without a beamline. What is still missing is durability.
+reports them, and it has. It also replays a recording, which is how it is
+tested without a beamline. What is still missing is durability, and on the
+document path, a conducted scan to read.
 
 ## Reading further
 
@@ -84,7 +88,7 @@ a recorded capture, so the suite needs no engine, no store and no beamline.
 | Durability | A transport that keeps a log. Documents live in the relay's queue and nowhere else, and 0MQ publish and subscribe has nothing behind it to ask again, so a document published while this is down was never published as far as this is concerned. At-most-once, known rather than accidental. |
 | The checkpoint | The same thing. There is nothing to check point against: an offset is only meaningful over a transport that can be rewound to one. A broker in between gives both at once, and this becomes one of its consumers. |
 | Anything other than the keeper wanting these documents | Which is the question that decides the two rows above. If something else wants them, a broker is already justified and durability arrives with it. If not, this is the deployment and the gap is a cost somebody has to accept out loud. |
-| A reporter run against a live conducted scan | A sitting with a beamline. `conductor.adapters.bluesky_engine` now writes `keeper_execution_id` and `keeper_step_id` into every start document it opens under a dispatch, and both sides pin the spelling, so the contract this half states is performed. What has not happened is the two running against one engine at once. |
+| A reporter run against a live conducted scan, over documents | A sitting with a Bluesky engine. The records path is done: four reporters watch a TomoScan engine a conductor is driving and file what each scan leaves behind. The document path is not. `conductor.adapters.bluesky_engine` writes `keeper_execution_id` and `keeper_step_id` into every start document it opens under a dispatch, and both sides pin the spelling, so the contract this half states is performed, but the two have not run against one engine at once. |
 | An identity to run as | A deployment. It is an actor in Access, and the two legs need different grants: one set for relaying documents, another for registering datasets. A process carrying both legs runs as one actor holding the union. It must **not** be granted `DefineOperation` or `DefineProcedure`: an adapter cannot honestly author either, and withholding the grants makes that a refusal at the boundary rather than a sentence in a document. |
 | A token for the store | Something asking for one. The lookup sends no credential, so this works against a store that does not want one and nothing else. |
 
@@ -117,9 +121,9 @@ real output from a real store rather than a shape imagined here.
 
 ## Proving it, end to end
 
-One demonstration that is real, and one that has not happened. Saying
+Two demonstrations that are real, and one that has not happened. Saying
 which is which is the point of this section, and the reason there are no
-plausible figures under a third heading.
+plausible figures under a fourth heading.
 
 ### A capture, which needs no beamline
 
@@ -150,13 +154,53 @@ A publisher this cannot decode exits 2 rather than skipping the frame,
 and so does a configuration that will not load. Both refuse before
 anything is sent.
 
-### A conducted scan, which has not happened
+### A conducted scan over records, which runs at four beamlines
 
-There is no transcript of a run that records something, because that run
-needs four things at once: a keeper holding a dispatched execution, a
-conductor claiming and driving it, an engine that conductor drives, and a
-proxy between that engine and this. `conductor.adapters.bluesky_engine`
-writes `keeper_execution_id` and `keeper_step_id` into the start document
+Records mode needs no proxy and no document stream. A TomoScan engine
+publishes its own records, a conductor drives it, and this watches the
+records go by:
+
+```sh
+uv run python -m reporter --config reporter.toml --records corasim2bmb:TomoScan:
+```
+
+What a finished scan leaves in the record is an address and a description
+read back out of the file by `h5py`, rather than a restatement of what was
+asked for:
+
+```
+  convention  dxchange          entries  9
+
+  /defaults                [2]
+  /exchange/data           [18, 16, 16]  uint16   projections
+  /exchange/data_dark      [1, 16, 16]   uint16   dark-fields
+  /exchange/data_white     [1, 16, 16]   uint16   flat-fields
+  /exchange/theta          [18]          float64  projection-angles
+  /measurement/ancillary   [1]
+  /measurement/instrument  [3]                    instrument-state
+  /measurement/sample      [5]                    experiment-context
+  /process/acquisition     [9]                    acquisition-plan
+```
+
+That scan asked for eighteen angles and `/exchange/theta` has eighteen,
+because the file was opened and measured. A description assembled from the
+request would carry the same number without the reading, which is why the
+number is worth checking against a request that changes: the other three
+beamlines asked for ten, eight and fourteen, and each file says so.
+
+Every engine behind those four is a simulator serving records the
+deployment supplies itself, so what this establishes is the recording path
+and not any detector.
+
+### A conducted scan over documents, which has not happened
+
+A conducted scan is recorded at four beamlines through the records path,
+which is the section above. Over documents there is no transcript, because
+such a run needs four things at once: a keeper holding a dispatched
+execution, a conductor claiming and driving it, a Bluesky engine that
+conductor drives, and a proxy between that engine and this.
+`conductor.adapters.bluesky_engine` writes `keeper_execution_id` and
+`keeper_step_id` into the start document
 of every run it opens under a dispatch, and this reporter reads them back,
 and each side pins the two literals in a test naming the other. Both
 halves are built and tested. They have not been run against one engine at

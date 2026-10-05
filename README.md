@@ -57,13 +57,23 @@ most once, known rather than accidental, and named in
 
 ## Where it stands today
 
-`python -m reporter --records` watches a TomoScan engine's own records and
-files the dataset each scan leaves behind, describing what is inside the file
-rather than only where it is. Four run that way at beamlines today.
-`python -m reporter --subscribe` reads messages off a real engine's stream and
-reports them, and it has. It also replays a recording, which is how it is
-tested without a beamline. What is still missing is durability, and on the
-document path, a conducted scan to read.
+Every seam here has an adapter written for it. Which of them a deployment
+configures is a separate question, and it is the one that decides what that
+deployment can do.
+
+| Adapter | Seam | How far it has been taken |
+| --- | --- | --- |
+| `tomoscan_records` | where a scan is heard from | Watches a scan server's own records over Channel Access. This is what beamline deployments run, and conducted scans have been filed through it. |
+| `zmq_subscription` | the same, over documents | Reads an engine's document stream. It has read a real engine and reported from it, but never one a conductor was driving. |
+| `capture_replay` | the same, from a file | Replays a committed recording, which is how the suite runs with no engine, no store and no beamline. |
+| `bluesky_documents` | translation behind the two above | Documents in, intents out. Pure, so every result from driving a real engine is re-asserted against the captured file with nothing running. |
+| `keeper_http` | `Reporting`, `Filing`, `Cataloguing` | Writes what happened to the record. This is what beamline deployments run. |
+| `dxchange_hdf5` | `Describing` | Opens the filed HDF5 and measures it, so a description tracks the file rather than restating the request. Beamline deployments run this. |
+| `store_http` | `Locating` | Resolves a name to an address. No deployment configures a store, so this seam is empty everywhere and an address in the record is a path nothing resolves. |
+
+So the records path is exercised end to end and the document path is not:
+`zmq_subscription` has read a real engine, but no run has gone out of a
+conductor and into it. What is still missing besides that is durability.
 
 ## Reading further
 
@@ -164,33 +174,20 @@ records go by:
 uv run python -m reporter --config reporter.toml --records corasim2bmb:TomoScan:
 ```
 
-What a finished scan leaves in the record is an address and a description
-read back out of the file by `h5py`, rather than a restatement of what was
-asked for:
+What a finished scan leaves in the record is an address and, where a
+`Describing` adapter is configured, a manifest of what is inside the file.
+`dxchange_hdf5` opens the file and measures it, so the manifest tracks the
+file rather than restating the request: ask for a different number of
+angles and the extent of the angle dataset follows, which is the property
+worth checking and the one a description copied from the dispatch would
+fail.
 
-```
-  convention  dxchange          entries  9
-
-  /defaults                [2]
-  /exchange/data           [18, 16, 16]  uint16   projections
-  /exchange/data_dark      [1, 16, 16]   uint16   dark-fields
-  /exchange/data_white     [1, 16, 16]   uint16   flat-fields
-  /exchange/theta          [18]          float64  projection-angles
-  /measurement/ancillary   [1]
-  /measurement/instrument  [3]                    instrument-state
-  /measurement/sample      [5]                    experiment-context
-  /process/acquisition     [9]                    acquisition-plan
-```
-
-That scan asked for eighteen angles and `/exchange/theta` has eighteen,
-because the file was opened and measured. A description assembled from the
-request would carry the same number without the reading, which is why the
-number is worth checking against a request that changes: the other three
-beamlines asked for ten, eight and fourteen, and each file says so.
-
-Every engine behind those four is a simulator serving records the
-deployment supplies itself, so what this establishes is the recording path
-and not any detector.
+Two things are wired here that are not wired everywhere. `Locating` has no
+adapter configured, because these deployments have no data store, so the
+address in the record is a path and nothing resolves it. And every engine
+behind these four is a simulator serving records the deployment supplies
+itself, so what this establishes is the recording path and not any
+detector.
 
 ### A conducted scan over documents, which has not happened
 

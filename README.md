@@ -52,8 +52,7 @@ and nothing here dresses it up as a finding.
 **That nothing was lost.** Messages are held in memory between arriving and being
 filed, and a publisher drops what it sends while nobody is listening, so a
 message sent while this is down was never sent as far as this is concerned. At
-most once, known rather than accidental, and named in
-[What is missing](#what-is-missing) rather than implied.
+most once, known rather than accidental, and stated rather than implied.
 
 ## Where it stands today
 
@@ -91,16 +90,15 @@ a broken cross-link fails the build.
 In short: `uv sync --all-extras` then `uv run pytest -q`. Every test runs against
 a recorded capture, so the suite needs no engine, no store and no beamline.
 
-## What is missing
+## What to know before running one
 
-| Piece | Waiting on |
-| --- | --- |
-| Durability | A transport that keeps a log. Documents live in the relay's queue and nowhere else, and 0MQ publish and subscribe has nothing behind it to ask again, so a document published while this is down was never published as far as this is concerned. At-most-once, known rather than accidental. |
-| The checkpoint | The same thing. There is nothing to check point against: an offset is only meaningful over a transport that can be rewound to one. A broker in between gives both at once, and this becomes one of its consumers. |
-| Anything other than the keeper wanting these documents | Which is the question that decides the two rows above. If something else wants them, a broker is already justified and durability arrives with it. If not, this is the deployment and the gap is a cost somebody has to accept out loud. |
-| A reporter run against a live conducted scan, over documents | A sitting with a Bluesky engine. The records path is done: four reporters watch a TomoScan engine a conductor is driving and file what each scan leaves behind. The document path is not. `conductor.adapters.bluesky_engine` writes `keeper_execution_id` and `keeper_step_id` into every start document it opens under a dispatch, and both sides pin the spelling, so the contract this half states is performed, but the two have not run against one engine at once. |
-| An identity to run as | A deployment. It is an actor in Access, and the two legs need different grants: one set for relaying documents, another for registering datasets. A process carrying both legs runs as one actor holding the union. It must **not** be granted `DefineOperation` or `DefineProcedure`: an adapter cannot honestly author either, and withholding the grants makes that a refusal at the boundary rather than a sentence in a document. |
-| A token for the store | Something asking for one. The lookup sends no credential, so this works against a store that does not want one and nothing else. |
+**No deployment configures a store, and the process needs an identity.** A
+reporter is an actor in Access and its two legs need different grants: one set
+for relaying documents, another for registering datasets. A process carrying
+both runs as one actor holding the union. It must **not** be granted
+`DefineOperation` or `DefineProcedure`: an adapter cannot honestly author
+either, and withholding the grants makes that a refusal at the boundary rather
+than a sentence in a document.
 
 Redelivery is safe, whatever the transport turns out to be, because both
 writes send an idempotency key derived from something this can recompute
@@ -201,8 +199,7 @@ conductor drives, and a proxy between that engine and this.
 of every run it opens under a dispatch, and this reporter reads them back,
 and each side pins the two literals in a test naming the other. Both
 halves are built and tested. They have not been run against one engine at
-the same time, which is the row [What is missing](#what-is-missing)
-carries.
+the same time.
 
 What can be stated without that sitting is the wiring, which is checked
 against real captured output rather than imagined:

@@ -59,6 +59,11 @@ EXTERNAL_NAMES: frozenset[str] = frozenset(
         # this project's decoder reads back. Real, in another project, and
         # unresolvable here for exactly as long as that stays true.
         "bluesky_engine",
+        # pyepics' Channel Access teardown, registered with atexit unless
+        # its own AUTO_CLEANUP switch is off. Named by the session setup in
+        # `tests/conftest.py`, which turns that switch off and has to say
+        # which handler it is stopping. Lives in `epics.ca`.
+        "finalize_libca",
     }
 )
 """Names that are real, but defined outside this project.

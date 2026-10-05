@@ -5,6 +5,15 @@ in one is unusable from another. A reader running in its own thread has
 to join the context the main thread made before it touches a PV.
 """
 
+AUTO_CLEANUP: bool
+"""Whether initializing the library registers its teardown with `atexit`.
+
+Turned off by the session setup in `tests/conftest.py`, which says why. It
+is a plain module attribute in pyepics and is declared here because this
+project's stub is what pyright reads, so a name the stub omits is a name
+the code may not set.
+"""
+
 def use_initial_context() -> None: ...
 
 class ChannelAccessException(Exception):  # noqa: N818

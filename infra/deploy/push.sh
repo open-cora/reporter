@@ -218,4 +218,23 @@ if [ -n "${AUTHZ_POLICY_ID+set}" ]; then
 fi
 
 echo "Install"
-ssh "${HOST}" "cd ${REMOTE}/infra/deploy && ${SETTINGS} ./install.sh"
+# Fed on stdin rather than passed as an argument, because the command has to
+# survive the remote login shell and on one of these hosts that is tcsh, which
+# cannot parse `VAR=value cmd` at all: the deploy failed there with
+# "BEAMLINE=32-id: Command not found" after a copy that had already landed,
+# leaving new source and a REVISION file beside a service still running the
+# old code.
+#
+# Wrapping it as `bash -lc '...'` fixes that and breaks on the next thing, so
+# it is worth saying why it is not enough. SETTINGS already contains single
+# quotes, and embedding it inside more of them survives only while every value
+# is one word: `BEAMLINE='32-id'` happens to concatenate back together, and
+# `EXTRAS='--extra describe-hdf5'` has a space in it and splits. The result was
+# an installer that ran with EXTRAS truncated, which is the quiet kind of
+# wrong.
+#
+# On stdin there is no nesting and nothing is re-parsed: the remote shell runs
+# `bash -l -s` and the text arrives as the script. `-l` because uv is on PATH
+# only for a login shell on that same host, and SYNC=1 needs it.
+printf 'cd %s/infra/deploy && %s ./install.sh\n' "${REMOTE}" "${SETTINGS}" \
+  | ssh "${HOST}" "bash -l -s"

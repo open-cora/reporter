@@ -52,14 +52,27 @@ and nothing here dresses it up as a finding.
 **That nothing was lost.** Messages are held in memory between arriving and being
 filed, and a publisher drops what it sends while nobody is listening, so a
 message sent while this is down was never sent as far as this is concerned. At
-most once, known rather than accidental, and named in
-[What is missing](#what-is-missing) rather than implied.
+most once, known rather than accidental, and stated rather than implied.
 
 ## Where it stands today
 
-`python -m reporter --subscribe` reads messages off a real engine's stream and
-reports them, and it has. It also replays a recording, which is how it is tested
-without a beamline. What is still missing is durability.
+Every seam here has an adapter written for it. Which of them a deployment
+configures is a separate question, and it is the one that decides what that
+deployment can do.
+
+| Adapter | Seam | How far it has been taken |
+| --- | --- | --- |
+| `tomoscan_records` | where a scan is heard from | Watches a scan server's own records over Channel Access. This is what beamline deployments run, and conducted scans have been filed through it. |
+| `zmq_subscription` | the same, over documents | Reads an engine's document stream. It has read a real engine and reported from it, but never one a conductor was driving. |
+| `capture_replay` | the same, from a file | Replays a committed recording, which is how the suite runs with no engine, no store and no beamline. |
+| `bluesky_documents` | translation behind the two above | Documents in, intents out. Pure, so every result from driving a real engine is re-asserted against the captured file with nothing running. |
+| `keeper_http` | `Reporting`, `Filing`, `Cataloguing` | Writes what happened to the record. This is what beamline deployments run. |
+| `dxchange_hdf5` | `Describing` | Opens the filed HDF5 and measures it, so a description tracks the file rather than restating the request. Beamline deployments run this. |
+| `store_http` | `Locating` | Resolves a name to an address. No deployment configures a store, so this seam is empty everywhere and an address in the record is a path nothing resolves. |
+
+So the records path is exercised end to end and the document path is not:
+`zmq_subscription` has read a real engine, but no run has gone out of a
+conductor and into it. What is still missing besides that is durability.
 
 ## Reading further
 
@@ -77,16 +90,15 @@ a broken cross-link fails the build.
 In short: `uv sync --all-extras` then `uv run pytest -q`. Every test runs against
 a recorded capture, so the suite needs no engine, no store and no beamline.
 
-## What is missing
+## What to know before running one
 
-| Piece | Waiting on |
-| --- | --- |
-| Durability | A transport that keeps a log. Documents live in the relay's queue and nowhere else, and 0MQ publish and subscribe has nothing behind it to ask again, so a document published while this is down was never published as far as this is concerned. At-most-once, known rather than accidental. |
-| The checkpoint | The same thing. There is nothing to check point against: an offset is only meaningful over a transport that can be rewound to one. A broker in between gives both at once, and this becomes one of its consumers. |
-| Anything other than the keeper wanting these documents | Which is the question that decides the two rows above. If something else wants them, a broker is already justified and durability arrives with it. If not, this is the deployment and the gap is a cost somebody has to accept out loud. |
-| A reporter run against a live conducted scan | A sitting with a beamline. `conductor.adapters.bluesky_engine` now writes `keeper_execution_id` and `keeper_step_id` into every start document it opens under a dispatch, and both sides pin the spelling, so the contract this half states is performed. What has not happened is the two running against one engine at once. |
-| An identity to run as | A deployment. It is an actor in Access, and the two legs need different grants: one set for relaying documents, another for registering datasets. A process carrying both legs runs as one actor holding the union. It must **not** be granted `DefineOperation` or `DefineProcedure`: an adapter cannot honestly author either, and withholding the grants makes that a refusal at the boundary rather than a sentence in a document. |
-| A token for the store | Something asking for one. The lookup sends no credential, so this works against a store that does not want one and nothing else. |
+**No deployment configures a store, and the process needs an identity.** A
+reporter is an actor in Access and its two legs need different grants: one set
+for relaying documents, another for registering datasets. A process carrying
+both runs as one actor holding the union. It must **not** be granted
+`DefineOperation` or `DefineProcedure`: an adapter cannot honestly author
+either, and withholding the grants makes that a refusal at the boundary rather
+than a sentence in a document.
 
 Redelivery is safe, whatever the transport turns out to be, because both
 writes send an idempotency key derived from something this can recompute
@@ -117,9 +129,9 @@ real output from a real store rather than a shape imagined here.
 
 ## Proving it, end to end
 
-One demonstration that is real, and one that has not happened. Saying
+Two demonstrations that are real, and one that has not happened. Saying
 which is which is the point of this section, and the reason there are no
-plausible figures under a third heading.
+plausible figures under a fourth heading.
 
 ### A capture, which needs no beamline
 
@@ -150,18 +162,44 @@ A publisher this cannot decode exits 2 rather than skipping the frame,
 and so does a configuration that will not load. Both refuse before
 anything is sent.
 
-### A conducted scan, which has not happened
+### A conducted scan over records, which runs at four beamlines
 
-There is no transcript of a run that records something, because that run
-needs four things at once: a keeper holding a dispatched execution, a
-conductor claiming and driving it, an engine that conductor drives, and a
-proxy between that engine and this. `conductor.adapters.bluesky_engine`
-writes `keeper_execution_id` and `keeper_step_id` into the start document
+Records mode needs no proxy and no document stream. A TomoScan engine
+publishes its own records, a conductor drives it, and this watches the
+records go by:
+
+```sh
+uv run python -m reporter --config reporter.toml --records corasim2bmb:TomoScan:
+```
+
+What a finished scan leaves in the record is an address and, where a
+`Describing` adapter is configured, a manifest of what is inside the file.
+`dxchange_hdf5` opens the file and measures it, so the manifest tracks the
+file rather than restating the request: ask for a different number of
+angles and the extent of the angle dataset follows, which is the property
+worth checking and the one a description copied from the dispatch would
+fail.
+
+Two things are wired here that are not wired everywhere. `Locating` has no
+adapter configured, because these deployments have no data store, so the
+address in the record is a path and nothing resolves it. And every engine
+behind these four is a simulator serving records the deployment supplies
+itself, so what this establishes is the recording path and not any
+detector.
+
+### A conducted scan over documents, which has not happened
+
+A conducted scan is recorded at four beamlines through the records path,
+which is the section above. Over documents there is no transcript, because
+such a run needs four things at once: a keeper holding a dispatched
+execution, a conductor claiming and driving it, a Bluesky engine that
+conductor drives, and a proxy between that engine and this.
+`conductor.adapters.bluesky_engine` writes `keeper_execution_id` and
+`keeper_step_id` into the start document
 of every run it opens under a dispatch, and this reporter reads them back,
 and each side pins the two literals in a test naming the other. Both
 halves are built and tested. They have not been run against one engine at
-the same time, which is the row [What is missing](#what-is-missing)
-carries.
+the same time.
 
 What can be stated without that sitting is the wiring, which is checked
 against real captured output rather than imagined:

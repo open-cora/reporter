@@ -33,15 +33,29 @@ of whoever deploys. That is the person who can paste a host name in the
 first place, so the check is where the mistake is made. In CI it does not
 run at all, and the three that do are the ones a stranger could act on.
 
-## What deliberately passes
+## What deliberately passes, and what absence from the list does not mean
 
 EPICS record prefixes stay. `19bmSoft:m1` is a protocol name, meaningless
 off the beamline's own network, and carrying one is what a device register
-is for. At this facility two of the four beamline accounts are spelled the
-same as their record prefix, so banning those would ban every record name in
-the registers. Those two are left out of the address book's account list and
-the residue is accepted; the two that are not prefixes are refused like any
-other name.
+is for.
+
+The address book's account list covers the accounts this tree's deployments
+run as. That is not every account at the facility, and a name can be missing
+from it for three different reasons:
+
+  - nothing here runs as it, so the tree never writes it and the list never
+    needed it. Most of the facility is this.
+  - it spells a record prefix as well as an account. Two of the four
+    beamline accounts do here, and banning them would ban every record name
+    in the registers.
+  - it collides with this system's own vocabulary rather than with a
+    protocol's. `tomo` is the example and the trap: it is an account at this
+    facility, and it is also an operation name, two device names and a group
+    in the registers. Adding it would fail a dozen honest lines, and a reader
+    expecting only the record-prefix case would not see it coming.
+
+So absence is never a claim that a name is safe to write. It is a claim that
+nothing here says it, or that refusing it would cost more than it buys.
 
 The one allow-listed string is below, and it is meant to be arguable.
 """

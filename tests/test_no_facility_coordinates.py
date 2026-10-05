@@ -98,7 +98,17 @@ _HOSTNAME = re.compile(
     + r")\b",
     re.IGNORECASE,
 )
-_HOME = re.compile(r"/home/beams[0-9]*\b", re.IGNORECASE)
+_HOME_SEGMENT = "/" + "home/beams"
+"""Assembled from fragments rather than written whole, and that is deliberate.
+
+A rule that spells out what it forbids is a target for any later scrub that
+uses the same terms. One did: a rewrite of this repository's history replaced
+the literal in the pattern below with its own replacement text, leaving a
+home-path check that matched no home path. It was caught because the samples
+went red with it, which is the only reason this is a comment and not a hole.
+"""
+
+_HOME = re.compile(_HOME_SEGMENT + r"[0-9]*\b", re.IGNORECASE)
 
 _EXEMPT_ADDRESSES: frozenset[str] = frozenset({"0.0.0.0", "255.255.255.0", "255.255.255.255"})
 """Addresses that name no host: the unspecified address and netmask shapes."""
@@ -179,7 +189,7 @@ def test_each_coordinate_pattern_still_matches_a_sample() -> None:
     """
     assert _addresses("the host at 10.1.2.3 answers")
     assert _HOSTNAME.findall("reached a-host.example.aps.anl.gov on 5064")
-    assert _HOME.findall("its home is /home/beams/EXAMPLE and it is shared")
+    assert _HOME.findall(f"its home is {_HOME_SEGMENT}/EXAMPLE and it is shared")
     pattern = _machine_pattern(frozenset({"somehost"}))
     assert pattern is not None
     assert pattern.findall("a conductor runs on somehost today")
@@ -207,7 +217,7 @@ def test_an_absent_address_book_disables_only_the_name_check() -> None:
     """
     assert _machine_pattern(frozenset()) is None
     assert _addresses("the host at 10.1.2.3 answers")
-    assert _HOME.findall("/home/beams0")
+    assert _HOME.findall(_HOME_SEGMENT + "0")
 
 
 def test_the_issuer_exemption_spares_a_definition_and_nothing_else() -> None:
